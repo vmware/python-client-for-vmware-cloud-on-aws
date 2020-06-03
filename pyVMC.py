@@ -444,6 +444,92 @@ def getSDDCMGWRule(proxy_url, sessiontoken):
         table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
     return table
 
+def getSDDCDFWSection(proxy_url, sessiontoken):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/")
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    sddc_DFWsection = json_response['results']
+    from prettytable import PrettyTable
+    table = PrettyTable(['id', 'Name','Category', 'Sequence Number'])
+    for i in sddc_DFWsection:
+        table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
+    return table
+
+def newSDDCDFWSection(proxy_url, sessiontoken, display_name, category):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + display_name)
+    json_data = {
+    "resource_type":"SecurityPolicy",
+    "display_name": display_name,
+    "id": display_name,
+    "category": category,
+    }
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def removeSDDCDFWSection(proxy_url, sessiontoken, section_id):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section_id)
+    response = requests.delete(myURL, headers=myHeader)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def getSDDCDFWRule(proxy_url, sessiontoken, section):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules")
+    response = requests.get(myURL, headers=myHeader)
+    json_response_status_code = response.status_code
+    if json_response_status_code != 200:
+        print("No section found.")
+    else:
+        json_response = response.json()
+        sddc_DFWrules = json_response['results']
+        from prettytable import PrettyTable
+        table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
+        for i in sddc_DFWrules:
+            # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
+            a = i['source_groups']
+            a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
+            a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
+            b= i['destination_groups']
+            b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
+            b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
+            c = i['services']
+            c = [z.replace('/infra/services/','') for z in c]
+            table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
+        return table
+
+def newSDDCDFWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, section, sequence_number):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules/" + display_name)
+    json_data = {
+    "action": action,
+    "destination_groups": destination_groups,
+    "direction": "IN_OUT",
+    "disabled": False,
+    "display_name": display_name,
+    "id": display_name,
+    "ip_protocol": "IPV4_IPV6",
+    "logged": False,
+    "profiles": [ "ANY" ],
+    "resource_type": "Rule",
+    "services": services,
+    "source_groups": source_groups,
+    "sequence_number": sequence_number
+    }
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def removeSDDCDFWRule(proxy_url, sessiontoken, section, rule_id):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules/" + rule_id)
+    response = requests.delete(myURL, headers=myHeader)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
 def newSDDCCGWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, scope, sequence_number):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/" + display_name)
@@ -857,14 +943,17 @@ def getSDDCService(proxy_url,sessiontoken,service_id):
     # removing 'sks-nsxt-manager' from proxy url to get correct URL
     myURL = proxy_url_short + "policy/api/v1/infra/services/" + service_id 
     response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    service_entries = json_response['service_entries']
-    from prettytable import PrettyTable
-    table = PrettyTable(['ID', 'Name', 'Protocol', 'Source Ports', 'Destination Ports'])
-    for i in service_entries:
-        table.add_row([i['id'], i['display_name'], i['l4_protocol'], i['source_ports'], i['destination_ports']])
-    print("T")
-    return table
+    json_response_status_code = response.status_code
+    if json_response_status_code != 200:
+        print("This service does not exist.")
+    else:
+        json_response = response.json()
+        service_entries = json_response['service_entries']
+        from prettytable import PrettyTable
+        table = PrettyTable(['ID', 'Name', 'Protocol', 'Source Ports', 'Destination Ports'])
+        for i in service_entries:
+            table.add_row([i['id'], i['display_name'], i['l4_protocol'], i['source_ports'], i['destination_ports']])
+        return table
 
 def newSDDCService(proxy_url,sessiontoken,service_id,service_entries):
     """ Create a new SDDC Service based on service_entries """
@@ -1105,6 +1194,106 @@ elif intent_name == "show-cgw-rule":
     print(getSDDCCGWRule(proxy, session_token))
 elif intent_name == "show-mgw-rule":
     print(getSDDCMGWRule(proxy, session_token))
+elif intent_name == "show-dfw-section-rules":
+    if len(sys.argv) == 2:
+        print("Incorrect syntax. Specify the section name.")
+    if len(sys.argv) == 3:
+        section = sys.argv[2]
+        print(getSDDCDFWRule(proxy, session_token,section))
+elif intent_name == "new-dfw-rule":
+    sequence_number = 0
+    display_name = sys.argv[2]
+    sg_string = sys.argv[3]
+    dg_string = sys.argv[4]
+    group_index = '/infra/domains/cgw/groups/'
+    scope_index = '/infra/labels/cgw-'
+    list_index = '/infra/services/'
+    if sg_string.lower() == "connected_vpc":
+        source_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+    elif sg_string.lower() == "directconnect_prefixes":
+        source_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+    elif sg_string.lower() == "s3_prefixes":
+        source_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+    elif sg_string.lower() == "any":
+        source_groups = ["ANY"]
+    else:
+        sg_list = sg_string.split(",")
+        source_groups= [group_index + x for x in sg_list]
+    if dg_string.lower() == "connected_vpc":
+        destination_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+    elif dg_string.lower() == "directconnect_prefixes":
+        destination_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+    elif dg_string.lower() == "s3_prefixes":
+        destination_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+    elif dg_string.lower() == "any":
+        destination_groups = ["ANY"]
+    else:
+        dg_list = dg_string.split(",")
+        destination_groups= [group_index + x for x in dg_list]
+    services_string = sys.argv[5]
+    if services_string.lower() == "any":
+        services = ["ANY"]
+    else:
+        services_list = services_string.split(",")
+        services = [list_index + x for x in services_list]
+    action = sys.argv[6].upper()
+    section = sys.argv[7]
+    if len(sys.argv) == 9:
+        sequence_number = sys.argv[8]
+        new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
+    else:
+        new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
+    if new_rule == 200:
+        print("\n The rule has been created.")
+        print(getSDDCDFWRule(proxy,session_token, section))
+    else:
+        print("Incorrect syntax. Try again.")
+elif intent_name == "remove-dfw-rule":
+    if len(sys.argv) != 4:
+        print("Incorrect syntax. ")
+    else:
+        section_id = sys.argv[2]
+        rule_id = sys.argv[3]
+        if removeSDDCDFWRule(proxy, session_token, section_id, rule_id) == 200:
+            print("The rule " + rule_id + " has been deleted")
+            print(getSDDCDFWRule(proxy,session_token, section_id))
+        else :
+            print("Issues deleting the security rule. Check the syntax.")
+elif intent_name == "show-dfw-section":
+    print(getSDDCDFWSection(proxy, session_token))
+elif intent_name == "new-dfw-section":
+    if len(sys.argv) >= 5:
+        print("Wrong syntax, try again.")
+    if len(sys.argv) == 3:
+        name = sys.argv[2]
+        category = "Application"
+        status_code = newSDDCDFWSection(proxy, session_token, name, category)
+        if status_code == 200:
+            print("Success:")
+            print("\nThe section " + name + " has been created in the " + category + " category.")
+            print(getSDDCDFWSection(proxy, session_token))
+        else:
+            print("There was an error. Check the syntax.")
+    if len(sys.argv) == 4:
+        name = sys.argv[2]
+        category = sys.argv[3]
+        status_code = newSDDCDFWSection(proxy, session_token, name, category)
+        if status_code == 200:
+            print("Success:")
+            print("\nThe section " + name + " has been created in the " + category + " category.")
+            print(getSDDCDFWSection(proxy, session_token))
+        else:
+            print("There was an error. Check the syntax.")
+elif intent_name == "remove-dfw-section":
+    if len(sys.argv) != 3:
+        print("Incorrect syntax. ")
+    else:
+        section_id = sys.argv[2]
+        if removeSDDCDFWSection(proxy, session_token, section_id) == 200:
+            print("The section " + section_id + " has been deleted.")
+            print(getSDDCDFWSection(proxy,session_token))
+        else :
+            print("Issues deleting the DFW section. Check the syntax.")
 elif intent_name == "show-mtu":
     print("The MTU over the Direct Connect is " + str(getSDDCMTU(proxy,session_token)) + " Bytes.")
 elif intent_name == "set-mtu":
@@ -1535,8 +1724,20 @@ else:
     print("\tshow-mgw-rule")
     print("\nTo create a new MGW security rule")
     print("\tnew-mgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SEQUENCE-NUMBER]")
-    print("\nTo delete a CGW security rule:")
-    print("\tremove-cgw-rule [RULE_ID]")
+    print("\nTo delete a MGW security rule:")
+    print("\tremove-mgw-rule [RULE_ID]")
+    print("\nTo show the DFW sections:")
+    print("\tshow-dfw-section")
+    print("\nTo create a new DFW section")
+    print("\tnew-dfw-section [NAME][CATEGORY]")  
+    print("\nTo delete a DFW section:")
+    print("\tremove-dfw-section [RULE_ID]") 
+    print("\nTo show the DFW security rules within a section")
+    print("\tshow-dfw-section-rules [SECTION]")
+    print("\nTo create a new DFW security rule")
+    print("\tnew-dfw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SECTION] [SEQUENCE-NUMBER]")
+    print("\nTo delete a DFW rule:")
+    print("\tremove-dfw-rule [SECTION_ID][RULE_ID]") 
     print("\nTo show the configured NAT rules:")
     print("\tshow-nat")
     print("\nTo show the statistics for a specific NAT rule:")
