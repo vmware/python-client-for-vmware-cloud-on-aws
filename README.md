@@ -49,14 +49,10 @@ v1.0 provides users to:
 - Display information about SDDC and org users
 - Display information about VMs in the SDDC
 
-v1.0 does not support:
-- Create/Read/Update/Delete (CRUD) for DHCP Relay 
-- Create/Update/Delete (CRUD) for DNS Config.
-- Create/Read/Update/Delete (CRUD) for Port Mirroring.
-- Create/Read/Update/Delete (CRUD) for IPFIX.
-- Create/Read/Update/Delete (CRUD) for non-TCP/UDP based services
+v1.1 added support for 
 - Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
 
+v1.2 fixed minor bugs.
 
 ## Contributing
 
