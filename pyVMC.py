@@ -34,6 +34,7 @@ import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
 import time
 import sys
+from prettytable import PrettyTable
 
 config = configparser.ConfigParser()
 config.read("./config.ini")
@@ -68,7 +69,6 @@ def getSDDCS(tenantid, sessiontoken):
     myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs"
     response = requests.get(myURL, headers=myHeader)
     jsonResponse = response.json()
-    from prettytable import PrettyTable
     orgtable = PrettyTable(['OrgID'])
     orgtable.add_row([tenantid])
     print(str(orgtable))
@@ -108,7 +108,6 @@ def getCDChosts(sddcID, tenantid, sessiontoken):
 
     # get the hosts block
     hosts = jsonResponse['resource_config']['esx_hosts']
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'Status', 'ID'])
     for i in hosts:
         hostName = i['name'] + cdcID
@@ -128,7 +127,6 @@ def showORGusers(tenantid, sessiontoken):
     else:
         # get the results block
         users = jsonResponse['results']
-        from prettytable import PrettyTable
         table = PrettyTable(['First Name', 'Last Name', 'User Name'])
         for i in users:
             table.add_row([i['user']['firstName'],i['user']['lastName'],i['user']['username']])
@@ -152,7 +150,6 @@ def getSDDCState(org_id, sddc_id, sessiontoken):
     myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(strProdURL, org_id, sddc_id)
     response = requests.get(myURL, headers=myHeader)
     sddc_state = response.json()
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'Id', 'Status', 'Type', 'Region', 'Deployment Type'])
     table.add_row([sddc_state['name'], sddc_state['id'], sddc_state['sddc_state'], sddc_state['sddc_type'], sddc_state['resource_config']['region'], sddc_state['resource_config']['deployment_type']])
     return table
@@ -173,8 +170,6 @@ def getSDDCnetworks(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_networks = json_response['results']
-    sddc_networks_count = json_response['result_count']
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
     for i in sddc_networks:
         table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
@@ -197,7 +192,6 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
         json_response_status_code = response.status_code
         if json_response_status_code == 200 :
             print("The following network has been created:")
-            from prettytable import PrettyTable
             table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
             table.add_row([display_name, gateway_address, routing_type])
             return table
@@ -217,7 +211,6 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
             json_response_status_code = response.status_code
             if json_response_status_code == 200 :
                 print("The following network has been created:")
-                from prettytable import PrettyTable
                 table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
                 table.add_row([display_name, gateway_address, routing_type])
                 return table
@@ -238,7 +231,6 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
             json_response_status_code = response.status_code
             if json_response_status_code == 200 :
                 print("The following network has been created:")
-                from prettytable import PrettyTable
                 table = PrettyTable(['Name', 'Gateway', 'DHCP', 'Domain Name', 'Routing Type'])
                 table.add_row([display_name, gateway_address, dhcp_range, domain_name, routing_type])
                 return table
@@ -269,7 +261,6 @@ def getSDDCNAT(proxy_url, sessiontoken):
     json_response_status_code = response.status_code
     if json_response_status_code == 200:
         sddc_NAT = json_response['results']
-        from prettytable import PrettyTable
         table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
         for i in sddc_NAT:
             if 'destination_network' in i:
@@ -291,7 +282,6 @@ def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
     json_response_status_code = response.status_code
     if json_response_status_code == 200:
         sddc_NAT_stats = json_response['results'][0]['rule_statistics']
-        from prettytable import PrettyTable
         table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
         for i in sddc_NAT_stats:
             #  For some reason, the API returns an entry with null values and one with actual data. So I am removing this entry. 
@@ -345,7 +335,7 @@ def removeSDDCNAT(proxy_url, sessiontoken, id):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + id)
     response = requests.delete(myURL, headers=myHeader)
-    return
+    return response
 
 def getSDDCVPN(proxy_url, sessiontoken):
     """ Gets the configured Site-to-Site VPN """
@@ -356,7 +346,6 @@ def getSDDCVPN(proxy_url, sessiontoken):
     json_response_status_code = response.status_code
     if json_response_status_code == 200:
         sddc_VPN = json_response['results']
-        from prettytable import PrettyTable
         table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
         for i in sddc_VPN:
             table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
@@ -372,7 +361,6 @@ def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_VPN_ipsec_profiles = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'ID', 'IKE Version', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_profiles:
         table.add_row([i['display_name'], i['id'], i['ike_version'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
@@ -385,7 +373,6 @@ def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_VPN_ipsec_tunnel_profiles = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'ID', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_tunnel_profiles:
         table.add_row([i['display_name'], i['id'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
@@ -398,7 +385,6 @@ def getSDDCVPNIpsecEndpoints(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_VPN_ipsec_endpoints = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['Name', 'ID', 'Address'])
     for i in sddc_VPN_ipsec_endpoints:
         table.add_row([i['display_name'], i['id'], i['local_address']])
@@ -410,7 +396,6 @@ def getSDDCCGWRule(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_CGWrules = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['id', 'Name','Source','Destination', 'Action', 'Applied To', 'Sequence Number'])
     for i in sddc_CGWrules:
         # a, b and c are used to strip the infra/domain/cgw terms from the strings for clarity.
@@ -431,7 +416,6 @@ def getSDDCMGWRule(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_MGWrules = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
     for i in sddc_MGWrules:
         # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
@@ -450,7 +434,6 @@ def getSDDCDFWSection(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_DFWsection = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['id', 'Name','Category', 'Sequence Number'])
     for i in sddc_DFWsection:
         table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
@@ -486,7 +469,6 @@ def getSDDCDFWRule(proxy_url, sessiontoken, section):
     else:
         json_response = response.json()
         sddc_DFWrules = json_response['results']
-        from prettytable import PrettyTable
         table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
         for i in sddc_DFWrules:
             # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
@@ -598,7 +580,6 @@ def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_VPN_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
-    from prettytable import PrettyTable
     table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
     for i in sddc_VPN_statistics:
         table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
@@ -610,7 +591,6 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_public_ips = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['IP', 'id', 'Notes'])
     for i in sddc_public_ips:
         table.add_row([i['ip'], i['id'], i['display_name']])
@@ -716,7 +696,6 @@ def getSDDCConnectedVPC(proxy_url,sessiontoken):
     mySecondURL = (proxy_url + "/cloud-service/api/v1/infra/linked-vpcs/" + sddc_connected_vpc['linked_vpc_id'] + "/connected-services")
     response_second = requests.get(mySecondURL, headers=myHeader)
     sddc_connected_vpc_services = response_second.json()
-    from prettytable import PrettyTable
     table = PrettyTable(['Customer-Owned Account', 'Connected VPC ID', 'Subnet', 'Availability Zone', 'ENI', 'Service Access'])
     table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], sddc_connected_vpc['active_eni'],sddc_connected_vpc_services['results'][0]['enabled']])
     return table
@@ -748,7 +727,6 @@ def getSDDCGroups(proxy_url,sessiontoken,gw):
     json_response = response.json()
     # print(json_response)
     sddc_group = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['ID', 'Name'])
     for i in sddc_group:
         table.add_row([i['id'], i['display_name']])
@@ -778,7 +756,6 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
                 new_response = requests.get(myNewURL, headers=myHeader)
                 new_second_response = new_response.json()
                 new_second_extra = new_second_response['results']
-                from prettytable import PrettyTable
                 new_table = PrettyTable(['Name'])
                 for i in new_second_extra:
                     new_table.add_row([i['display_name']])
@@ -787,7 +764,6 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
         elif group_criteria["resource_type"] == "Condition":
             group = json_response['expression']
             print("The group " + group_id + " is based on these criteria:")
-            from prettytable import PrettyTable
             table = PrettyTable(['Member Type', 'Key', 'Operator', 'Value'])
             for i in group:
                 table.add_row([i['member_type'], i['key'], i['operator'], i['value']])
@@ -797,7 +773,6 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
                 new_response = requests.get(myNewURL, headers=myHeader)
                 new_second_response = new_response.json()
                 new_second_extra = new_second_response['results']
-                from prettytable import PrettyTable
                 new_table = PrettyTable(['Name'])
                 for i in new_second_extra:
                     new_table.add_row([i['display_name']])
@@ -808,7 +783,6 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
                 new_response = requests.get(myNewURL, headers=myHeader)
                 new_second_response = new_response.json()
                 new_second_extra = new_second_response['results']
-                from prettytable import PrettyTable
                 new_table = PrettyTable(['Name'])
                 for i in new_second_extra:
                     new_table.add_row([i['display_name']])
@@ -818,6 +792,7 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
             print("Incorrect syntax. Try again.")
     else:
         print("This group has no criteria defined.")
+    return
 
 def removeSDDCGroup(proxy_url, sessiontoken, gw, group_id):
     """ Remove an SDDC Group """
@@ -832,7 +807,7 @@ def removeSDDCGroup(proxy_url, sessiontoken, gw, group_id):
         print("The group " + group_id + " has been deleted")
     else :
         print("There was an error. Try again.")
-    return
+    return json_response
 
 def newSDDCGroupIPaddress(proxy_url,sessiontoken,gw,group_id,ip_addresses):
     """ Creates a single SDDC Group based on IP addresses. Use 'mgw' or 'cgw' as the parameter """
@@ -893,7 +868,6 @@ def getVMs(proxy_url,sessiontoken):
     response = requests.get(VMlist_url, headers=myHeader)
     response_dictionary = response.json()
     extracted_dictionary = response_dictionary['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['Display_Name', 'Status', 'External_ID'])
     for i in extracted_dictionary:
         table.add_row([i['display_name'], i['power_state'], i['external_id']])
@@ -924,16 +898,12 @@ def getSDDCServices(proxy_url,sessiontoken):
     proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
     # removing 'sks-nsxt-manager' from proxy url to get correct URL
     myURL = proxy_url_short + "policy/api/v1/infra/services"
-    # print(myURL)
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    # print(json_response)
     sddc_services = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['ID', 'Name'])
     for i in sddc_services:
         table.add_row([i['id'], i['display_name']])
-    # print(table)
     return table
 
 def getSDDCService(proxy_url,sessiontoken,service_id):
@@ -949,7 +919,6 @@ def getSDDCService(proxy_url,sessiontoken,service_id):
     else:
         json_response = response.json()
         service_entries = json_response['service_entries']
-        from prettytable import PrettyTable
         table = PrettyTable(['ID', 'Name', 'Protocol', 'Source Ports', 'Destination Ports'])
         for i in service_entries:
             table.add_row([i['id'], i['display_name'], i['l4_protocol'], i['source_ports'], i['destination_ports']])
@@ -1010,7 +979,6 @@ def getSDDCDNS_Zones(proxy_url,sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     sddc_dns = json_response['results']
-    from prettytable import PrettyTable
     table = PrettyTable(['ID', 'Name','DNS Domain Names','upstream_servers'])
     for i in sddc_dns:
         table.add_row([i['id'], i['display_name'], i['dns_domain_names'], i['upstream_servers']])
@@ -1022,14 +990,10 @@ def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
     proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
     # removing 'sks-nsxt-manager' from proxy url to get correct URL
     myURL = proxy_url_short + "policy/api/v1/infra/tier-1s/" + gw + "/dns-forwarder"
-    # print(myURL)
     response = requests.get(myURL, headers=myHeader)
     sddc_dns_service = response.json()
-    # print(sddc_dns_service)
-    from prettytable import PrettyTable
     table = PrettyTable(['ID', 'Name', 'Listener IP'])
     table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
-    # print(table)
     return table
 
 def createLotsNetworks(proxy_url, sessiontoken,network_number):
@@ -1209,27 +1173,27 @@ elif intent_name == "new-dfw-rule":
     scope_index = '/infra/labels/cgw-'
     list_index = '/infra/services/'
     if sg_string.lower() == "connected_vpc":
-        source_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
     elif sg_string.lower() == "directconnect_prefixes":
-        source_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
     elif sg_string.lower() == "s3_prefixes":
-        source_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
     elif sg_string.lower() == "any":
         source_groups = ["ANY"]
     else:
         sg_list = sg_string.split(",")
         source_groups= [group_index + x for x in sg_list]
     if dg_string.lower() == "connected_vpc":
-        destination_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
     elif dg_string.lower() == "directconnect_prefixes":
-        destination_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
     elif dg_string.lower() == "s3_prefixes":
-        destination_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
     elif dg_string.lower() == "any":
         destination_groups = ["ANY"]
     else:
         dg_list = dg_string.split(",")
-        destination_groups= [group_index + x for x in dg_list]
+        destination_groups = [group_index + x for x in dg_list]
     services_string = sys.argv[5]
     if services_string.lower() == "any":
         services = ["ANY"]
@@ -1430,22 +1394,22 @@ elif intent_name == "new-cgw-rule":
     scope_index = '/infra/labels/cgw-'
     list_index = '/infra/services/'
     if sg_string.lower() == "connected_vpc":
-        source_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
     elif sg_string.lower() == "directconnect_prefixes":
-        source_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
     elif sg_string.lower() == "s3_prefixes":
-        source_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
     elif sg_string.lower() == "any":
         source_groups = ["ANY"]
     else:
         sg_list = sg_string.split(",")
-        source_groups= [group_index + x for x in sg_list]
+        source_groups = [group_index + x for x in sg_list]
     if dg_string.lower() == "connected_vpc":
-        destination_groups == ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
     elif dg_string.lower() == "directconnect_prefixes":
-        destination_groups == ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
     elif dg_string.lower() == "s3_prefixes":
-        destination_groups == ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
     elif dg_string.lower() == "any":
         destination_groups = ["ANY"]
     else:
