@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-
 # The shebang above is to tell the shell which interpreter to use. This make the file executable without "python3" in front of it (otherwise I had to use python3 pyvmc.py)
 # I also had to change the permissions of the file to make it run. "chmod +x pyVMC.py" did the trick.
 # I also added "export PATH="MY/PYVMC/DIRECTORY":$PATH" (otherwise I had to use ./pyvmc.y)
+# For git BASH on Windows, you can use something like this #!/C/Users/usr1/AppData/Local/Programs/Python/Python38/python.exe
 
 # Python Client for VMware Cloud on AWS
 
@@ -27,6 +27,8 @@ You can install the dependent python packages locally (handy for Lambda) with:
 pip3 install requests or pip3 install requests -t . --upgrade
 pip3 install configparser or pip3 install configparser -t . --upgrade
 pip3 install PTable or pip3 install PTable -t . --upgrade
+
+With git BASH on Windows, you might need to use 'python -m pip install' instead of pip3 install
 
 """
 
