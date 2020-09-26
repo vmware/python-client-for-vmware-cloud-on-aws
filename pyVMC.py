@@ -79,6 +79,23 @@ def getConnectedAccounts(tenantid, sessiontoken):
         table.add_row([i['account_number'],i['id']])
     return table
 
+def getCompatibleSubnets(tenantid,sessiontoken,linkedAccountId,region):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/compatible-subnets"
+    params = {'org': tenantid, 'linkedAccountId': linkedAccountId,'region': region}
+    response = requests.get(myURL, headers=myHeader,params=params)
+    jsonResponse = response.json()
+    vpc_map = jsonResponse['vpc_map']
+    table = PrettyTable(['vpc','description'])
+    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
+    for i in vpc_map:
+        myvpc = jsonResponse['vpc_map'][i]
+        table.add_row([myvpc['vpc_id'],myvpc['description']])
+        for j in myvpc['subnets']:
+            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible']])
+    print(table)
+    return subnet_table
+
 def getSDDCS(tenantid, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs"
@@ -1057,6 +1074,12 @@ elif intent_name == "show-vms":
     print(getVMs(proxy,session_token))
 elif intent_name == "show-connected-accounts":
     print(getConnectedAccounts(ORG_ID,session_token))
+elif intent_name == "show-compatible-subnets":
+    n = (len(sys.argv))
+    if ( n < 4):
+        print("Usage: show-compatible-subnets linkedAccountId region")
+    else:
+        print(getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3]))
 elif intent_name == "get-access-token":
     print(session_token)
 elif intent_name == "show-vpn":
@@ -1783,6 +1806,8 @@ else:
     print("\tset-sddc-public-ip")
     print("\nTo show native AWS accounts connected to the SDDC:")
     print("\tshow-connected-accounts")
+    print("\nTo show compatible native AWS subnets connected to the SDDC:")
+    print("\tshow-compatible-subnets [LINKEDACCOUNTID] [REGION]")
 
     
 
