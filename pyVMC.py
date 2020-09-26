@@ -66,6 +66,19 @@ def getAccessToken(myKey):
     access_token = jsonResponse['access_token']
     return access_token
 
+def getConnectedAccounts(tenantid, sessiontoken):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/connected-accounts"
+    response = requests.get(myURL, headers=myHeader)
+    jsonResponse = response.json()
+    orgtable = PrettyTable(['OrgID'])
+    orgtable.add_row([tenantid])
+    print(str(orgtable))
+    table = PrettyTable(['Account Number','id'])
+    for i in jsonResponse:
+        table.add_row([i['account_number'],i['id']])
+    return table
+
 def getSDDCS(tenantid, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs"
@@ -1042,6 +1055,8 @@ elif intent_name == "show-org-users":
     print(showORGusers(ORG_ID, session_token))
 elif intent_name == "show-vms":
     print(getVMs(proxy,session_token))
+elif intent_name == "show-connected-accounts":
+    print(getConnectedAccounts(ORG_ID,session_token))
 elif intent_name == "get-access-token":
     print(session_token)
 elif intent_name == "show-vpn":
@@ -1766,6 +1781,8 @@ else:
     print("\tremove-sddc-public-ip")
     print("\nTo update the description of an existing public IP:")
     print("\tset-sddc-public-ip")
+    print("\nTo show native AWS accounts connected to the SDDC:")
+    print("\tshow-connected-accounts")
 
     
 
