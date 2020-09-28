@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-
 # The shebang above is to tell the shell which interpreter to use. This make the file executable without "python3" in front of it (otherwise I had to use python3 pyvmc.py)
 # I also had to change the permissions of the file to make it run. "chmod +x pyVMC.py" did the trick.
 # I also added "export PATH="MY/PYVMC/DIRECTORY":$PATH" (otherwise I had to use ./pyvmc.y)
+# For git BASH on Windows, you can use something like this #!/C/Users/usr1/AppData/Local/Programs/Python/Python38/python.exe
 
 # Python Client for VMware Cloud on AWS
 
@@ -27,6 +27,8 @@ You can install the dependent python packages locally (handy for Lambda) with:
 pip3 install requests or pip3 install requests -t . --upgrade
 pip3 install configparser or pip3 install configparser -t . --upgrade
 pip3 install PTable or pip3 install PTable -t . --upgrade
+
+With git BASH on Windows, you might need to use 'python -m pip install' instead of pip3 install
 
 """
 
@@ -63,6 +65,36 @@ def getAccessToken(myKey):
     jsonResponse = response.json()
     access_token = jsonResponse['access_token']
     return access_token
+
+def getConnectedAccounts(tenantid, sessiontoken):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/connected-accounts"
+    response = requests.get(myURL, headers=myHeader)
+    jsonResponse = response.json()
+    orgtable = PrettyTable(['OrgID'])
+    orgtable.add_row([tenantid])
+    print(str(orgtable))
+    table = PrettyTable(['Account Number','id'])
+    for i in jsonResponse:
+        table.add_row([i['account_number'],i['id']])
+    return table
+
+def getCompatibleSubnets(tenantid,sessiontoken,linkedAccountId,region):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/compatible-subnets"
+    params = {'org': tenantid, 'linkedAccountId': linkedAccountId,'region': region}
+    response = requests.get(myURL, headers=myHeader,params=params)
+    jsonResponse = response.json()
+    vpc_map = jsonResponse['vpc_map']
+    table = PrettyTable(['vpc','description'])
+    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
+    for i in vpc_map:
+        myvpc = jsonResponse['vpc_map'][i]
+        table.add_row([myvpc['vpc_id'],myvpc['description']])
+        for j in myvpc['subnets']:
+            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible']])
+    print(table)
+    return subnet_table
 
 def getSDDCS(tenantid, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1040,6 +1072,14 @@ elif intent_name == "show-org-users":
     print(showORGusers(ORG_ID, session_token))
 elif intent_name == "show-vms":
     print(getVMs(proxy,session_token))
+elif intent_name == "show-connected-accounts":
+    print(getConnectedAccounts(ORG_ID,session_token))
+elif intent_name == "show-compatible-subnets":
+    n = (len(sys.argv))
+    if ( n < 4):
+        print("Usage: show-compatible-subnets linkedAccountId region")
+    else:
+        print(getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3]))
 elif intent_name == "get-access-token":
     print(session_token)
 elif intent_name == "show-vpn":
@@ -1764,6 +1804,10 @@ else:
     print("\tremove-sddc-public-ip")
     print("\nTo update the description of an existing public IP:")
     print("\tset-sddc-public-ip")
+    print("\nTo show native AWS accounts connected to the SDDC:")
+    print("\tshow-connected-accounts")
+    print("\nTo show compatible native AWS subnets connected to the SDDC:")
+    print("\tshow-compatible-subnets [LINKEDACCOUNTID] [REGION]")
 
     
 
