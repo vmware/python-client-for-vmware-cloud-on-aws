@@ -110,11 +110,12 @@ def getSDDCS(tenantid, sessiontoken):
         myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs/" + i['id']
         response = requests.get(myURL, headers=myHeader)
         mySDDCs = response.json()
-        if mySDDCs['resource_config']:
-            hosts = mySDDCs['resource_config']['esx_hosts']
-            if hosts:
-                for j in hosts:
-                    hostcount = hostcount + 1
+
+        clusters = mySDDCs['resource_config']['clusters']
+        if clusters:
+            hostcount = 0
+            for c in clusters:
+                hostcount += len(c['esx_host_list'])
         table.add_row([i['name'], i['provider'],i['sddc_state'], hostcount, i['id']])
     return table
 
