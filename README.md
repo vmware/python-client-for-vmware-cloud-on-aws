@@ -13,8 +13,13 @@ It is a Python tool developed for VMware Cloud on AWS. PyVMC was created by Nico
 - a VMware Cloud on AWS account
 
 ## How do I use PyVMC ?
-- Download the PyVMC.py file and the config.ini file. 
-- Edit the config.init with your own SDDC ID,  Organization (Org) ID and your access token.
+- clone repo
+- install dependencies
+```
+$ pip install -r requirments.txt
+```
+- copy config.ini.example to config.ini and add your own token
+- Edit the config.ini with your own SDDC ID,  Organization (Org) ID and your access token.
 
 ## Do I need to know Python?
 No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (Software-Defined Data Center). 

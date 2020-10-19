@@ -110,11 +110,12 @@ def getSDDCS(tenantid, sessiontoken):
         myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs/" + i['id']
         response = requests.get(myURL, headers=myHeader)
         mySDDCs = response.json()
-        if mySDDCs['resource_config']:
-            hosts = mySDDCs['resource_config']['esx_hosts']
-            if hosts:
-                for j in hosts:
-                    hostcount = hostcount + 1
+
+        clusters = mySDDCs['resource_config']['clusters']
+        if clusters:
+            hostcount = 0
+            for c in clusters:
+                hostcount += len(c['esx_host_list'])
         table.add_row([i['name'], i['provider'],i['sddc_state'], hostcount, i['id']])
     return table
 
@@ -139,11 +140,12 @@ def getCDChosts(sddcID, tenantid, sessiontoken):
     cdcID = cdcID[0]
 
     # get the hosts block
-    hosts = jsonResponse['resource_config']['esx_hosts']
-    table = PrettyTable(['Name', 'Status', 'ID'])
-    for i in hosts:
-        hostName = i['name'] + cdcID
-        table.add_row([hostName, i['esx_state'], i['esx_id']])
+    clusters = jsonResponse['resource_config']['clusters']
+    table = PrettyTable(['Cluster', 'Name', 'Status', 'ID'])
+    for c in clusters:
+        for i in c['esx_host_list']:
+            hostName = i['name'] + cdcID
+            table.add_row([c['cluster_name'], hostName, i['esx_state'], i['esx_id']])
     print(table)
     return
 
