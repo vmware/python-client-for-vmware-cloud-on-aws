@@ -205,8 +205,12 @@ def getSDDCnetworks(proxy_url, sessiontoken):
     json_response = response.json()
     sddc_networks = json_response['results']
     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
+    
     for i in sddc_networks:
-        table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
+        if ( i['type'] == "DISCONNECTED"):
+            table.add_row([i['display_name'], i['id'], i['type'],"-", "-"])
+        else: 
+            table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
     return table
 
 def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
