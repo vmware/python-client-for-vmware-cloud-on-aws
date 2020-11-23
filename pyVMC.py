@@ -1051,7 +1051,57 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
                 }
         response = requests.put(myURL, headers=myHeader, json=json_data)
         json_response_status_code = response.status_code
+
+def getSDDCT0routes(proxy_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = "{}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint".format(proxy_url)
+    response = requests.get(myURL, headers=myHeader)
+    # pretty_data = json.dumps(response.json(), indent=4)
+    # print(pretty_data)
+    json_response = response.json()
+    count = json_response['results'][1]['count']
+    for i in range (int(count)):
+        print("---------------------------------------")
+        print ("Route type:     " + json_response['results'][1]['route_entries'][i]['route_type'])
+        print ("Network:        " + json_response['results'][1]['route_entries'][i]['network'])
+        print ("Admin distance: " + str(json_response['results'][1]['route_entries'][i]['admin_distance']))
+        print ("Next hop:       " + json_response['results'][1]['route_entries'][i]['next_hop'])
+
+def getSDDCEdgeCluster(proxy_url, sessiontoken):
+    """ Gets the Edge Cluster ID """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters")
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    edge_cluster_id = json_response['results'][0]['id']
+    return edge_cluster_id
+
+def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
+    """ Gets the Edge Nodes Path """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters/" + edge_cluster_id + "/edge-nodes"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    json_response_status_code = response.status_code
+    if json_response_status_code == 200:
+        edge_path = json_response['results'][edge_id]['path']
+        return edge_path
+    else:
+        print("fail")
     
+def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
+    ### Displays counters for egress interface ###
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/interfaces/public-0/statistics?edge_path=" + edge_path + "&enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint")
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    json_response_status_code = response.status_code
+    if json_response_status_code == 200:
+        total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
+        return total_bytes      
+    else:
+        print("fail")
+
 
 # --------------------------------------------
 # ---------------- Main ----------------------
@@ -1068,6 +1118,16 @@ proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
 if intent_name == "create-lots-networks":
     number = int(sys.argv[2])
     createLotsNetworks(proxy,session_token,number)
+elif intent_name == "show-t0-routes":
+    getSDDCT0routes(proxy,session_token)
+elif intent_name == "show-egress-interface-counters":
+    edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
+    edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
+    edge_path_1 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 1)
+    stat_0 = getSDDCInternetStats(proxy,session_token, edge_path_0)
+    stat_1 = getSDDCInternetStats(proxy,session_token, edge_path_1)
+    total_stat = stat_0 + stat_1
+    print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
 elif intent_name == "show-dns-zones":
     print(getSDDCDNS_Zones(proxy,session_token))
 elif intent_name == "show-sddc-hosts":
@@ -1814,20 +1874,10 @@ else:
     print("\tshow-connected-accounts")
     print("\nTo show compatible native AWS subnets connected to the SDDC:")
     print("\tshow-compatible-subnets [LINKEDACCOUNTID] [REGION]")
+    print("\nTo show current Internet interface egress counters:")
+    print("\tshow-egress-interface-counters")
+    print("\nTo show routes at the T0 router:")
+    print("\tshow-t0-routes")
 
     
 
-
-"""
-
-Roadmap:
-
-- Create New Service Entry
-- Show New Service Entry
-- Add DHCP Relay CRUD
-- Add DNS Config Config (DNS Read Only right now.)
-- Add Port Mirroring CRUD
-- Add IPFIX CRUD
-- Update Service Read to support non-TCP/UDP based rules
-
-"""
