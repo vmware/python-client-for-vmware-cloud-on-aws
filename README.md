@@ -28,7 +28,7 @@ No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (S
 Sorry but no, this is a community-based effort. Use it at your own risk. It has extensively been tested though and we'll endeavour to fix any bugs.
 
 ## Which version of VMware Cloud on AWS has it been tested against?
-Versions 1.9 and 1.10. I don't guarantee support with previous versions. 
+Versions 1.9, 1.10, 1.11 and 1.12. I don't guarantee support with previous versions. 
 I will, however, endeavour to verify compatibility as we release new versions.
 
 ## What if I find a bug or need a new feature?
@@ -42,7 +42,9 @@ https://docs.vmware.com/en/VMware-Cloud-on-AWS/index.html
 https://nicovibert.com/2020/02/25/pyvmc-python-vmware-cloud-aws/
 
 ## Release Notes
-v1.0 provides users to:
+
+This tool enables users to:
+
 - Create and remove networks
 - Create and remove groups and services
 - Create and remove security rules on the Management and Compute Gateways.
@@ -53,11 +55,23 @@ v1.0 provides users to:
 - Create and remove NAT rules
 - Display information about SDDC and org users
 - Display information about VMs in the SDDC
-
-v1.1 added support for 
 - Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
+- Check T0 routes
+- Check Internet egress interface counters
 
-v1.2 fixed minor bugs.
+
+## Roadmap
+
+Depending on demand, the following tools might be added:
+
+- Create New Service Entry
+- Show New Service Entry
+- Add DHCP Relay CRUD
+- Add DNS Config Config (DNS Read Only right now.)
+- Add Port Mirroring CRUD
+- Add IPFIX CRUD
+- Update Service Read to support non-TCP/UDP based rules
+- Add VPN creation
 
 ## Contributing
 
