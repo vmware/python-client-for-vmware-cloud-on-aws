@@ -911,6 +911,31 @@ def getVMs(proxy_url,sessiontoken):
         table.add_row([i['display_name'], i['power_state'], i['external_id']])
     return table
 
+def newSDDCGroupGr(proxy_url,sessiontoken,gw,group_id,member_of_group):
+    """ Creates a single SDDC group and adds 'member_of_group' to the group membership"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
+    # removing 'sks-nsxt-manager' from proxy url to get correct URL
+    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
+    json_data = {
+    "expression" : [ {
+        "paths": [
+            "/infra/domains/cgw/groups/" + member_of_group
+        ],
+        "resource_type": "PathExpression",
+        "parent_path": "/infra/domains/cgw/groups/" + group_id
+    } ],
+    "extended_expression": [],
+    "id" : group_id,
+    "resource_type" : "Group",
+    "display_name" : group_id,
+    }
+    #print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    #print(response.text)
+    return json_response_status_code
+
 def newSDDCGroupVM(proxy_url,sessiontoken,gw,group_id,vm_list):
     """ Creates a single SDDC Group based on a list of VM external_id. Use 'cgw' as the parameter """
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1582,8 +1607,8 @@ elif intent_name == "new-group":
         print(newSDDCGroup) 
     if gw == "cgw":
         group_criteria = sys.argv[4].lower()
-        if group_criteria not in ["ip-based", "member-based", "criteria-based"]:
-            print("Incorrect syntax. Make sure you use one of the 3 methods to define a CGW group: ip-based, member-based or criteria-based.")
+        if group_criteria not in ["ip-based", "member-based", "criteria-based", "group-based"]:
+            print("Incorrect syntax. Make sure you use one of the 4 methods to define a CGW group: ip-based, member-based, criteria-based, or group-based.")
         else:
             if group_criteria == "ip-based" and len(sys.argv) == 5:
                 ip_addresses = []
@@ -1657,6 +1682,14 @@ elif intent_name == "new-group":
                 # vm_id = getVMExternalID(proxy,session_token,vm_name)
                 newSDDCGroup = newSDDCGroupVM(proxy,session_token,gw,group_id,vm_external_id_list)
                 print(newSDDCGroup)
+            elif group_criteria == "group-based":
+                #Example: new-group cgw new-group-name group-based existing-group-to-add-as-member
+                group_name_string = sys.argv[5]
+                retval = newSDDCGroupGr(proxy,session_token,gw,group_id,group_name_string)
+                if retval == 200:
+                    print("Group created")
+                else:
+                    print("Could not create group")
             else:
                 print("Incorrect syntax. Try again.")
 elif intent_name == "show-group":
