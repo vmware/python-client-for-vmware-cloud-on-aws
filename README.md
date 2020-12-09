@@ -40,13 +40,14 @@ https://docs.vmware.com/en/VMware-Cloud-on-AWS/index.html
 
 ## Where can I find documentation about each pyVMC commands?
 https://nicovibert.com/2020/02/25/pyvmc-python-vmware-cloud-aws/
+https://nicovibert.com/2020/06/01/fling-update-pyvmc-1-1-release-and-a-walkthrough-through-some-python-code/
 
 ## Release Notes
 
 This tool enables users to:
 
 - Create and remove networks
-- Create and remove groups and services
+- Create and remove groups and services, included nested groups
 - Create and remove security rules on the Management and Compute Gateways.
 - Request, remove and update Public IP addresses.
 - Display information about Direct Connect (such as BGP AS, MTU and VPN preference)
@@ -58,6 +59,7 @@ This tool enables users to:
 - Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
 - Check T0 routes
 - Check Internet egress interface counters
+- Create/Read/Delete L2VPN
 
 
 ## Roadmap
