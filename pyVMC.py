@@ -205,13 +205,18 @@ def getSDDCnetworks(proxy_url, sessiontoken):
     json_response = response.json()
     sddc_networks = json_response['results']
     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
-    
+    table_extended = PrettyTable(['Name', 'id','Tunnel ID'])
     for i in sddc_networks:
-        if ( i['type'] == "DISCONNECTED"):
+        if ( i['type'] == "EXTENDED"):
+            table_extended.add_row([i['display_name'], i['id'], i['l2_extension']['tunnel_id']])
+        elif ( i['type'] == "DISCONNECTED"):
             table.add_row([i['display_name'], i['id'], i['type'],"-", "-"])
         else: 
             table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
-    return table
+    print("Routed Networks:")
+    print(table)
+    print("Extended Networks:")
+    print(table_extended)
 
 def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
     """ Creates a new SDDC Network. L2 VPN networks are not currently supported. """
@@ -275,6 +280,34 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
             else :
                 print("There was an error. Try again.")
                 return
+
+def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l2vpn_path):
+    """ Creates a new stretched/extended Network. """
+    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + display_name)
+    print(myURL)
+    json_data = {
+                "type":"EXTENDED",
+                "display_name":display_name,
+                "id":display_name,
+                "advanced_config":{"connectivity":"ON"},
+                "l2_extension": {
+                "l2vpn_paths": [
+                l2vpn_path
+                ],
+                "tunnel_id": tunnel_id}
+    }
+    print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    if json_response_status_code == 200 :
+        print("The following network has been created:")
+        table = PrettyTable(['Name', 'Tunnel ID', 'Routing Type'])
+        table.add_row([display_name, tunnel_id, "extended"])
+        return table
+    else :
+        print("There was an error. Try again.")
+        return
 
 def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     """ Remove an SDDC Network """
@@ -392,8 +425,129 @@ def getSDDCVPN(proxy_url, sessiontoken):
         print("There was an issue.")
         return
 
+def removeSDDCVPN(proxy_url, sessiontoken, id):
+    """ Remove a VPN session rule """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + id)
+    response = requests.delete(myURL, headers=myHeader)
+    return response
+
+def newSDDCIPSecVpnIkeProfile(proxy_url, sessiontoken, display_name):
+    """ Creates the configured IPSec VPN Ike Profile """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles/" + display_name)
+    print("PUT API call to "+myURL)
+    json_data = {
+    "resource_type":"IPSecVpnIkeProfile",
+    "display_name": display_name,
+    "id": display_name,
+    "encryption_algorithms":["AES_128"],
+    "digest_algorithms":["SHA2_256"],
+    "dh_groups":["GROUP14"],
+    "ike_version":"IKE_V2"
+    }
+    print("Payload Content:")
+    print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def removeSDDCIPSecVpnIkeProfile(proxy_url, sessiontoken, id):
+    """ Remove a VPN session rule """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles/" + id)
+    response = requests.delete(myURL, headers=myHeader)
+    return response
+
+def newSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, display_name):
+    """ Creates the configured IPSec VPN Tunnel Profile """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + display_name)
+    print("PUT API call to "+myURL)
+    json_data = {
+    "resource_type":"IPSecVpnTunnelProfile",
+    "display_name": display_name,
+    "id": display_name,
+    "encryption_algorithms":["AES_GCM_128"],
+    "digest_algorithms":[],
+    "dh_groups":["GROUP14"],
+    "enable_perfect_forward_secrecy":True
+    }
+    print("Payload Content:")
+    print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def removeSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, id):
+    """ Remove a VPN Tunnel Profile  rule """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + id)
+    response = requests.delete(myURL, headers=myHeader)
+    return response
+
+def newSDDCIPSecVpnSession(proxy_url, sessiontoken, display_name, endpoint, peer_ip):
+    """ Creates the configured IPSec VPN Tunnel Profile """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + display_name)
+    print("PUT API call to "+myURL)
+    json_data = {
+    "resource_type":"RouteBasedIPSecVpnSession",
+    "display_name": display_name,
+    "id": display_name,
+    "tcp_mss_clamping":{"direction":"NONE"},
+    "peer_address":peer_ip,
+    "peer_id":peer_ip,
+    "psk":"None",
+    "tunnel_profile_path": ("/infra/ipsec-vpn-tunnel-profiles/" + display_name),
+    "ike_profile_path":("/infra/ipsec-vpn-ike-profiles/" + display_name),
+    "local_endpoint_path":"/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/" + endpoint,
+    "tunnel_interfaces":[
+        {
+        "ip_subnets":[
+            {
+                "ip_addresses":[
+                    "169.254.31.249"
+                ],
+                "prefix_length":30
+            }
+        ]
+        }]
+    }
+    print("Payload Content:")
+    print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code   
+
+def newSDDCL2VPN(proxy_url, sessiontoken, display_name):
+    """ Creates the configured L2 VPN """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/" + display_name)
+    print("PUT API call to "+myURL)
+    json_data = {
+    "transport_tunnels": [
+        "/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + display_name
+    ],
+    "resource_type": "L2VPNSession",
+    "id": display_name,
+    "display_name": "L2VPN",
+}
+    print("Payload Content:")
+    print(json_data)
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+def removeSDDCL2VPN(proxy_url, sessiontoken, id):
+    """ Remove a L2VPN """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/" + id)
+    response = requests.delete(myURL, headers=myHeader)
+    return response
+
 def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
-    """ Gets the IPSecProfiles """
+    """ Gets the VPN IKE IPSecProfiles """
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles")
     response = requests.get(myURL, headers=myHeader)
@@ -415,6 +569,38 @@ def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
     for i in sddc_VPN_ipsec_tunnel_profiles:
         table.add_row([i['display_name'], i['id'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
     return table
+
+def getSDDCL2VPNServices(proxy_url, sessiontoken):
+    """ Gets the L2VPN services """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default")
+    response = requests.get(myURL, headers=myHeader)
+    i = response.json()
+    table = PrettyTable(['Name', 'ID', 'mode'])
+    table.add_row([i['display_name'], i['id'], i['mode']])
+    return table
+
+def getSDDCL2VPNSession(proxy_url, sessiontoken):
+    """ Gets the L2VPN sessions """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions")
+    response = requests.get(myURL, headers=myHeader)
+    i = response.json()
+    sddc_l2vpn_sessions = i['results']
+    table = PrettyTable(['Name', 'ID', 'Enabled?'])
+    for i in sddc_l2vpn_sessions:
+        table.add_row([i['display_name'], i['id'], i['enabled']])
+    return table
+
+def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
+    """ Gets the L2VPN sessions """
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions")
+    response = requests.get(myURL, headers=myHeader)
+    i = response.json()
+    sddc_l2vpn_path = i['results'][0]['path']
+    return sddc_l2vpn_path
+
 
 def getSDDCVPNIpsecEndpoints(proxy_url, sessiontoken):
     """ Gets the IPSec Local Endpoints """
@@ -621,6 +807,17 @@ def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
     table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
     for i in sddc_VPN_statistics:
         table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
+    return table
+
+def getSDDCVPNServices(proxy_url, sessiontoken, vpn_id):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + vpn_id)
+    response = requests.get(myURL, headers=myHeader)
+    print(myURL)
+    i = response.json()
+    print(i)
+    table = PrettyTable(['Name', 'Id', 'Peer'])
+    table.add_row([i['display_name'], i['id'], i['peer_address']])
     return table
 
 def getSDDCPublicIP(proxy_url, sessiontoken):
@@ -1150,6 +1347,133 @@ def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
     else:
         print("fail")
 
+def getHelp():
+    print("\nWelcome to PyVMC !")
+    print("\nHere are the currently supported commands: ")
+    print("\nTo get a list of your VMs:")
+    print("\tshow-vms")
+    print("\nTo display a lit of your SDDCs:")
+    print("\tshow-sddcs")
+    print("\nTo get a view of your selected SDDC:")
+    print("\tshow-sddc-state")
+    print("\nTo show the list of organization users:")
+    print("\tshow-org-users")
+    print("\nTo show your access token:")
+    print("\tget-access-token")
+    print("\nTo show your current networks:")
+    print("\tshow-network")
+    print("\nTo create a new network:")
+    print("\tnew-network [NAME] [ROUTED] [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network")
+    print("\tnew-network [NAME] [ROUTED] [GATEWAY_ADDRESS] for a static network")
+    print("\tnew-network [NAME] [DISCONNECTED] [GATEWAY_ADDRESS]  for a disconnected network")
+    print("\tnew-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network")    
+    print("\nTo remove a network:")
+    print("\tremove-network")
+    print("\nTo show the CGW security rules:")
+    print("\tshow-cgw-rule")
+    print("\nTo create a new CGW security rule")
+    print("\tnew-cgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SCOPE] [SEQUENCE-NUMBER]")
+    print("\nTo delete a CGW security rule:")
+    print("\tremove-cgw-rule [RULE_ID]")
+    print("\nTo show the MGW security rules:")
+    print("\tshow-mgw-rule")
+    print("\nTo create a new MGW security rule")
+    print("\tnew-mgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SEQUENCE-NUMBER]")
+    print("\nTo delete a MGW security rule:")
+    print("\tremove-mgw-rule [RULE_ID]")
+    print("\nTo show the DFW sections:")
+    print("\tshow-dfw-section")
+    print("\nTo create a new DFW section")
+    print("\tnew-dfw-section [NAME][CATEGORY]")  
+    print("\nTo delete a DFW section:")
+    print("\tremove-dfw-section [RULE_ID]") 
+    print("\nTo show the DFW security rules within a section")
+    print("\tshow-dfw-section-rules [SECTION]")
+    print("\nTo create a new DFW security rule")
+    print("\tnew-dfw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SECTION] [SEQUENCE-NUMBER]")
+    print("\nTo delete a DFW rule:")
+    print("\tremove-dfw-rule [SECTION_ID][RULE_ID]") 
+    print("\nTo show the configured NAT rules:")
+    print("\tshow-nat")
+    print("\nTo show the statistics for a specific NAT rule:")
+    print("\tshow-nat [NAT-RULE-ID] for statistics of a rule")
+    print("\nTo create a new NAT rule:")
+    print("\tnew-nat-rule")
+    print("\nTo remove a NAT rule:")
+    print("\tremove-nat-rule")
+    print("\nTo create a new group:")
+    print("\tnew-group [CGW/MGW] [Group_ID]")
+    print("\nTo show existing groups:")
+    print("\tshow-group [CGW/MGW] [Group_ID]")
+    print("\nTo remove a group:")
+    print("\tremove-group [CGW/MGW][Group_ID]")
+    print("\nTo show services:")
+    print("\tshow-services")
+    print("\nTo show a specific service:")
+    print("\tshow-services [SERVICE-ID]")
+    print("\nTo create a new service:")
+    print("\tnew-service")
+    print("\nTo remove a service")
+    print("\tremove-service [SERVICE-ID]")
+    print("\nTo show DNS zones:")
+    print("\tshow-dns-zones")
+    print("\nTo show DNS services:")
+    print("\tshow-dns-services")
+    print("\nTo show the public IP used for VPN services:")
+    print("\tshow-vpn-internet-ip")
+    print("\nTo show the configured VPN:")
+    print("\tshow-vpn")
+    print("\nTo show the VPN statistics:")
+    print("\tshow-vpn [VPN_ID]")
+    print("\nTo remove a VPN")
+    print("\tremove-vpn [VPN-ID]")
+    print("\nTo show the VPN IKE profiles:")
+    print("\tshow-vpn-ike-profile")
+    print("\nTo remove a VPN IKE profile")
+    print("\tremove-vpn-ike-profile [ID]")
+    print("\nTo show the VPN IPSec endpoints:")
+    print("\tshow-vpn-ipsec-tunnel-profile")
+    print("\nTo remove a VPN IPSec Tunnel profile")
+    print("\tremove-vpn-ipsec-tunnel-profile [ID]")
+    print("\tshow-vpn-ipsec-endpoints")
+    print("\nTo show L2VPNs:")
+    print("\tshow-services")
+    print("\nTo create a new L2VPN:")
+    print("\tnew-l2vpn [NAME] [LOCAL_ENDPOINT] [REMOTE_PEER]")
+    print("\nTo remove a L2VPN")
+    print("\tremove-l2VPN [ID]")
+    print("\nTo show the Shadow AWS Account VMC is deployed in:")
+    print("\tshow-shadow-account")
+    print("\nTo show the BGP AS number:")
+    print("\tshow-sddc-bgp-as")
+    print("\nTo update the BGP AS number:")
+    print("\tset-bgp-as [ASN]")
+    print("\nTo show whether DX is preferred over VPN:")
+    print("\tshow-sddc-bgp-vpn")
+    print("\nTo show the VPC connected to the SDDC:")
+    print("\tshow-sddc-connected-vpc")
+    print("\nTo show the MTU configured over the Direct Connect:")
+    print("\tshow-mtu")
+    print("\nTo set the MTU configured over the Direct Connect:")
+    print("\tset-mtu")
+    print("\nTo change whether to use S3 over the Internet or via the ENI:")
+    print("\tset-sddc-connected-services")
+    print("\nTo show the public IPs:")
+    print("\tshow-sddc-public-ip")
+    print("\nTo request a new public IP:")
+    print("\tnew-sddc-public-ip")
+    print("\nTo remove an existing public IP:")
+    print("\tremove-sddc-public-ip")
+    print("\nTo update the description of an existing public IP:")
+    print("\tset-sddc-public-ip")
+    print("\nTo show native AWS accounts connected to the SDDC:")
+    print("\tshow-connected-accounts")
+    print("\nTo show compatible native AWS subnets connected to the SDDC:")
+    print("\tshow-compatible-subnets [LINKEDACCOUNTID] [REGION]")
+    print("\nTo show current Internet interface egress counters:")
+    print("\tshow-egress-interface-counters")
+    print("\nTo show routes at the T0 router:")
+    print("\tshow-t0-routes")
 
 # --------------------------------------------
 # ---------------- Main ----------------------
@@ -1206,6 +1530,13 @@ elif intent_name == "show-vpn":
         print(SDDC_VPN_STATS)
     else:
         print("Incorrect syntax. Check the help.")
+elif intent_name == "show-vpn-detailed":
+    if len(sys.argv) == 3:
+        VPN_ID = sys.argv[2]
+        SDDC_VPN_SERVICES = getSDDCVPNServices(proxy,session_token,VPN_ID)
+        print(SDDC_VPN_SERVICES)
+    else:
+        print("Incorrect syntax. Check the help.")
 elif intent_name == "new-vpn":
     vpn_name = input("Enter the VPN Name: ")
     remote_private_ip = input('Enter the remote private IP:')
@@ -1213,17 +1544,51 @@ elif intent_name == "new-vpn":
     source_networks = input('Enter your source networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
     destination_networks = input('Enter your destination networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
     print(vpn_name + remote_private_ip + remote_public_ip)
-elif intent_name == "show-vpn-ipsec-profile":
+elif intent_name == "show-vpn-ike-profile":
     vpn_ipsec_profile = getSDDCVPNIpsecProfiles(proxy, session_token)
     print(vpn_ipsec_profile)
+elif intent_name == "show-l2vpn-services":
+    l2vpn = getSDDCL2VPNServices(proxy, session_token)
+    print(l2vpn)
+elif intent_name == "show-l2vpn":
+    l2vpn = getSDDCL2VPNSession(proxy, session_token)
+    print(l2vpn)
+elif intent_name == "new-l2vpn":
+    display_name = sys.argv[2]
+    endpoint = sys.argv[3]
+    peer_ip = sys.argv[4]
+    print("Creating an IPSec VPN IKE Profile...")
+    ike_profile = newSDDCIPSecVpnIkeProfile(proxy,session_token,display_name)
+    print(ike_profile)
+    print("Creating an IPSec VPN Tunnel Profile...")
+    tunnel_profile = newSDDCIPSecVpnTunnelProfile(proxy,session_token,display_name)
+    print(tunnel_profile)
+    print("Creating an IPSec VPN Session...")
+    vpn_session = newSDDCIPSecVpnSession(proxy,session_token,display_name,endpoint,peer_ip)
+    print(vpn_session)
+    print("Creating an L2 VPN Session...")
+    l2vpn = newSDDCL2VPN(proxy, session_token, display_name)
+    print(l2vpn)
 elif intent_name == "show-vpn-ipsec-tunnel-profile":
     vpn_ipsec_tunnel_profile = getSDDCVPNIpsecTunnelProfiles(proxy, session_token)
     print(vpn_ipsec_tunnel_profile)
 elif intent_name == "show-vpn-ipsec-endpoints":
     vpn_ipsec_endpoints = getSDDCVPNIpsecEndpoints(proxy, session_token)
     print(vpn_ipsec_endpoints)
+elif intent_name == "remove-vpn-ipsec-tunnel-profile":
+    id = sys.argv[2]
+    print(removeSDDCIPSecVpnTunnelProfile(proxy, session_token,id))
+elif intent_name == "remove-vpn-ike-profile":
+    id = sys.argv[2]
+    print(removeSDDCIPSecVpnIkeProfile(proxy, session_token,id))
+elif intent_name == "remove-vpn":
+    id = sys.argv[2]
+    print(removeSDDCVPN(proxy, session_token,id))
+elif intent_name == "remove-l2vpn":
+    id = sys.argv[2]
+    print(removeSDDCL2VPN(proxy, session_token,id))
 elif intent_name == "show-network":
-    print(getSDDCnetworks(proxy, session_token))
+    getSDDCnetworks(proxy, session_token)
 elif intent_name == "new-network":
     if sys.argv[3].lower() == "routed" and len(sys.argv) == 7:
         # DHCP-Enabled Network
@@ -1252,6 +1617,11 @@ elif intent_name == "new-network":
         routing_type = "ROUTED"
         newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
         print(newSDDC)
+    elif sys.argv[3].lower() == "extended":
+        display_name = sys.argv[2]
+        tunnel_id = sys.argv[4]
+        l2vpn_path = getSDDCL2VPNSessionPath(proxy,session_token)
+        print(newSDDCStretchednetworks(proxy,session_token,display_name,tunnel_id, l2vpn_path))
     else:
         print("Incorrect syntax. Try again or check the help.")
 elif intent_name == "remove-network":
@@ -1821,119 +2191,8 @@ elif intent_name == "remove-service":
     else:
         service_id = sys.argv[2]
         sddc_service_delete = removeSDDCService(proxy,session_token,service_id)
+elif intent_name == "help":
+    getHelp()
 else:
-    print("\nWelcome to PyVMC !")
-    print("\nHere are the currently supported commands: ")
-    print("\nTo get a list of your VMs:")
-    print("\tshow-vms")
-    print("\nTo display a lit of your SDDCs:")
-    print("\tshow-sddcs")
-    print("\nTo get a view of your selected SDDC:")
-    print("\tshow-sddc-state")
-    print("\nTo show the list of organization users:")
-    print("\tshow-org-users")
-    print("\nTo show your access token:")
-    print("\tget-access-token")
-    print("\nTo show your current networks:")
-    print("\tshow-network")
-    print("\nTo create a new network:")
-    print("\tnew-network")
-    print("\nTo remove a network:")
-    print("\tremove-network")
-    print("\nTo show the CGW security rules:")
-    print("\tshow-cgw-rule")
-    print("\nTo create a new CGW security rule")
-    print("\tnew-cgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SCOPE] [SEQUENCE-NUMBER]")
-    print("\nTo delete a CGW security rule:")
-    print("\tremove-cgw-rule [RULE_ID]")
-    print("\nTo show the MGW security rules:")
-    print("\tshow-mgw-rule")
-    print("\nTo create a new MGW security rule")
-    print("\tnew-mgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SEQUENCE-NUMBER]")
-    print("\nTo delete a MGW security rule:")
-    print("\tremove-mgw-rule [RULE_ID]")
-    print("\nTo show the DFW sections:")
-    print("\tshow-dfw-section")
-    print("\nTo create a new DFW section")
-    print("\tnew-dfw-section [NAME][CATEGORY]")  
-    print("\nTo delete a DFW section:")
-    print("\tremove-dfw-section [RULE_ID]") 
-    print("\nTo show the DFW security rules within a section")
-    print("\tshow-dfw-section-rules [SECTION]")
-    print("\nTo create a new DFW security rule")
-    print("\tnew-dfw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SECTION] [SEQUENCE-NUMBER]")
-    print("\nTo delete a DFW rule:")
-    print("\tremove-dfw-rule [SECTION_ID][RULE_ID]") 
-    print("\nTo show the configured NAT rules:")
-    print("\tshow-nat")
-    print("\nTo show the statistics for a specific NAT rule:")
-    print("\tshow-nat [NAT-RULE-ID] for statistics of a rule")
-    print("\nTo create a new NAT rule:")
-    print("\tnew-nat-rule")
-    print("\nTo remove a NAT rule:")
-    print("\tremove-nat-rule")
-    print("\nTo create a new group:")
-    print("\tnew-group [CGW/MGW] [Group_ID]")
-    print("\nTo show existing groups:")
-    print("\tshow-group [CGW/MGW] [Group_ID]")
-    print("\nTo remove a group:")
-    print("\tremove-group [CGW/MGW][Group_ID]")
-    print("\nTo show services:")
-    print("\tshow-services")
-    print("\nTo show a specific service:")
-    print("\tshow-services [SERVICE-ID]")
-    print("\nTo create a new service:")
-    print("\tnew-service")
-    print("\nTo remove a service")
-    print("\tremove-service [SERVICE-ID]")
-    print("\nTo show DNS zones:")
-    print("\tshow-dns-zones")
-    print("\nTo show DNS services:")
-    print("\tshow-dns-services")
-    print("\nTo show the public IP used for VPN services:")
-    print("\tshow-vpn-internet-ip")
-    print("\nTo show the configured VPN:")
-    print("\tshow-vpn")
-    print("\nTo show the VPN statistics:")
-    print("\tshow-vpn [VPN_ID]")
-    print("\nTo show the VPN IPSEC profiles:")
-    print("\tshow-vpn-ipsec-profile")
-    print("\nTo show the VPN IPSEC tunnel profiles:")
-    print("\tshow-vpn-ipsec-tunnel-profile")
-    print("\nTo show the VPN IPSec endpoints:")
-    print("\tshow-vpn-ipsec-endpoints")
-    print("\nTo show the Shadow AWS Account VMC is deployed in:")
-    print("\tshow-shadow-account")
-    print("\nTo show the BGP AS number:")
-    print("\tshow-sddc-bgp-as")
-    print("\nTo update the BGP AS number:")
-    print("\tset-bgp-as [ASN]")
-    print("\nTo show whether DX is preferred over VPN:")
-    print("\tshow-sddc-bgp-vpn")
-    print("\nTo show the VPC connected to the SDDC:")
-    print("\tshow-sddc-connected-vpc")
-    print("\nTo show the MTU configured over the Direct Connect:")
-    print("\tshow-mtu")
-    print("\nTo set the MTU configured over the Direct Connect:")
-    print("\tset-mtu")
-    print("\nTo change whether to use S3 over the Internet or via the ENI:")
-    print("\tset-sddc-connected-services")
-    print("\nTo show the public IPs:")
-    print("\tshow-sddc-public-ip")
-    print("\nTo request a new public IP:")
-    print("\tnew-sddc-public-ip")
-    print("\nTo remove an existing public IP:")
-    print("\tremove-sddc-public-ip")
-    print("\nTo update the description of an existing public IP:")
-    print("\tset-sddc-public-ip")
-    print("\nTo show native AWS accounts connected to the SDDC:")
-    print("\tshow-connected-accounts")
-    print("\nTo show compatible native AWS subnets connected to the SDDC:")
-    print("\tshow-compatible-subnets [LINKEDACCOUNTID] [REGION]")
-    print("\nTo show current Internet interface egress counters:")
-    print("\tshow-egress-interface-counters")
-    print("\nTo show routes at the T0 router:")
-    print("\tshow-t0-routes")
-
+    getHelp()
     
-
