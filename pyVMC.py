@@ -917,23 +917,46 @@ def newSDDCGroupGr(proxy_url,sessiontoken,gw,group_id,member_of_group):
     proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
     # removing 'sks-nsxt-manager' from proxy url to get correct URL
     myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
-    json_data = {
-    "expression" : [ {
-        "paths": [
-            "/infra/domains/cgw/groups/" + member_of_group
-        ],
-        "resource_type": "PathExpression",
-        "parent_path": "/infra/domains/cgw/groups/" + group_id
-    } ],
-    "extended_expression": [],
-    "id" : group_id,
-    "resource_type" : "Group",
-    "display_name" : group_id,
-    }
-    #print(json_data)
+    # Example JSON data
+    #json_data = {
+    #"expression" : [ {
+    #    "paths": [ "/infra/domains/cgw/groups/Group1", "/infra/domains/cgw/groups/Group2"],
+    #    "resource_type": "PathExpression",
+    #    "parent_path": "/infra/domains/cgw/groups/" + group_id
+    #} ],
+    #"extended_expression": [],
+    #"id" : group_id,
+    #"resource_type" : "Group",
+    #"display_name" : group_id,
+    #}
+
+    # Split the group members into a list
+    group_list = member_of_group.split(',')
+    group_list_with_path = []
+    for item in group_list:
+        group_list_with_path.append('/infra/domains/cgw/groups/' + item)
+
+    #The data portion of the expression key is a dictionar
+    expression_data = {}
+    expression_data["paths"] = group_list_with_path
+    expression_data["resource_type"] = "PathExpression"
+    expression_data["parent_path"] = "/infra/domains/cgw/groups/" + group_id
+
+    #The expression key itself is a list
+    expression_list = []
+    expression_list.append(expression_data)
+
+    #Build the JSON object
+    json_data = {}
+    json_data["expression"] = expression_list
+    json_data["extended_expression"] = []
+    json_data["id"] = group_id
+    json_data["resource_type"] = "Group"
+    json_data["display_name"] = group_id
+
     response = requests.put(myURL, headers=myHeader, json=json_data)
     json_response_status_code = response.status_code
-    #print(response.text)
+    print(response.text)
     return json_response_status_code
 
 def newSDDCGroupVM(proxy_url,sessiontoken,gw,group_id,vm_list):
