@@ -16,7 +16,7 @@ It is a Python tool developed for VMware Cloud on AWS. PyVMC was created by Nico
 - clone repo
 - install dependencies
 ```
-$ pip install -r requirments.txt
+$ pip install -r requirements.txt
 ```
 - copy config.ini.example to config.ini and add your own token
 - Edit the config.ini with your own SDDC ID,  Organization (Org) ID and your access token.
