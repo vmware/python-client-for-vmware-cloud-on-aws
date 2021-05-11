@@ -1029,6 +1029,29 @@ def getSDDCGroup(proxy_url,sessiontoken,gw,group_id):
         print("This group has no criteria defined.")
     return
 
+
+def getSDDCGroupAssociation(proxy_url,sessiontoken,gw,group_id):
+    """ Find where a SDDC Group is being used. Use 'mgw' or 'cgw' as the parameter """
+    myHeader = {'csp-auth-token': sessiontoken}
+    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
+    # removing 'sks-nsxt-manager' from proxy url to get correct URL
+    myURL = proxy_url_short + "policy/api/v1/infra/group-service-associations?intent_path=/infra/domains/" + gw +"/groups/" + group_id
+    response = requests.get(myURL, headers=myHeader)
+    json_response_status_code = response.status_code
+    json_response = response.json()
+    # print(json_response)
+    if response.status_code != 200:
+        print( f'API Call Status {response.status_code}, text:{response.text}')
+    else:
+        sddc_group = json_response['results']
+        if len(sddc_group) == 0:
+            print("No object is associated with this group.")
+        else:
+            table = PrettyTable(['ID', 'Name'])
+            for i in sddc_group:
+                table.add_row([i['target_id'], i['target_display_name']])
+            print(table)
+            
 def removeSDDCGroup(proxy_url, sessiontoken, gw, group_id):
     """ Remove an SDDC Group """
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1405,6 +1428,8 @@ def getHelp():
     print("\tnew-group [CGW/MGW] [Group_ID]")
     print("\nTo show existing groups:")
     print("\tshow-group [CGW/MGW] [Group_ID]")
+    print("\nTo show security rules used by a groups:")
+    print("\tshow-group-association [CGW/MGW] [Group_ID]")
     print("\nTo remove a group:")
     print("\tremove-group [CGW/MGW][Group_ID]")
     print("\nTo show services:")
@@ -2101,6 +2126,13 @@ elif intent_name == "show-group":
         group_id = sys.argv[3]
         gw = sys.argv[2].lower()
         sddc_groups = getSDDCGroup(proxy,session_token,gw,group_id)
+    else:
+        print("Incorrect syntax. Try again or check the help.")
+elif intent_name == "show-group-association":
+    if len(sys.argv) == 4:
+        group_id = sys.argv[3]
+        gw = sys.argv[2].lower()
+        sddc_groups = getSDDCGroupAssociation(proxy,session_token,gw,group_id)
     else:
         print("Incorrect syntax. Try again or check the help.")
 elif intent_name == "remove-group":
