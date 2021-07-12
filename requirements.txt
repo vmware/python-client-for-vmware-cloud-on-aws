@@ -4,5 +4,5 @@ configparser==5.0.1
 idna==2.10
 PTable==0.9.2
 requests==2.24.0
-urllib3==1.25.10
+urllib3==1.26.5
 wcwidth==0.2.5
