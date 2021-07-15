@@ -59,7 +59,7 @@ class data():
 
 def getAccessToken(myKey):
     """ Gets the Access Token using the Refresh Token """
-    params = {'api-token': myKey}
+    params = {'api_token': myKey}
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
     jsonResponse = response.json()
