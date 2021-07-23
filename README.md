@@ -62,6 +62,7 @@ This tool enables users to:
 - Display information about VMs in the SDDC
 - Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
 - Check T0 routes
+- Display CSP groups and group members
 - Check Internet egress interface counters
 - Create/Read/Delete L2VPN
 

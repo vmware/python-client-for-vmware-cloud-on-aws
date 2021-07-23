@@ -35,6 +35,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
 import time
+import json
 import sys
 from prettytable import PrettyTable
 
@@ -1320,6 +1321,33 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
         response = requests.put(myURL, headers=myHeader, json=json_data)
         json_response_status_code = response.status_code
 
+def getCSPGroups(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups'
+    response = requests.get(myURL,headers=myHeader)
+    json_response = response.json()
+    groups = json_response['results']
+    table = PrettyTable(['ID','Name', 'Group Type','User Count'])
+    for grp in groups:
+        table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
+
+    print(table)
+
+def getCSPGroupMembers(csp_url, session_token):
+    if len(sys.argv) < 3:
+        print('Usage: show-csp-group-members [groupID]')
+    groupid = sys.argv[2]
+    myHeader = {'csp-auth-token': session_token}
+    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupid}/users'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    users = json_response['results']
+    table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
+    for user in users:
+        table.add_row([user['username'],user['firstName'],user['lastName'],user['email'],user['userId']])
+
+    print(table)
+
 def getSDDCT0routes(proxy_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint".format(proxy_url)
@@ -1356,7 +1384,7 @@ def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
         return edge_path
     else:
         print("fail")
-    
+
 def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
     ### Displays counters for egress interface ###
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1392,6 +1420,10 @@ def getHelp():
     print("\tnew-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network")    
     print("\nTo remove a network:")
     print("\tremove-network")
+    print("\nTo show CSP groups:")
+    print("\tshow-csp-groups")
+    print("\nTo show CSP group members:")
+    print("\tshow-csp-group-members [GROUP_ID]")
     print("\nTo show the CGW security rules:")
     print("\tshow-cgw-rule")
     print("\nTo create a new CGW security rule")
@@ -1515,6 +1547,10 @@ proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
 if intent_name == "create-lots-networks":
     number = int(sys.argv[2])
     createLotsNetworks(proxy,session_token,number)
+elif intent_name == "show-csp-groups":
+    getCSPGroups(strCSPProdURL,session_token)
+elif intent_name == "show-csp-group-members":
+        getCSPGroupMembers(strCSPProdURL,session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-egress-interface-counters":
