@@ -38,6 +38,7 @@ import time
 import json
 import sys
 from prettytable import PrettyTable
+from deepdiff import DeepDiff
 
 config = configparser.ConfigParser()
 config.read("./config.ini")
@@ -1321,6 +1322,141 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
         response = requests.put(myURL, headers=myHeader, json=json_data)
         json_response_status_code = response.status_code
 
+def addUsersToCSPGroup(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token,'Content-Type': 'application/json'}
+    groupId = '3d6f43a8-218b-4b50-9d80-92af8878c4ed'
+    #usernamesToAdd = ['pk@kremerdev.com','pkremer@kremerdev.com']
+
+    if len(sys.argv) < 4:
+        print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
+        sys.exit()
+
+    groupId = sys.argv[2]
+    usernamesToAdd = sys.argv[3].split(',')
+
+    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupId}/users'
+    params = {
+            'notifyUsers': 'false',
+            'usernamesToAdd': usernamesToAdd
+    }
+    response = requests.post(myURL,data=json.dumps(params), headers=myHeader)
+    response_json = response.json()
+    if response.status_code == 200:
+        print(f"Added: {response_json['succeeded']}" )
+        print(f"Failed: {response_json['failed']}" )
+    else:
+        print (f'Operation failed with status code {response.status_code}. URL: {myURL}. Body: {params}')
+def getCSPGroupDiff(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    if len(sys.argv) < 3:
+        print('Usage: show-csp-group-diff [groupID] [showall|skipmembers|skipowners]')
+        sys.exit()
+
+    # Optional filter for org owners and members
+    SKIP_MEMBERS = False
+    SKIP_OWNERS = False
+
+    if len(sys.argv) == 4:
+        if sys.argv[3] == "skipmembers":
+            SKIP_MEMBERS = True
+            print('Skipping members...')
+        elif sys.argv[3] == "skipowners":
+            SKIP_OWNERS = True
+            print('Skipping owners...')
+
+    groupId = sys.argv[2]
+    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupId}'
+    response = requests.get(myURL,headers=myHeader)
+    json_response = response.json()
+    grouproles = json_response['serviceRoles']
+
+    myURL = csp_url + f'/csp/gateway/am/api/v2/orgs/{ORG_ID}/users'
+    response = requests.get(myURL,headers=myHeader)
+    json_response = response.json()
+    users = json_response['results']
+    grouprolelist = []
+    for role in grouproles:
+        for rname in role['serviceRoleNames']:
+            grouprolelist.append(rname)
+
+
+    print('Group role list:')
+    print(grouprolelist)
+    i = 0
+    for user in users:
+        IS_OWNER = False
+        for orgrole in user['organizationRoles']:
+            if orgrole['name'] == 'org_owner':
+                IS_OWNER = True
+                break
+
+        IS_MEMBER = False
+        for orgrole in user['organizationRoles']:
+            if orgrole['name'] == 'org_member':
+                IS_MEMBER = True
+                break
+
+        if IS_OWNER and SKIP_OWNERS:
+            continue
+
+        if IS_MEMBER and SKIP_MEMBERS:
+            continue
+
+        i += 1
+        if i % 25 == 0:
+            wait = input("Press Enter to show more users, q to quit: ")
+            if wait == 'q':
+                sys.exit()
+
+            print('Group role list:')
+            print(grouprolelist)
+
+        print(user['user']['email'],f'({i} of {len(users)})')
+        print(f'Member: {IS_MEMBER}, Owner: {IS_OWNER}')
+        #print(user['serviceRoles'])
+        # print("")
+        userrolelist = []
+        #print('grp:')
+        #print (grouprolelist)
+        #print('usr:')
+        for servicedef in user['serviceRoles']:
+            #print(servicedef)
+            #print(role['serviceRoles'][0]['name'])
+            for role in servicedef['serviceRoles']:
+                userrolelist.append(role['name'])
+        print('User role list:')
+        print(userrolelist)
+        diff = DeepDiff(grouprolelist,userrolelist,ignore_order=True)
+        print('Role Differences:')
+        print(diff)
+        print("------------- ")
+
+def getCSPOrgUsers(csp_url,session_token):
+    if len(sys.argv) < 3:
+        print('Usage: show-csp-org-users [searchTerms]')
+    else:
+        myHeader = {'csp-auth-token': session_token,'Content-Type': 'application/json'}
+        searchTerm = sys.argv[2]
+        myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/users/search'
+        params = {
+            'userSearchTerm': searchTerm
+        }
+        #response = requests.post(myURL,data=json.dumps(body), headers=myHeader)
+        response = requests.get(myURL,headers=myHeader, params=params)
+        if response.status_code == 200:
+            response_json = response.json()
+            users = response_json['results']
+            if len(users) >= 20:
+                print("Search API is limited to 20 results, refine your search term for accurate results.")
+            table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
+            for user in users:
+                table.add_row([user['user']['username'],user['user']['firstName'],user['user']['lastName'],user['user']['email'],user['user']['userId']])
+
+            print(table)
+        else:
+            print (f'Search failed with status code {response.status_code}. URL: {myURL}. Body: {body}')
+
+
 def getCSPGroups(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups'
@@ -1420,10 +1556,16 @@ def getHelp():
     print("\tnew-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network")    
     print("\nTo remove a network:")
     print("\tremove-network")
+    print("\nAdd CSP user to a group:")
+    print("\tadd-users-to-csp-group [GROUP_ID] [EMAILS]")
     print("\nTo show CSP groups:")
     print("\tshow-csp-groups")
     print("\nTo show CSP group members:")
     print("\tshow-csp-group-members [GROUP_ID]")
+    print("\nTo show CSP group diff - this compares the roles in the specified group with every user in the org and prints out a user-by-user diff:")
+    print("\tshow-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]")
+    print("\nTo show a CSP user:")
+    print("\tshow-csp-org-users [email]")
     print("\nTo show the CGW security rules:")
     print("\tshow-cgw-rule")
     print("\nTo create a new CGW security rule")
@@ -1547,10 +1689,16 @@ proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
 if intent_name == "create-lots-networks":
     number = int(sys.argv[2])
     createLotsNetworks(proxy,session_token,number)
+elif intent_name == "add-users-to-csp-group":
+    addUsersToCSPGroup(strCSPProdURL,session_token)
+elif intent_name == "show-csp-group-diff":
+    getCSPGroupDiff(strCSPProdURL,session_token)
 elif intent_name == "show-csp-groups":
     getCSPGroups(strCSPProdURL,session_token)
 elif intent_name == "show-csp-group-members":
         getCSPGroupMembers(strCSPProdURL,session_token)
+elif intent_name == "show-csp-org-users":
+    getCSPOrgUsers(strCSPProdURL,session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-egress-interface-counters":
