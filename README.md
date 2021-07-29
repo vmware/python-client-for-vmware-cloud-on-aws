@@ -28,11 +28,11 @@ No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (S
 Sorry but no, this is a community-based effort. Use it at your own risk. It has extensively been tested though and we'll endeavour to fix any bugs.
 
 ## Which version of VMware Cloud on AWS has it been tested against?
-Versions 1.9, 1.10, 1.11 and 1.12. I don't guarantee support with previous versions. 
+Versions 1.9, 1.10, 1.11, 1.12, 1.14, and 1.15. We don't guarantee support with previous versions. 
 I will, however, endeavour to verify compatibility as we release new versions.
 
 ## What if I find a bug or need a new feature?
-Please raise it on GitHub and I will look into it.
+Please raise it on GitHub and we will look into it.
 
 ## Where can I find documentation about VMware Cloud on AWS:
 Please check the online documentation:
@@ -55,7 +55,7 @@ This tool enables users to:
 - Create and remove security rules on the Management and Compute Gateways.
 - Request, remove and update Public IP addresses.
 - Display information about Direct Connect (such as BGP AS, MTU and VPN preference)
-- Show VPN statistics, 
+- Show VPN statistics,
 - Show DNS Zones and Services
 - Create and remove NAT rules
 - Display information about SDDC and org users
@@ -63,6 +63,9 @@ This tool enables users to:
 - Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
 - Check T0 routes
 - Display CSP groups and group members
+- Add users to a CSP group
+- Display members of a CSP org
+- Display a diff of org member permissions in an org vs roles granted to a group
 - Check Internet egress interface counters
 - Create/Read/Delete L2VPN
 
