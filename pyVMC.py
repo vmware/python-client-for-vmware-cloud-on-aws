@@ -7,7 +7,7 @@
 # Python Client for VMware Cloud on AWS
 
 ################################################################################
-### Copyright (C) 2019-2020 VMware, Inc.  All rights reserved.
+### Copyright (C) 2019-2021 VMware, Inc.  All rights reserved.
 ### SPDX-License-Identifier: BSD-2-Clause
 ################################################################################
 
@@ -1413,15 +1413,8 @@ def getCSPGroupDiff(csp_url, session_token):
 
         print(user['user']['email'],f'({i} of {len(users)})')
         print(f'Member: {IS_MEMBER}, Owner: {IS_OWNER}')
-        #print(user['serviceRoles'])
-        # print("")
         userrolelist = []
-        #print('grp:')
-        #print (grouprolelist)
-        #print('usr:')
         for servicedef in user['serviceRoles']:
-            #print(servicedef)
-            #print(role['serviceRoles'][0]['name'])
             for role in servicedef['serviceRoles']:
                 userrolelist.append(role['name'])
         print('User role list:')
