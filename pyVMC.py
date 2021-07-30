@@ -1477,6 +1477,28 @@ def getCSPGroupMembers(csp_url, session_token):
 
     print(table)
 
+def getSDDCT0BGPneighbors(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        bgp_neighbors = json_response['results']
+        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address'])
+        for neighbor in bgp_neighbors:
+            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address']])
+        print('NEIGHBORS:')
+        print(bgp_table)
+        if neighbor.get("route_filtering"):
+            print("FILTERS:")
+            print(neighbor['route_filtering'])
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "showjson":
+                print('RAW JSON:')
+                print(json.dumps(bgp_neighbors,indent=2))
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
 def getSDDCT0routes(proxy_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint".format(proxy_url)
@@ -1546,7 +1568,7 @@ def getHelp():
     print("\tnew-network [NAME] [ROUTED] [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network")
     print("\tnew-network [NAME] [ROUTED] [GATEWAY_ADDRESS] for a static network")
     print("\tnew-network [NAME] [DISCONNECTED] [GATEWAY_ADDRESS]  for a disconnected network")
-    print("\tnew-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network")    
+    print("\tnew-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network")
     print("\nTo remove a network:")
     print("\tremove-network")
     print("\nAdd CSP user to a group:")
@@ -1666,6 +1688,8 @@ def getHelp():
     print("\tshow-egress-interface-counters")
     print("\nTo show routes at the T0 router:")
     print("\tshow-t0-routes")
+    print("\nTo show T0 BGP neighbors:")
+    print("\tshow-t0-bgp-neighbors [showjson]")    
 
 # --------------------------------------------
 # ---------------- Main ----------------------
@@ -1694,6 +1718,8 @@ elif intent_name == "show-csp-org-users":
     getCSPOrgUsers(strCSPProdURL,session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
+elif intent_name == "show-t0-bgp-neighbors":
+    getSDDCT0BGPneighbors(proxy, session_token)
 elif intent_name == "show-egress-interface-counters":
     edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
     edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
