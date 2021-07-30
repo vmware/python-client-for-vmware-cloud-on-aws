@@ -1477,6 +1477,41 @@ def getCSPGroupMembers(csp_url, session_token):
 
     print(table)
 
+def getSDDCT0PrefixLists(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        prefixlists = json_response['results']
+
+        for prefixlist in prefixlists:
+            prefixlisttable = PrettyTable(['ID','Display Name','Description'])
+            prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
+            print("PREFIX:")
+            print(prefixlisttable)
+            prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
+            i = 0
+            for prefix in prefixlist['prefixes']:
+                i+=1
+                if prefix.get('ge'):
+                    comparison = "ge (greater-than-or-equal)"
+                elif prefix.get('le'):
+                    comparison = "le (less-than-or-equal)"
+                else:
+                    comparison = '-'
+                prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+            print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+            print(prefixtable)
+            print("")
+
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "showjson":
+                print('RAW JSON:')
+                print(json.dumps(prefixlists,indent=2))
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
 def getSDDCT0BGPneighbors(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
@@ -1489,9 +1524,21 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
             bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address']])
         print('NEIGHBORS:')
         print(bgp_table)
+        filter_table = PrettyTable(['Enabled','Address Family','Out Filter','In Filter'])
         if neighbor.get("route_filtering"):
+            for filter in neighbor['route_filtering']:
+                if filter.get('out_route_filters'):
+                    out_route_filters = filter['out_route_filters']
+                else:
+                    out_route_filters = "-"
+
+                if filter.get('in_route_filters'):
+                        in_route_filters = filter['in_route_filters']
+                else:
+                    in_route_filters = "-"
+                filter_table.add_row([filter['enabled'],filter['address_family'],out_route_filters,in_route_filters])
             print("FILTERS:")
-            print(neighbor['route_filtering'])
+            print (filter_table)
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
                 print('RAW JSON:')
@@ -1690,6 +1737,8 @@ def getHelp():
     print("\tshow-t0-routes")
     print("\nTo show T0 BGP neighbors:")
     print("\tshow-t0-bgp-neighbors [showjson]")    
+    print("\nTo show T0 prefix lists:")
+    print("\tshow-t0-prefix-lists [showjson]")    
 
 # --------------------------------------------
 # ---------------- Main ----------------------
@@ -1720,6 +1769,8 @@ elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-t0-bgp-neighbors":
     getSDDCT0BGPneighbors(proxy, session_token)
+elif intent_name == "show-t0-prefix-lists":
+    getSDDCT0PrefixLists(proxy, session_token)    
 elif intent_name == "show-egress-interface-counters":
     edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
     edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
