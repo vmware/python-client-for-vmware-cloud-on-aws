@@ -1178,7 +1178,7 @@ def newSDDCGroupGr(proxy_url,sessiontoken,gw,group_id,member_of_group):
 
     response = requests.put(myURL, headers=myHeader, json=json_data)
     json_response_status_code = response.status_code
-    print(response.text)
+    #print(response.text)
     return json_response_status_code
 
 def newSDDCGroupVM(proxy_url,sessiontoken,gw,group_id,vm_list):
@@ -1736,9 +1736,9 @@ def getHelp():
     print("\nTo show routes at the T0 router:")
     print("\tshow-t0-routes")
     print("\nTo show T0 BGP neighbors:")
-    print("\tshow-t0-bgp-neighbors [showjson]")    
+    print("\tshow-t0-bgp-neighbors [showjson]")
     print("\nTo show T0 prefix lists:")
-    print("\tshow-t0-prefix-lists [showjson]")    
+    print("\tshow-t0-prefix-lists [showjson]")
 
 # --------------------------------------------
 # ---------------- Main ----------------------
