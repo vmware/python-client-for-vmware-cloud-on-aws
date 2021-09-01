@@ -1492,18 +1492,19 @@ def getSDDCT0PrefixLists(csp_url, session_token):
             print(prefixlisttable)
             prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
             i = 0
-            for prefix in prefixlist['prefixes']:
-                i+=1
-                if prefix.get('ge'):
-                    comparison = "ge (greater-than-or-equal)"
-                elif prefix.get('le'):
-                    comparison = "le (less-than-or-equal)"
-                else:
-                    comparison = '-'
-                prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
-            print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
-            print(prefixtable)
-            print("")
+            if prefixlist.get('prefixes'):
+                for prefix in prefixlist['prefixes']:
+                    i+=1
+                    if prefix.get('ge'):
+                        comparison = "ge (greater-than-or-equal)"
+                    elif prefix.get('le'):
+                        comparison = "le (less-than-or-equal)"
+                    else:
+                        comparison = '-'
+                    prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+                print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+                print(prefixtable)
+                print("")
 
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
