@@ -1359,8 +1359,8 @@ def getCSPServiceRoles(csp_url, session_token):
 
 def findCSPUserByServiceRole(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
-    if len(sys.argv) < 2:
-        print('Usage: find-user-by-service-role [role]')
+    if len(sys.argv) < 3:
+        print('Usage: find-csp-user-by-service-role [role]')
         sys.exit()
 
     role_name= sys.argv[2]
@@ -1698,6 +1698,8 @@ def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
 def getHelp():
     print("\nWelcome to PyVMC !")
     print("\nHere are the currently supported commands: ")
+    print("\nTo search for CSP users with a specific service role:")
+    print("\tfind-csp-user-by-service-role [service role name]")
     print("\nTo get a list of your VMs:")
     print("\tshow-vms")
     print("\nTo display a lit of your SDDCs:")
