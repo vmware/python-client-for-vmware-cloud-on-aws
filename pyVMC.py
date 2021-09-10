@@ -1492,18 +1492,19 @@ def getSDDCT0PrefixLists(csp_url, session_token):
             print(prefixlisttable)
             prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
             i = 0
-            for prefix in prefixlist['prefixes']:
-                i+=1
-                if prefix.get('ge'):
-                    comparison = "ge (greater-than-or-equal)"
-                elif prefix.get('le'):
-                    comparison = "le (less-than-or-equal)"
-                else:
-                    comparison = '-'
-                prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
-            print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
-            print(prefixtable)
-            print("")
+            if prefixlist.get('prefixes'): 
+                for prefix in prefixlist['prefixes']:
+                    i+=1
+                    if prefix.get('ge'):
+                        comparison = "ge (greater-than-or-equal)"
+                    elif prefix.get('le'):
+                        comparison = "le (less-than-or-equal)"
+                    else:
+                        comparison = '-'
+                    prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+                print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+                print(prefixtable)
+                print("")
 
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
@@ -1511,6 +1512,72 @@ def getSDDCT0PrefixLists(csp_url, session_token):
                 print(json.dumps(prefixlists,indent=2))
     else:
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def newBGPprefixlist(csp_url, session_token):
+#    myHeader = {'csp-auth-token': session_token}
+    myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
+#   capture details for new prefix list
+    description= input('Enter a description name for the prefix list:  ')
+    display_name= input('Enter a display name for the prefix list:  ')
+    prefix_list_id= input('Enter an ID string for the prefix list:  ')
+#   create python dictionary to contain the prefix list
+    prefix_list = {}
+    prefix_list['description'] = description
+    prefix_list["display_name"] = display_name
+    prefix_list["id"] = prefix_list_id
+    prefix_list["prefixes"] = []
+    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
+#   print(myURL)
+#   append individual prefixes to the list
+#   begin input loop
+    test = ''
+    while test != 'f':
+        test=input('What would you like to do? New prefix (n) / Review list (r) / Finish (f) / Abort (a)')
+        if test== "n":
+#           capture details of new prefix from user
+            cidr = input('Enter a network or IP address in CIDR format:  ')
+            action= input('Enter the action (PERMIT or DENY):  ')
+            scope= input('Optional - Enter either le or ge:  ')
+            length= int(input('Optional - Enter the length of the mask to apply:  '))
+#           build new prefix as unique dictionary
+            new_prefix = {}
+            new_prefix["action"] = action
+            new_prefix[scope] = length
+            new_prefix["network"] = cidr
+#           append new prefix to list of prefixes in prefix_list
+            prefix_list["prefixes"].append(new_prefix)
+        elif test == "r":
+            print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
+            print(prefix_list)
+        elif test == 'f':
+#            json_data = json.dumps(prefix_list)
+#            print(json_data)
+#            response = requests.patch(myURL, headers=myHeader, json=json_data)
+            response = requests.patch(myURL, headers=myHeader, json=prefix_list)
+#            json_response_status_code = response.status_code
+            if response.status_code == 200:
+                print("prefix list added")
+            else:
+                print(response.status_code)
+                print(response.json())
+                print()
+        elif test == 'a':
+            break
+        else:
+            print("Incorrect syntax. Please use 'n,' 'r,' 'f' or 'a' - Try again or check the help.")
+
+def removeBPGprefixlist(csp_url, session_token, prefix_list_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
+    print(myURL)
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.status_code
+    print(json_response)
+    if json_response == 200 :
+        print("The BGP prefix list " + prefix_list_id + " has been deleted")
+    else :
+        print("There was an error. Try again.")
+    return json_response
 
 def getSDDCT0BGPneighbors(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -1739,6 +1806,11 @@ def getHelp():
     print("\tshow-t0-bgp-neighbors [showjson]")
     print("\nTo show T0 prefix lists:")
     print("\tshow-t0-prefix-lists [showjson]")
+    print("\nTo create a new T0 BGP Prefix List")
+    print("\tnew-t0-prefix-list")
+    print("\nTo remove a T0 BGP Prefix List")
+    print("\tremove-t0-prefix-list [PREFIX LIST ID] - you can see current prefix list with 'show-t0-prefix-lists'")
+
 
 # --------------------------------------------
 # ---------------- Main ----------------------
@@ -1769,6 +1841,11 @@ elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-t0-bgp-neighbors":
     getSDDCT0BGPneighbors(proxy, session_token)
+elif intent_name == "new-t0-prefix-list":
+    newBGPprefixlist(proxy, session_token)
+elif intent_name == "remove-t0-prefix-list":
+    prefix_list_id = sys.argv[2]
+    removeBPGprefixlist(proxy, session_token, prefix_list_id)
 elif intent_name == "show-t0-prefix-lists":
     getSDDCT0PrefixLists(proxy, session_token)    
 elif intent_name == "show-egress-interface-counters":
