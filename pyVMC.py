@@ -1368,7 +1368,7 @@ def findCSPUserByServiceRole(csp_url, session_token):
     response = requests.get(myURL,headers=myHeader)
     json_response = response.json()
     users = json_response['results']
-    grouprolelist = []
+    table = PrettyTable(['Email','Service Role', 'Org Role'])
     for user in users:
         for servicedef in user['serviceRoles']:
             for role in servicedef['serviceRoles']:
@@ -1376,7 +1376,8 @@ def findCSPUserByServiceRole(csp_url, session_token):
                     display_role = ''
                     for orgrole in user['organizationRoles']:
                         display_role = display_role + orgrole['name'] + ' '
-                    print(user['user']['email'], '-', role_name, '-',  display_role) 
+                    table.add_row([user['user']['email'],role_name,display_role])
+    print(table)
 
 def getCSPGroupDiff(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
