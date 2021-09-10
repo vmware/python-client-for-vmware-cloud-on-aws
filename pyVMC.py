@@ -1346,6 +1346,38 @@ def addUsersToCSPGroup(csp_url, session_token):
         print(f"Failed: {response_json['failed']}" )
     else:
         print (f'Operation failed with status code {response.status_code}. URL: {myURL}. Body: {params}')
+
+def getCSPServiceRoles(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = csp_url + f'/csp/gateway/am/api/loggedin/user/orgs/{ORG_ID}/service-roles'
+    response = requests.get(myURL,headers=myHeader)
+    json_response = response.json()
+    #print(json.dumps(json_response, indent=4))
+    for svc_def in json_response['serviceRoles']:
+        for svc_role in svc_def['serviceRoleNames']:
+            print(svc_role)
+
+def findCSPUserByServiceRole(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    if len(sys.argv) < 2:
+        print('Usage: find-user-by-service-role [role]')
+        sys.exit()
+
+    role_name= sys.argv[2]
+    myURL = csp_url + f'/csp/gateway/am/api/v2/orgs/{ORG_ID}/users'
+    response = requests.get(myURL,headers=myHeader)
+    json_response = response.json()
+    users = json_response['results']
+    grouprolelist = []
+    for user in users:
+        for servicedef in user['serviceRoles']:
+            for role in servicedef['serviceRoles']:
+                if role['name'] == role_name:
+                    display_role = ''
+                    for orgrole in user['organizationRoles']:
+                        display_role = display_role + orgrole['name'] + ' '
+                    print(user['user']['email'], '-', role_name, '-',  display_role) 
+
 def getCSPGroupDiff(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     if len(sys.argv) < 3:
@@ -1695,6 +1727,8 @@ def getHelp():
     print("\tshow-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]")
     print("\nTo show a CSP user:")
     print("\tshow-csp-org-users [email]")
+    print("\nTo show CSP service roles for the currently logged in user:")
+    print("\tshow-csp-service-roles")
     print("\nTo show the CGW security rules:")
     print("\tshow-cgw-rule")
     print("\nTo create a new CGW security rule")
@@ -1837,6 +1871,10 @@ elif intent_name == "show-csp-group-members":
         getCSPGroupMembers(strCSPProdURL,session_token)
 elif intent_name == "show-csp-org-users":
     getCSPOrgUsers(strCSPProdURL,session_token)
+elif intent_name == "show-csp-service-roles":
+    getCSPServiceRoles(strCSPProdURL,session_token)
+elif intent_name == "find-csp-user-by-service-role":
+    findCSPUserByServiceRole(strCSPProdURL,session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-t0-bgp-neighbors":
