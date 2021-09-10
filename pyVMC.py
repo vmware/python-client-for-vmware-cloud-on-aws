@@ -1324,8 +1324,6 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
 
 def addUsersToCSPGroup(csp_url, session_token):
     myHeader = {'csp-auth-token': session_token,'Content-Type': 'application/json'}
-    groupId = '3d6f43a8-218b-4b50-9d80-92af8878c4ed'
-    #usernamesToAdd = ['pk@kremerdev.com','pkremer@kremerdev.com']
 
     if len(sys.argv) < 4:
         print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
