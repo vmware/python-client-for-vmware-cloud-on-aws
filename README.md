@@ -46,6 +46,9 @@ https://nicovibert.com/2020/02/25/pyvmc-python-vmware-cloud-aws/
 First main update:
 https://nicovibert.com/2020/06/01/fling-update-pyvmc-1-1-release-and-a-walkthrough-through-some-python-code/
 
+Additional Blog Posts:
+http://www.patrickkremer.com/pyvmc/
+
 ## Release Notes
 
 This tool enables users to:
