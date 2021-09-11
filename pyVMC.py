@@ -1545,7 +1545,6 @@ def getSDDCT0PrefixLists(csp_url, session_token):
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
 def newBGPprefixlist(csp_url, session_token):
-#    myHeader = {'csp-auth-token': session_token}
     myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
 #   capture details for new prefix list
     description= input('Enter a description name for the prefix list:  ')
@@ -1558,7 +1557,6 @@ def newBGPprefixlist(csp_url, session_token):
     prefix_list["id"] = prefix_list_id
     prefix_list["prefixes"] = []
     myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
-#   print(myURL)
 #   append individual prefixes to the list
 #   begin input loop
     test = ''
@@ -1581,11 +1579,7 @@ def newBGPprefixlist(csp_url, session_token):
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
         elif test == 'f':
-#            json_data = json.dumps(prefix_list)
-#            print(json_data)
-#            response = requests.patch(myURL, headers=myHeader, json=json_data)
             response = requests.patch(myURL, headers=myHeader, json=prefix_list)
-#            json_response_status_code = response.status_code
             if response.status_code == 200:
                 print("prefix list added")
             else:
@@ -1600,14 +1594,12 @@ def newBGPprefixlist(csp_url, session_token):
 def removeBPGprefixlist(csp_url, session_token, prefix_list_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
-    print(myURL)
     response = requests.delete(myURL, headers=myHeader)
     json_response = response.status_code
-    print(json_response)
     if json_response == 200 :
         print("The BGP prefix list " + prefix_list_id + " has been deleted")
     else :
-        print("There was an error. Try again.")
+        print("Error " + json_response + ". Please try again.")
     return json_response
 
 def getSDDCT0BGPneighbors(csp_url, session_token):
