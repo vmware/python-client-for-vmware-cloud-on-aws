@@ -1699,7 +1699,7 @@ def getHelp():
     print("\tfind-csp-user-by-service-role [service role name]")
     print("\nTo get a list of your VMs:")
     print("\tshow-vms")
-    print("\nTo display a lit of your SDDCs:")
+    print("\nTo display a list of your SDDCs:")
     print("\tshow-sddcs")
     print("\nTo get a view of your selected SDDC:")
     print("\tshow-sddc-state")
