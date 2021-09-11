@@ -1560,9 +1560,15 @@ def newBGPprefixlist(csp_url, session_token):
 #   append individual prefixes to the list
 #   begin input loop
     test = ''
-    while test != 'f':
-        test=input('What would you like to do? New prefix (n) / Review list (r) / Finish (f) / Abort (a)')
-        if test== "n":
+    while test != "1":
+        print("\nPlease select an option:")
+        print("\t1- Commit changes")
+        print("\t2- Add a new prefix")
+        print("\t3- Review")
+        print("\t4- Abort")
+        print("\n")
+        test=input('What would you like to do? ')
+        if test== "2":
 #           capture details of new prefix from user
             cidr = input('Enter a network or IP address in CIDR format:  ')
             action= input('Enter the action (PERMIT or DENY):  ')
@@ -1575,10 +1581,10 @@ def newBGPprefixlist(csp_url, session_token):
             new_prefix["network"] = cidr
 #           append new prefix to list of prefixes in prefix_list
             prefix_list["prefixes"].append(new_prefix)
-        elif test == "r":
+        elif test == "3":
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
-        elif test == 'f':
+        elif test == "1":
             response = requests.patch(myURL, headers=myHeader, json=prefix_list)
             if response.status_code == 200:
                 print("prefix list added")
@@ -1586,10 +1592,10 @@ def newBGPprefixlist(csp_url, session_token):
                 print(response.status_code)
                 print(response.json())
                 print()
-        elif test == 'a':
+        elif test == "4":
             break
         else:
-            print("Incorrect syntax. Please use 'n,' 'r,' 'f' or 'a' - Try again or check the help.")
+            print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
 def removeBPGprefixlist(csp_url, session_token, prefix_list_id):
     myHeader = {'csp-auth-token': session_token}
