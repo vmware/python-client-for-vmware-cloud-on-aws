@@ -53,38 +53,107 @@ http://www.patrickkremer.com/pyvmc/
 
 This tool enables users to:
 
-- Create and remove networks
-- Create and remove groups and services, included nested groups
-- Create and remove security rules on the Management and Compute Gateways.
-- Request, remove and update Public IP addresses.
-- Display information about Direct Connect (such as BGP AS, MTU and VPN preference)
-- Show VPN statistics,
-- Show DNS Zones and Services
-- Create and remove NAT rules
-- Display information about SDDC and org users
-- Display information about VMs in the SDDC
-- Create/Read/Update/Delete (CRUD) for Distributed Firewall Rules
-- Check T0 routes
-- Display CSP groups and group members
-- Add users to a CSP group
-- Display members of a CSP org
-- Display a diff of org member permissions in an org vs roles granted to a group
-- Check Internet egress interface counters
-- Create/Read/Delete L2VPN
+Here are the currently supported commands:
 
+- AWS Account and VPC
+    - set-sddc-connected-services: change whether to use S3 over the Internet or via the ENI
+    - show-compatible-subnets [LINKEDACCOUNTID] [REGION]: show compatible native AWS subnets connected to the SDDC
+    - show-connected-accounts: show native AWS accounts connected to the SDDC
+    - show-sddc-connected-vpc: show the VPC connected to the SDDC
+    - show-shadow-account: show the Shadow AWS Account VMC is deployed in
 
-## Roadmap
+- BGP and Networking
+    - new-t0-prefix-list: create a new T0 BGP Prefix List
+    - remove-t0-prefix-list [PREFIX LIST ID]: you can see current prefix list with 'show-t0-prefix-lists': remove a T0 BGP Prefix List
+    - set-bgp-as [ASN]: update the BGP AS number
+    - set-mtu: set the MTU configured over the Direct Connect
+    - show-mtu: show the MTU configured over the Direct Connect
+    - show-egress-interface-counters: show current Internet interface egress counters
+    - show-sddc-bgp-as: show the BGP AS number
+    - show-sddc-bgp-vpn: show whether DX is preferred over VPN
+    - show-t0-bgp-neighbors: show T0 BGP neighbors
+    - show-t0-prefix-lists: show T0 prefix lists
+    - show-t0-routes: show routes at the T0 router
 
-Depending on demand, the following tools might be added:
+- DNS
+    - show-dns-services: show DNS services
+    - show-dns-zones: show DNS zones
 
-- Create New Service Entry
-- Show New Service Entry
-- Add DHCP Relay CRUD
-- Add DNS Config Config (DNS Read Only right now.)
-- Add Port Mirroring CRUD
-- Add IPFIX CRUD
-- Update Service Read to support non-TCP/UDP based rules
-- Add VPN creation
+- Inventory Groups
+    - new-group [CGW/MGW] [Group_ID]: create a new group
+    - remove-group [CGW/MGW][Group_ID]: remove a group
+    - show-group [CGW/MGW] [Group_ID]: show existing groups
+    - show-group-association [CGW/MGW] [Group_ID]: show security rules used by a groups
+
+- Firewall - Distributed
+    - new-dfw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SECTION] [SEQUENCE-NUMBER]: create a new DFW security rule
+    - new-dfw-section [NAME][CATEGORY]: create a new DFW section
+    - remove-dfw-rule [SECTION_ID][RULE_ID]: delete a DFW rule
+    - remove-dfw-section [RULE_ID]: delete a DFW section
+    - show-dfw-section: show the DFW sections
+    - show-dfw-section-rules [SECTION]: show the DFW security rules within a section
+
+- Firewall - T0
+    - new-cgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SCOPE] [SEQUENCE-NUMBER]: create a new CGW security rule
+    - new-mgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SEQUENCE-NUMBER]: create a new MGW security rule
+    - remove-cgw-rule [RULE_ID]: delete a CGW security rule
+    - remove-mgw-rule [RULE_ID]: delete a MGW security rule
+    - show-cgw-rule: show the CGW security rules
+    - show-mgw-rule: show the MGW security rules
+
+- Firewall Services
+    - new-service: create a new service
+    - remove-service [SERVICE-ID]: remove a service
+    - show-services [SERVICE-ID]: show a specific service
+    - show-services: show services
+
+- NAT
+    - new-nat-rule: To create a new NAT rule
+    - remove-nat-rule: remove a NAT rule
+    - show-nat: show the configured NAT rules
+    - show-nat [NAT-RULE-ID] for statistics of a rule: show the statistics for a specific NAT rule
+
+- Public IP addressing
+    - new-sddc-public-ip: request a new public IP
+    - remove-sddc-public-ip: remove an existing public IP
+    - set-sddc-public-ip: update the description of an existing public IP
+    - show-sddc-public-ip: show the public IPs
+
+- SDDC
+    - get-access-token: show your access token
+    - show-sddc-state: get a view of your selected SDDC
+    - show-sddcs: display a lit of your SDDCs
+    - show-vms: get a list of your VMs
+
+- User and Group management
+    - add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group
+    - show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints ou
+    - show-csp-service-roles: show CSP service roles for the currently logged in user
+    - find-csp-user-by-service-role [service role name]: search for CSP users with a specific service role
+    - show-org-users: show the list of organization users
+
+- Virtual Machine Networking
+    - show-network: show your current networks
+    - new-network [NAME] [DISCONNECTED] [GATEWAY_ADDRESS]  for a disconnected network
+    - new-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network
+    - new-network [NAME] [ROUTED] [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network
+    - new-network [NAME] [ROUTED] [GATEWAY_ADDRESS] for a static network
+    - remove-network: remove a network
+
+- VPN
+    - new-l2vpn [NAME] [LOCAL_ENDPOINT] [REMOTE_PEER]: create a new L2VPN
+    - remove-l2VPN [ID]: remove a L2VPN
+    - remove-vpn [VPN-ID]: remove a VPN
+    - remove-vpn-ike-profile [ID]: remove a VPN IKE profile
+    - remove-vpn-ipsec-tunnel-profile [ID]: To remove a VPN IPSec Tunnel profile
+    - show-l2vpn: show l2 vpn
+    - show-l2vpn-services: show l2 vpn services
+    - show-vpn: show the configured VPN
+    - show-vpn [VPN_ID]: show the VPN statistics
+    - show-vpn-ike-profile: show the VPN IKE profiles
+    - show-vpn-internet-ip: show the public IP used for VPN services
+    - show-vpn-ipsec-tunnel-profile: show the VPN tunnel profile
+    - show-vpn-ipsec-endpoints: show the VPN IPSec endpoints
 
 ## Contributing
 
