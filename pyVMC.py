@@ -1515,32 +1515,42 @@ def getSDDCT0PrefixLists(csp_url, session_token):
     if response.status_code == 200:
         json_response = response.json()
         prefixlists = json_response['results']
-
-        for prefixlist in prefixlists:
-            prefixlisttable = PrettyTable(['ID','Display Name','Description'])
-            prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
-            print("PREFIX:")
-            print(prefixlisttable)
-            prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
-            i = 0
-            if prefixlist.get('prefixes'): 
-                for prefix in prefixlist['prefixes']:
-                    i+=1
-                    if prefix.get('ge'):
-                        comparison = "ge (greater-than-or-equal)"
-                    elif prefix.get('le'):
-                        comparison = "le (less-than-or-equal)"
-                    else:
-                        comparison = '-'
-                    prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
-                print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
-                print(prefixtable)
-                print("")
-
-        if len(sys.argv) == 3:
-            if sys.argv[2] == "showjson":
-                print('RAW JSON:')
-                print(json.dumps(prefixlists,indent=2))
+#   clear results for any prefix lists found that contain "System created prefix list"
+#   this will return empty dictionaries for any containing the above string
+        for prefix in prefixlists:
+            if prefix['description'].__contains__('System created prefix list'):
+                prefix.clear()
+#   remove empty dictionaries
+        while {} in prefixlists:
+            prefixlists.remove({})
+#   print a nicely formatted list of only user-uploaded prefix lists; system created lists were eliminated in above code
+        if len(prefixlists) != 0: 
+            for prefixlist in prefixlists:
+                prefixlisttable = PrettyTable(['ID','Display Name','Description'])
+                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
+                print("PREFIX:")
+                print(prefixlisttable)
+                prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
+                i = 0
+                if prefixlist.get('prefixes'): 
+                    for prefix in prefixlist['prefixes']:
+                        i+=1
+                        if prefix.get('ge'):
+                            comparison = "ge (greater-than-or-equal)"
+                        elif prefix.get('le'):
+                            comparison = "le (less-than-or-equal)"
+                        else:
+                            comparison = '-'
+                        prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+                    print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+                    print(prefixtable)
+                    print("")
+            if len(sys.argv) == 3:
+                if sys.argv[2] == "showjson":
+                    print('RAW JSON:')
+                    print(json.dumps(prefixlists,indent=2))
+        else:
+            print("No prefixes shown - only system created prefixes are found.")
     else:
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
