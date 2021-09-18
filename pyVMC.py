@@ -1676,26 +1676,17 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
     if response.status_code == 200:
         json_response = response.json()
         bgp_neighbors = json_response['results']
-        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address'])
+        print(bgp_neighbors)
+        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
         for neighbor in bgp_neighbors:
-            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address']])
+            if neighbor.get("in_route_filters"):
+                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],neighbor['in_route_filters'], "-"])
+            elif neighbor.get("out_route_filters"):
+                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],"-",neighbor['out_route_filters'],])
+            else:
+                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],"-", "-"])
         print('NEIGHBORS:')
         print(bgp_table)
-        filter_table = PrettyTable(['Enabled','Address Family','Out Filter','In Filter'])
-        if neighbor.get("route_filtering"):
-            for filter in neighbor['route_filtering']:
-                if filter.get('out_route_filters'):
-                    out_route_filters = filter['out_route_filters']
-                else:
-                    out_route_filters = "-"
-
-                if filter.get('in_route_filters'):
-                        in_route_filters = filter['in_route_filters']
-                else:
-                    in_route_filters = "-"
-                filter_table.add_row([filter['enabled'],filter['address_family'],out_route_filters,in_route_filters])
-            print("FILTERS:")
-            print (filter_table)
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
                 print('RAW JSON:')
