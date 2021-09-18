@@ -1676,7 +1676,6 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
     if response.status_code == 200:
         json_response = response.json()
         bgp_neighbors = json_response['results']
-        print(bgp_neighbors)
         bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
         for neighbor in bgp_neighbors:
             if neighbor.get("in_route_filters"):
