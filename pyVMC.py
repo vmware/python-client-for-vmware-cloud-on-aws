@@ -1580,11 +1580,15 @@ def newBGPprefixlist(csp_url, session_token):
         test=input('What would you like to do? ')
         if test== "2":
 #           capture details of new prefix from user
-            cidr = input('Enter 'ANY' or a network or IP address in CIDR format:  ')
+            cidr = input('Enter "ANY" or a network or IP address in CIDR format:  ')
             action= input('Enter the action (PERMIT or DENY):  ')
-            scope= input('Optional - Enter either le or ge:  ')
-            if scope != "":
-                length= int(input('Required - Enter the length of the mask to apply:  '))
+            if action == "PERMIT" or action == "DENY":
+                scope= input('Optional - Enter either le or ge:  ')
+                if scope != "":
+                    length= int(input('Required - Enter the length of the mask to apply:  '))
+            else:
+                print('Action must be either "PERMIT" or "DENY"')
+                break
 #           build new prefix as unique dictionary
             new_prefix = {}
             new_prefix["action"] = action
