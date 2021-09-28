@@ -1613,27 +1613,67 @@ def newBGPprefixlist(csp_url, session_token):
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
-def attachT0BGPprefixlist(csp_url, session_token, prefix_list_id, route_filter_dir, neighbor_id):
+def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
     myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
     myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
     response = requests.get(myURL, headers=myHeader)
-    direction = route_filter_dir + '_route_filters'
     if response.status_code == 200:
         json_response = response.json()
         neighbor_json = json_response
         for key in list(neighbor_json.keys()):
             if key.startswith('_'):
                 del neighbor_json[key]
-        neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4', direction: ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]}]
-        response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
-        if response.status_code == 200:
-            print("Prefix list " + prefix_list_id + " added to " + direction + " for " + neighbor_id)
-        else:
-            print(response.status_code)
-            print(response.json())
+#   while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
+#   begin input loop
+    test = ''
+    while test != "5":
+        print("\nPlease select an option:")
+        print("\t1- Review neighbor config ")
+        print("\t2- Add in_route_filter (only one allowed) ")
+        print("\t3- Add out_route_filter (only one allowed) ")
+        print("\t4- Clear all prefix lists")
+        print("\t5- Commit changes")
+        print("\t6- Abort")
+        print("\n")
+        test=input('What would you like to do? ')
+        if test == "1":
+            pretty_json = json.dumps(json_response, indent=2)
+            print(pretty_json)
             print()
-    else:
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        elif test == "2":
+            prefix_list_id = input('Please enter the prefix list ID exactly ')
+            neighbor_json['route_filtering'][0]["in_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
+            print()
+            print("Prefix list " + prefix_list_id + " has been added to in_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
+            print()
+        elif test =="3":
+            prefix_list_id = input('Please enter the prefix list ID exactly ')
+            neighbor_json['route_filtering'][0]["out_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
+            print()
+            print("Prefix list " + prefix_list_id + " has been added to out_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
+            print()
+        elif test =="4":
+            if neighbor_json.get("in_route_filters"):
+                del neighbor_json["in_route_filters"]
+            if neighbor_json.get("out_route_filters"):
+                del neighbor_json["out_route_filters"]
+            neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+        elif test == "5":
+            response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
+            if response.status_code == 200:
+                print("Complete")
+                print()
+                pretty_json = json.dumps(json_response, indent=2)
+                print(pretty_json)
+                print()
+            else:
+                print(response.status_code)
+                print(response.json())
+                print()
+        elif test == "6":
+            break
+        else:
+            print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
 def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
     myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
@@ -1677,11 +1717,14 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
         bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
         for neighbor in bgp_neighbors:
             if neighbor.get("in_route_filters"):
-                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],neighbor['in_route_filters'], "-"])
-            elif neighbor.get("out_route_filters"):
-                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],"-",neighbor['out_route_filters'],])
+                in_filter = neighbor['in_route_filters']
             else:
-                bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],"-", "-"])
+                in_filter = "-"
+            if neighbor.get("out_route_filters"):
+                out_filter = neighbor['out_route_filters']
+            else:
+                out_filter = "-"
+            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
         print('NEIGHBORS:')
         print(bgp_table)
         if len(sys.argv) == 3:
@@ -1751,7 +1794,7 @@ def getHelp():
     print("\tshow-sddc-connected-vpc: show the VPC connected to the SDDC")
     print("\tshow-shadow-account: show the Shadow AWS Account VMC is deployed in")
     print("\nBGP and Networking")
-    print("\tattach-t0-prefix-list [PREFIX LIST ID] [in / out] [BGP NEIGHBOR ID]: attach a BGP Prefix List to a T0 BGP neighbor")
+    print("\tattach-t0-prefix-list [BGP NEIGHBOR ID]: attach a BGP Prefix List to a T0 BGP neighbor")
     print("\tdetach-t0-prefix-lists [BGP NEIGHBOR ID]: detach all prefix lists from specified neighbor")
     print("\tnew-t0-prefix-list: create a new T0 BGP Prefix List")
     print("\tremove-t0-prefix-list [PREFIX LIST ID]: you can see current prefix list with 'show-t0-prefix-lists': remove a T0 BGP Prefix List")
@@ -1874,10 +1917,8 @@ elif intent_name == "show-t0-bgp-neighbors":
 elif intent_name == "new-t0-prefix-list":
     newBGPprefixlist(proxy, session_token)
 elif intent_name == "attach-t0-prefix-list":
-    prefix_list_id = sys.argv[2]
-    route_filter_dir = sys.argv[3]
-    neighbor_id = sys.argv[4]
-    attachT0BGPprefixlist(proxy, session_token, prefix_list_id, route_filter_dir, neighbor_id)
+    neighbor_id = sys.argv[2]
+    attachT0BGPprefixlist(proxy, session_token, neighbor_id)
 elif intent_name == "detach-t0-prefix-lists":
     neighbor_id = sys.argv[2]
     detachT0BGPprefixlists(proxy, session_token, neighbor_id)
