@@ -1738,16 +1738,15 @@ def getSDDCT0routes(proxy_url, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint".format(proxy_url)
     response = requests.get(myURL, headers=myHeader)
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
     json_response = response.json()
-    count = json_response['results'][1]['count']
-    for i in range (int(count)):
-        print("---------------------------------------")
-        print ("Route type:     " + json_response['results'][1]['route_entries'][i]['route_type'])
-        print ("Network:        " + json_response['results'][1]['route_entries'][i]['network'])
-        print ("Admin distance: " + str(json_response['results'][1]['route_entries'][i]['admin_distance']))
-        print ("Next hop:       " + json_response['results'][1]['route_entries'][i]['next_hop'])
+    t0_routes = json_response['results'][1]['route_entries']
+    route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
+    for routes in t0_routes:
+        route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
+    print ('T0 Routes')
+    print ('Route Type Legend:')
+    print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
+    print (route_table.get_string(sortby="Route Type", reversesort=True))
 
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
