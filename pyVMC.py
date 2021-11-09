@@ -1745,8 +1745,8 @@ def getSDDCT0routes(proxy_url, session_token):
         route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
     print ('T0 Routes')
     print ('Route Type Legend:')
-    print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
-    print (route_table.get_string(sortby="Route Type", reversesort=True))
+    print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
+    print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
 
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
