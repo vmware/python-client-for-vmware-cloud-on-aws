@@ -34,6 +34,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 
 import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
+import operator
 import time
 import json
 import sys
