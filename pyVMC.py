@@ -1749,6 +1749,48 @@ def getSDDCT0routes(proxy_url, session_token):
     print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
     print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
 
+def getSDDCT0BGPRoutes(csp_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    neighborURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
+    jsonResponse = requests.get(neighborURL, headers=myHeader)
+    learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
+    advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
+    if jsonResponse.status_code == 200:
+        neighborResponse = jsonResponse.json()
+        neighbors = neighborResponse['results']
+        for i in range(len(neighbors)):
+            bgpNeighborID = neighbors[i]['id']
+            routeLearnedURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgpNeighborID + '/routes'
+            routeAdvertisedURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgpNeighborID + '/advertised-routes'
+            jsonResponseLearned = requests.get(routeLearnedURL, headers=myHeader)
+            jsonResponseAdvertised = requests.get(routeAdvertisedURL, headers=myHeader)
+            if jsonResponseLearned.status_code == 200 and jsonResponseAdvertised.status_code == 200:
+#               Building the learned routes table
+                routeLearnedResponse = jsonResponseLearned.json()
+                edgeLearnedRoutes = routeLearnedResponse['results'][0]['egde_node_routes']
+                sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
+                bgpLearnedRoutes = edgeLearnedRoutes[1]['routes']
+                for x in range(len(bgpLearnedRoutes)):
+                   learnedRoutesTable.add_row([bgpNeighborID,sourceAddrLearned,bgpLearnedRoutes[x]['as_path'],bgpLearnedRoutes[x]['network'],bgpLearnedRoutes[x]['next_hop']])
+
+#               Building the advertised routes table 
+                routeAdvertisedResponse = jsonResponseAdvertised.json()
+                edgeAdvertisedRoutes = routeAdvertisedResponse['results'][0]['egde_node_routes']
+                sourceAddrAdvertised = edgeAdvertisedRoutes[0]['source_address']
+                bgpAdvertisedRoutes = edgeAdvertisedRoutes[1]['routes']
+                for y in range(len(bgpAdvertisedRoutes)):
+                    advertisedRoutesTable.add_row([bgpNeighborID,sourceAddrAdvertised,bgpAdvertisedRoutes[y]['network'],bgpAdvertisedRoutes[y]['next_hop']])
+            else:
+                print (f'API call failed with status code {jsonResponseLearned.status_code}. URL: {routeLearnedURL}.')
+                print (f'API call failed with status code {jsonResponseAdvertised.status_code}. URL: {routeAdvertisedURL}.')
+
+        print ('BGP Advertised Routes')
+        print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
+        print ('BGP Learned Routes')
+        print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
+    else:
+        print (f'API call failed with status code {jsonResponse.status_code}. URL: {neighborURL}.')
+
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1805,6 +1847,7 @@ def getHelp():
     print("\tshow-sddc-bgp-as: show the BGP AS number")
     print("\tshow-sddc-bgp-vpn: show whether DX is preferred over VPN")
     print("\tshow-t0-bgp-neighbors: show T0 BGP neighbors")
+    print("\tshow-t0-bgp-routes: show all learned and advertised routes through BGP")
     print("\tshow-t0-prefix-lists: show T0 prefix lists")
     print("\tshow-t0-routes: show routes at the T0 router")
     print("\nDNS ")
@@ -1914,6 +1957,8 @@ elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
 elif intent_name == "show-t0-bgp-neighbors":
     getSDDCT0BGPneighbors(proxy, session_token)
+elif intent_name == "show-t0-bgp-routes":
+    getSDDCT0BGPRoutes(proxy, session_token)
 elif intent_name == "new-t0-prefix-list":
     newBGPprefixlist(proxy, session_token)
 elif intent_name == "attach-t0-prefix-list":

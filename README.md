@@ -74,6 +74,7 @@ Here are the currently supported commands:
     - show-t0-bgp-neighbors: show T0 BGP neighbors
     - show-t0-prefix-lists: show T0 prefix lists
     - show-t0-routes: show routes at the T0 router
+    - show-t0-bgp-routes: show learned and advertised routes via BGP
 
 - DNS
     - show-dns-services: show DNS services
