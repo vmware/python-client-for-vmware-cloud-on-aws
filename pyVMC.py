@@ -38,8 +38,13 @@ import operator
 import time
 import json
 import sys
-from prettytable import PrettyTable
 from deepdiff import DeepDiff
+from os.path import exists
+from prettytable import PrettyTable
+
+if not exists("./config.ini"):
+    print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
+    sys.exit()
 
 config = configparser.ConfigParser()
 config.read("./config.ini")
@@ -49,7 +54,9 @@ Refresh_Token   = config.get("vmcConfig", "refresh_Token")
 ORG_ID          = config.get("vmcConfig", "org_id")
 SDDC_ID         = config.get("vmcConfig", "sddc_id")
 
-
+if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0:
+    print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
+    sys.exit()
 
 
 class data():
