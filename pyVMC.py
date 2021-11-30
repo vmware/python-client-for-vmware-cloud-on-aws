@@ -2610,7 +2610,7 @@ def getHelp():
     print("\t    attach-dxgw")
     print("\t    detach-dxgw\n")
     print("\tTGW Operations:")
-    print("\t    show-routes")
+    print("\t    show-tgw-routes")
     print("\nTKG")
     # print("\tget-tkg-info")
     print("\tenable-tkg")
@@ -3522,7 +3522,7 @@ elif intent_name == "detach-dxgw":
     task_id = detach_dxgw(resource_id, ORG_ID, dxgw_id, session_token)   
     get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "show-routes":
+elif intent_name == "show-tgw-routes":
     print("===== Show TGW route tables =========")
     get_sddc_groups( ORG_ID, session_token)
     group = input('   Select SDDC Group: ')
