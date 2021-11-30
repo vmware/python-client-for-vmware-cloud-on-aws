@@ -1,6 +1,19 @@
 [vmcConfig]
 strProdURL      = https://vmc.vmware.com
 strCSPProdURL   = https://console.cloud.vmware.com
-refresh_Token   = 
-org_id          = 
-sddc_id			= 
+
+refresh_Token   = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+org_id          = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+sddc_id         = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+[vtcConfig]
+MyAWS           = AWS_account
+AWS_region      = us-west-2
+DXGW_id         = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DXGW_owner      = DXGW accout owner
+
+[tkgConfig]
+egress_CIDR     = x.x.x.x/x
+ingress_CIDR    = x.x.x.x/x
+namespace_CIDR  = x.x.x.x/x
+service_CIDR    = x.x.x.x/x
