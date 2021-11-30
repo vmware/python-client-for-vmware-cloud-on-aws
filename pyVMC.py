@@ -3565,6 +3565,7 @@ elif intent_name == "disable-tkg":
     get_task_status(task_id, ORG_ID, session_token) 
 
 elif intent_name == "get-tkg-info":
+    # The API for this command is broken, waiting for a fix to enable it
     print("    TKG info:")  
     cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
     get_tkg_info(ORG_ID, cluster_id, session_token)
