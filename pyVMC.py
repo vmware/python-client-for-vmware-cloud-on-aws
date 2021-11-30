@@ -3558,13 +3558,13 @@ elif intent_name == "enable-tkg":
     task_id = enable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
     get_task_status(task_id, ORG_ID, session_token)    
 
-if intent_name == "disable-tkg":
+elif intent_name == "disable-tkg":
     cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
     print("    Disabling TKG:")
     task_id = disable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
     get_task_status(task_id, ORG_ID, session_token) 
 
-if intent_name == "get-tkg-info":
+elif intent_name == "get-tkg-info":
     print("    TKG info:")  
     cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
     get_tkg_info(ORG_ID, cluster_id, session_token)
