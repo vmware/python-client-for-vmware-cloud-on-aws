@@ -2410,7 +2410,14 @@ def get_nsx_info( org_id, deployment_id, session_token):
     # print(pretty_data) 
     print("    NSX private IP:   " + json_response['nsx_private_ip'])
     for i in range (len(json_response['nsx_users'])):
-        print("    NSX User : " + json_response['nsx_users'][i]['user_name'] + " - Password: " + json_response['nsx_users'][i]['password'])
+        # Catch 'None' usernames and passwords in SDDCs prior to M15, convert to string so it displays properly
+        username = json_response['nsx_users'][i]['user_name']
+        if username is None:
+            username = "None"
+        password = json_response['nsx_users'][i]['password']
+        if password is None:
+            password = "None"
+        print("    NSX User : " + username + " - Password: " + password)
     print("    NSX public FQDN:  " + json_response['nsx_public_fqdn'])
     print("    NSX private FQDN: " + json_response['nsx_private_fqdn'])
     print("    LOGIN URLs:")
@@ -2591,30 +2598,30 @@ def getHelp():
     print("\tshow-vpn-ipsec-endpoints: show the VPN IPSec endpoints")
     print("\nVTC")
     print("\tSDDC-Group Operations:")
-    print("\t    create-sddc-group [name]")
-    print("\t    delete-sddc-group")
-    print("\t    get-group-info\n")
+    print("\t    create-sddc-group [name]: Create an SDDC group")
+    print("\t    delete-sddc-group: Delete an SDDC group")
+    print("\t    get-group-info: Display details for an SDDC group\n")
     print("\tSDDC Operations:")
-    print("\t    get-sddc-info")
-    print("\t    get-nsx-info")
-    print("\t    attach-sddc")
-    print("\t    detach-sddc \n")
+    print("\t    get-sddc-info: Display a list of all SDDCs")
+    print("\t    get-nsx-info: Display NSX credentials and URLs")
+    print("\t    attach-sddc: Attach an SDDC to a vTGW")
+    print("\t    detach-sddc: Detach an SDDC from a vTGW\n")
     print("\tAWS Operations:")
-    print("\t    connect-aws")
-    print("\t    disconnect-aws\n")
+    print("\t    connect-aws: Connect an vTGW to an AWS account")
+    print("\t    disconnect-aws: Disconnect a vTGW from an AWS account\n")
     print("\tVPC Operations:")
-    print("\t    attach-vpc")
-    print("\t    detach-vpc")
-    print("\t    vpc-prefixes\n")
+    print("\t    attach-vpc: Attach a VPC to a vTGW")
+    print("\t    detach-vpc Detach VPC from a vTGW")
+    print("\t    vpc-prefixes: Add or remove vTGW static routes\n")
     print("\tDXGW Operations:")
-    print("\t    attach-dxgw")
-    print("\t    detach-dxgw\n")
+    print("\t    attach-dxgw: Attach a Direct Connect Gateway to a vTGW")
+    print("\t    detach-dxgw: Detach a Direct Connect Gateway from a vTGW\n")
     print("\tTGW Operations:")
-    print("\t    show-tgw-routes")
+    print("\t    show-tgw-routes: Show the vTGW route table")
     print("\nTKG")
     # print("\tget-tkg-info")
-    print("\tenable-tkg")
-    print("\tdisable-tkg")
+    print("\tenable-tkg: Enable Tanzu Kubernetes Grid on an SDDC")
+    print("\tdisable-tkg: Disable Tanzu Kubernetes Grid on an SDDC")
     print("\n")
 
 

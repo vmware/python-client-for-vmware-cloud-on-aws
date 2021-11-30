@@ -127,6 +127,9 @@ Here are the currently supported commands:
     - show-sddc-state: get a view of your selected SDDC
     - show-sddcs: display a lit of your SDDCs
     - show-vms: get a list of your VMs
+- TKG
+    - enable-tkg: Enable Tanzu Kubernetes Grid on an SDDC
+    - disable-tkg: Disable Tanzu Kubernetes Grid on an SDDC
 
 - User and Group management
     - add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group
@@ -157,6 +160,17 @@ Here are the currently supported commands:
     - show-vpn-internet-ip: show the public IP used for VPN services
     - show-vpn-ipsec-tunnel-profile: show the VPN tunnel profile
     - show-vpn-ipsec-endpoints: show the VPN IPSec endpoints
+
+- VTC
+    - SDDC Group Operations
+        - create-sddc-group [name]: Create an SDDC group
+        - delete-sddc-group: Delete an SDDC group
+        - get-group-info: Display details for an SDDC group
+    - SDDC Operations
+        - get-sddc-info: Display a list of all SDDCs
+        - get-nsx-info: Display NSX credentials and URLs
+        - attach-sddc: Attach an SDDC to a vTGW
+        - detach-sddc: Detach an SDDC from a vTGW
 
 ## Contributing
 
