@@ -63,6 +63,8 @@ Here are the currently supported commands:
     - show-shadow-account: show the Shadow AWS Account VMC is deployed in
 
 - BGP and Networking
+    - attach-t0-prefix-list [BGP NEIGHBOR ID]: attach a BGP Prefix List to a T0 BGP neighbor
+    - detach-t0-prefix-lists [BGP NEIGHBOR ID]: detach all prefix lists from specified neighbor
     - new-t0-prefix-list: create a new T0 BGP Prefix List
     - remove-t0-prefix-list [PREFIX LIST ID]: you can see current prefix list with 'show-t0-prefix-lists': remove a T0 BGP Prefix List
     - set-bgp-as [ASN]: update the BGP AS number
@@ -74,6 +76,7 @@ Here are the currently supported commands:
     - show-t0-bgp-neighbors: show T0 BGP neighbors
     - show-t0-prefix-lists: show T0 prefix lists
     - show-t0-routes: show routes at the T0 router
+    - show-t0-bgp-routes: show learned and advertised routes via BGP
 
 - DNS
     - show-dns-services: show DNS services
