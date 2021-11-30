@@ -54,15 +54,21 @@ Refresh_Token   = config.get("vmcConfig", "refresh_Token")
 ORG_ID          = config.get("vmcConfig", "org_id")
 SDDC_ID         = config.get("vmcConfig", "sddc_id")
 
-aws_acc         = config.get("vtcConfig", "MyAWS")
-region          = config.get("vtcConfig", "AWS_region")
-dxgw_id         = config.get("vtcConfig", "DXGW_id")
-dxgw_owner      = config.get("vtcConfig", "DXGW_owner")
+if config.has_section("vtcConfig"):
+    aws_acc         = config.get("vtcConfig", "MyAWS")
+    region          = config.get("vtcConfig", "AWS_region")
+    dxgw_id         = config.get("vtcConfig", "DXGW_id")
+    dxgw_owner      = config.get("vtcConfig", "DXGW_owner")
+else:
+    print('config.ini is outdated - the vtcConfig section is missing. Please insert the vtcConfig section in config.ini.example into your config.ini file. All transit gateway commands will fail without this configuration change.')
 
-egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
-ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
-namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
-service_CIDR    = config.get("tkgConfig", "service_CIDR")
+if config.has_section("tkgConfig"):
+    egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
+    ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
+    namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
+    service_CIDR    = config.get("tkgConfig", "service_CIDR")
+else:
+    print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
 
 if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0:
     print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
