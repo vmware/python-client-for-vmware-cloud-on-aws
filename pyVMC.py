@@ -46,6 +46,8 @@ if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
     sys.exit()
 
+DEBUG_MODE = False
+
 config = configparser.ConfigParser()
 config.read("./config.ini")
 strProdURL      = config.get("vmcConfig", "strProdURL")
@@ -1932,11 +1934,15 @@ def get_deployment_id(sddc, org_id, session_token):
     return deployment_id
 
 def get_group_id(group, org_id, session_token):
+    if DEBUG_MODE:
+        print(f'DEBUG: In get_group_id(), group={group}')
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/inventory/{}/core/deployment-groups".format(strProdURL, org_id)
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     group_id = json_response['content'][int(group)-1]['id']
+    if DEBUG_MODE:
+        print(f'DEBUG: json_response group_id={group_id}')
     return group_id
 
 def get_sddc_groups(org_id, session_token):
@@ -3533,6 +3539,8 @@ elif intent_name == "show-tgw-routes":
     print("===== Show TGW route tables =========")
     get_sddc_groups( ORG_ID, session_token)
     group = input('   Select SDDC Group: ')
+    if DEBUG_MODE:
+        print(f'DEBUG: User input group = {group}')
     group_id = get_group_id(group, ORG_ID, session_token)  
     resource_id = get_resource_id(group_id, ORG_ID, session_token)
     get_route_tables(resource_id, ORG_ID, session_token)   
