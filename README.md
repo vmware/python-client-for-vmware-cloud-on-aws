@@ -161,7 +161,7 @@ Here are the currently supported commands:
     - show-vpn-ipsec-tunnel-profile: show the VPN tunnel profile
     - show-vpn-ipsec-endpoints: show the VPN IPSec endpoints
 
-- VTC
+- VTC (VMware Transit Connect)
     - SDDC Group Operations
         - create-sddc-group [name]: Create an SDDC group
         - delete-sddc-group: Delete an SDDC group
@@ -171,6 +171,18 @@ Here are the currently supported commands:
         - get-nsx-info: Display NSX credentials and URLs
         - attach-sddc: Attach an SDDC to a vTGW
         - detach-sddc: Detach an SDDC from a vTGW
+    - AWS Operations
+        - connect-aws: Connect an vTGW to an AWS account
+        - disconnect-aws: Disconnect a vTGW from an AWS account
+    - VPC Operations
+        - attach-vpc: Attach a VPC to a vTGW
+        - detach-vpc Detach VPC from a vTGW
+        - vpc-prefixes: Add or remove vTGW static routes
+    - DXGW Operations
+        - attach-dxgw: Attach a Direct Connect Gateway to a vTGW
+        - detach-dxgw: Detach a Direct Connect Gateway from a vTGW
+    - TGW Operations
+        - show-tgw-routes: Show the vTGW route table
 
 ## Contributing
 
