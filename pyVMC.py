@@ -1954,11 +1954,13 @@ def get_sddc_groups(org_id, session_token):
     # print(pretty_data)
     if (json_response['empty'] == True):
         print("     No SDDC Group found\n")
-        return False
+        return None
     else:  
+        sddc_groups = []
         for i in range(json_response['total_elements']):
+            sddc_groups.append(json_response['content'])
             print(str(i+1) + ": " + json_response['content'][i]['name'] + ": " + json_response['content'][i]['id'])
-    return True
+    return sddc_groups[0]
 
 def get_group_info(group_id, resource_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -3401,7 +3403,6 @@ elif intent_name == "create-sddc-group":
 
 elif intent_name == "delete-sddc-group":
     print("=====Deleting SDDC Group=========")
-    get_sddc_groups( ORG_ID, session_token)
     group = input('   Select SDDC Group: ')
     group_id = get_group_id(group, ORG_ID, session_token)
     if (check_empty_group(group_id, ORG_ID, session_token)):
@@ -3537,13 +3538,34 @@ elif intent_name == "detach-dxgw":
 
 elif intent_name == "show-tgw-routes":
     print("===== Show TGW route tables =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
+    #get_sddc_groups( ORG_ID, session_token)
+    sddc_groups = get_sddc_groups( ORG_ID, session_token)
+    group_id = None
     if DEBUG_MODE:
-        print(f'DEBUG: User input group = {group}')
-    group_id = get_group_id(group, ORG_ID, session_token)  
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    get_route_tables(resource_id, ORG_ID, session_token)   
+        print(f'DEBUG: sddc_groups = {sddc_groups}')
+    if len(sys.argv) > 2:
+        search_name = sys.argv[2]
+        for grp in sddc_groups:
+            if grp['name'] == search_name:
+                group_id = grp['id']
+                group_name = search_name
+                if DEBUG_MODE:
+                    print(f'DEBUG: Found {search_name} with group ID {group_id}')
+                break
+    else:
+        group = input('   Select SDDC Group: ')
+        group_id = sddc_groups[int(group) -1]['id']
+        group_name = sddc_groups[int(group) -1]['name']
+        if DEBUG_MODE:
+            print(f'DEBUG: User input group = {group}')
+            print(f'DEBUG: group_id from sddc_groups = {group_id}')
+    #group_id = get_group_id(group, ORG_ID, session_token)  
+    if group_id is None:
+        print('Could not retrieve group ID')
+    else:
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        print(f'Route table for {group_name} ({group_id})')
+        get_route_tables(resource_id, ORG_ID, session_token)   
 
 elif intent_name == "get-nsx-info":
     print("===== get deployments =========")

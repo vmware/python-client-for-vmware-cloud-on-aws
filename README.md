@@ -183,6 +183,7 @@ Here are the currently supported commands:
         - detach-dxgw: Detach a Direct Connect Gateway from a vTGW
     - TGW Operations
         - show-tgw-routes: Show the vTGW route table
+            - show-tgw-routes [group name]: Show the vTGW route table for the specified group
 
 ## Contributing
 
