@@ -140,10 +140,10 @@ Here are the currently supported commands:
 
 - Virtual Machine Networking
     - show-network: show your current networks
-    - new-network [NAME] [DISCONNECTED] [GATEWAY_ADDRESS]  for a disconnected network
-    - new-network [NAME] [EXTENDED] [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network
-    - new-network [NAME] [ROUTED] [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network
-    - new-network [NAME] [ROUTED] [GATEWAY_ADDRESS] for a static network
+    - new-network [NAME] DISCONNECTED [GATEWAY_ADDRESS]  for a disconnected network
+    - new-network [NAME] EXTENDED [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network
+    - new-network [NAME] ROUTED [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network
+    - new-network [NAME] ROUTED [GATEWAY_ADDRESS] for a static network
     - remove-network: remove a network
 
 - VPN
