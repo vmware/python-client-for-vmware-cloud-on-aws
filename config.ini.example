@@ -10,7 +10,7 @@ sddc_id         = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 MyAWS           = AWS_account
 AWS_region      = us-west-2
 DXGW_id         = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-DXGW_owner      = DXGW accout owner
+DXGW_owner      = DXGW account owner
 
 [tkgConfig]
 egress_CIDR     = x.x.x.x/x
