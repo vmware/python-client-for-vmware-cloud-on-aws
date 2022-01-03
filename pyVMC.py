@@ -3065,7 +3065,8 @@ elif intent_name == "new-mgw-rule":
     if sg_string.lower() == "any":
         source_groups = ["ANY"]
     else:
-        sg_string = sg_string.upper()
+        # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
+        #sg_string = sg_string.upper()
         sg_list = sg_string.split(",")
         source_groups= [group_index + x for x in sg_list]
     
@@ -3075,7 +3076,8 @@ elif intent_name == "new-mgw-rule":
     if dg_string.lower() == "any":
         destination_groups = ["ANY"]
     else:
-        dg_string = dg_string.upper()
+        # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
+        #dg_string = dg_string.upper()
         dg_list = dg_string.split(",")
         destination_groups= [group_index + x for x in dg_list]
 
