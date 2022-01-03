@@ -815,6 +815,8 @@ def newSDDCMGWRule(proxy_url, sessiontoken, display_name, source_groups, destina
     }
     response = requests.put(myURL, headers=myHeader, json=json_data)
     json_response_status_code = response.status_code
+    if json_response_status_code != 200:
+        print(response.text)
     return json_response_status_code
 
 def removeSDDCMGWRule(proxy_url, sessiontoken, rule_id):
