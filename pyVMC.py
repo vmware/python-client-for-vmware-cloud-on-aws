@@ -41,6 +41,9 @@ import sys
 from deepdiff import DeepDiff
 from os.path import exists
 from prettytable import PrettyTable
+from requests.sessions import session
+from datetime import datetime
+from requests.auth import HTTPBasicAuth
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
@@ -93,25 +96,20 @@ def getAccessToken(myKey):
     access_token = jsonResponse['access_token']
     return access_token
 
-def getConnectedAccounts(tenantid, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/connected-accounts"
-    response = requests.get(myURL, headers=myHeader)
-    jsonResponse = response.json()
+def getConnectedAccounts(orgID, sessiontoken):
+    from pyvmc_csp import getConnectedAccounts
+    accounts = getConnectedAccounts(strProdURL, orgID, sessiontoken)
     orgtable = PrettyTable(['OrgID'])
-    orgtable.add_row([tenantid])
+    orgtable.add_row([orgID])
     print(str(orgtable))
     table = PrettyTable(['Account Number','id'])
-    for i in jsonResponse:
+    for i in accounts:
         table.add_row([i['account_number'],i['id']])
-    return table
+    print(table)
 
-def getCompatibleSubnets(tenantid,sessiontoken,linkedAccountId,region):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/account-link/compatible-subnets"
-    params = {'org': tenantid, 'linkedAccountId': linkedAccountId,'region': region}
-    response = requests.get(myURL, headers=myHeader,params=params)
-    jsonResponse = response.json()
+def getCompatibleSubnets(orgID,sessiontoken,linkedAccountId,region):
+    from pyvmc_csp import getCompatSubnets
+    jsonResponse = getCompatSubnets (strProdURL, orgID, sessiontoken, linkedAccountId, region)
     vpc_map = jsonResponse['vpc_map']
     table = PrettyTable(['vpc','description'])
     subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
@@ -121,52 +119,35 @@ def getCompatibleSubnets(tenantid,sessiontoken,linkedAccountId,region):
         for j in myvpc['subnets']:
             subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible']])
     print(table)
-    return subnet_table
+    print(subnet_table)
 
-def getSDDCS(tenantid, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs"
-    response = requests.get(myURL, headers=myHeader)
-    jsonResponse = response.json()
+def getSDDCS(orgID, sessiontoken):
+    from pyvmc_csp import getSddcs
+    from pyvmc_csp import getSDDCInfo
+    sddcInfo = getSddcs(strProdURL, orgID, sessiontoken)
     orgtable = PrettyTable(['OrgID'])
-    orgtable.add_row([tenantid])
+    orgtable.add_row([orgID])
     print(str(orgtable))
     table = PrettyTable(['Name', 'Cloud', 'Status', 'Hosts', 'ID'])
-    for i in jsonResponse:
+    for i in sddcInfo:
         hostcount = 0
-        myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs/" + i['id']
-        response = requests.get(myURL, headers=myHeader)
-        mySDDCs = response.json()
-
+        mySDDCs = getSDDCInfo (strProdURL, orgID, sessiontoken, i['id'])
         clusters = mySDDCs['resource_config']['clusters']
         if clusters:
             hostcount = 0
             for c in clusters:
                 hostcount += len(c['esx_host_list'])
         table.add_row([i['name'], i['provider'],i['sddc_state'], hostcount, i['id']])
-    return table
+    print(table)
 
-
-#-------------------- Show hosts in an SDDC
-def getCDChosts(sddcID, tenantid, sessiontoken):
-
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = strProdURL + "/vmc/api/orgs/" + tenantid + "/sddcs/" + sddcID
-
-    response = requests.get(myURL, headers=myHeader)
-
-    # grab the names of the CDCs
-    jsonResponse = response.json()
-
-    # get the vC block (this is a bad hack to get the rest of the host name
-    # shown in vC inventory)
+def getSDDChosts(sddcID, orgID, sessiontoken):
+    from pyvmc_csp import getSDDCInfo
+    jsonResponse = getSDDCInfo (strProdURL, orgID, sessiontoken, sddcID)
     cdcID = jsonResponse['resource_config']['vc_ip']
     cdcID = cdcID.split("vcenter")
     cdcID = cdcID[1]
     cdcID = cdcID.split("/")
     cdcID = cdcID[0]
-
-    # get the hosts block
     clusters = jsonResponse['resource_config']['clusters']
     table = PrettyTable(['Cluster', 'Name', 'Status', 'ID'])
     for c in clusters:
@@ -174,62 +155,39 @@ def getCDChosts(sddcID, tenantid, sessiontoken):
             hostName = i['name'] + cdcID
             table.add_row([c['cluster_name'], hostName, i['esx_state'], i['esx_id']])
     print(table)
-    return
 
-#-------------------- Display the users in our org
-def showORGusers(tenantid, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    #using @ as our search term...
-    myURL = strCSPProdURL + "/csp/gateway/am/api/orgs/" + tenantid + "/users/search?userSearchTerm=%40"
-    response = requests.get(myURL, headers=myHeader)
-    jsonResponse = response.json()
-    if str(response.status_code) != "200":
-        print("\nERROR: " + str(jsonResponse))
-    else:
-        # get the results block
-        users = jsonResponse['results']
-        table = PrettyTable(['First Name', 'Last Name', 'User Name'])
-        for i in users:
-            table.add_row([i['user']['firstName'],i['user']['lastName'],i['user']['username']])
-        print(table)
-    return
+def showORGusers(orgID, sessiontoken):
+    from pyvmc_csp import getCSPUsers
+    jsonResponse = getCSPUsers (strCSPProdURL, orgID, sessiontoken)
+    users = jsonResponse['results']
+    table = PrettyTable(['First Name', 'Last Name', 'User Name'])
+    for i in users:
+        table.add_row([i['user']['firstName'],i['user']['lastName'],i['user']['username']])
+    print (table.get_string(sortby="Last Name"))
 
 def getSDDCVPNInternetIP(proxy_url, sessiontoken):
-    """ Gets the Public IP used for VPN by the SDDC """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "cloud-service/api/v1/infra/sddc-user-config"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    from pyvmc_nsx import vpnPublicIP
+    json_response = vpnPublicIP (proxy_url, sessiontoken)
     vpn_internet_IP = json_response['vpn_internet_ips'][0]
-    return vpn_internet_IP
+    print(vpn_internet_IP)
 
 def getSDDCState(org_id, sddc_id, sessiontoken):
-    """ Gets the overall status of the SDDDC """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(strProdURL, org_id, sddc_id)
-    response = requests.get(myURL, headers=myHeader)
-    sddc_state = response.json()
+    from pyvmc_csp import getSDDCInfo
+    sddc_state = getSDDCInfo(strProdURL, org_id, sessiontoken, sddc_id)
     table = PrettyTable(['Name', 'Id', 'Status', 'Type', 'Region', 'Deployment Type'])
     table.add_row([sddc_state['name'], sddc_state['id'], sddc_state['sddc_state'], sddc_state['sddc_type'], sddc_state['resource_config']['region'], sddc_state['resource_config']['deployment_type']])
-    return table
+    print("\nThis is your current environment:")
+    print (table)
 
-def getNSXTproxy(org_id, sddc_id, sessiontoken):
-    """ Gets the Reverse Proxy URL """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(strProdURL, org_id, sddc_id)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+def getNSXTproxy(orgID, sddcID, sessiontoken):
+    from pyvmc_csp import getSDDCInfo 
+    json_response = getSDDCInfo (strProdURL, orgID, sessiontoken, sddcID)
     proxy_url = json_response['resource_config']['nsx_api_public_endpoint_url']
     return proxy_url
 
 def getSDDCnetworks(proxy_url, sessiontoken):
-    """ Gets the SDDC Networks """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    from pyvmc_nsx import getCGWSegments
+    json_response = getCGWSegments (proxy_url, sessiontoken)
     sddc_networks = json_response['results']
     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
     table_extended = PrettyTable(['Name', 'id','Tunnel ID'])
@@ -351,12 +309,8 @@ def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     return
 
 def getSDDCNAT(proxy_url, sessiontoken):
-    """ Gets the SDDC Nat Rules """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
+    from pyvmc_nsx import getSDDCNATInfo
+    json_response, json_response_status_code = getSDDCNATInfo (proxy_url, sessiontoken)
     if json_response_status_code == 200:
         sddc_NAT = json_response['results']
         table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
@@ -371,13 +325,8 @@ def getSDDCNAT(proxy_url, sessiontoken):
         return
 
 def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
-    ### Displays stats for a specific NAT rule. Note the results are a table with 2 entries.  ###
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + nat_id + "/statistics" )
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response = response.json()
-    json_response_status_code = response.status_code
+    from pyvmc_nsx import getNATStats
+    json_response, json_response_status_code = getNATStats (proxy_url, sessiontoken, nat_id)
     if json_response_status_code == 200:
         sddc_NAT_stats = json_response['results'][0]['rule_statistics']
         table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
@@ -436,12 +385,8 @@ def removeSDDCNAT(proxy_url, sessiontoken, id):
     return response
 
 def getSDDCVPN(proxy_url, sessiontoken):
-    """ Gets the configured Site-to-Site VPN """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
+    from pyvmc_nsx import getSDDCVpnInfo
+    json_response, json_response_status_code = getSDDCVpnInfo (proxy_url, sessiontoken)
     if json_response_status_code == 200:
         sddc_VPN = json_response['results']
         table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
@@ -574,11 +519,8 @@ def removeSDDCL2VPN(proxy_url, sessiontoken, id):
     return response
 
 def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
-    """ Gets the VPN IKE IPSecProfiles """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    from pyvmc_nsx import getVPNIKEProfile
+    json_response = getVPNIKEProfile (proxy_url, sessiontoken)
     sddc_VPN_ipsec_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'IKE Version', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_profiles:
@@ -586,11 +528,8 @@ def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
     return table
 
 def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
-    """ Gets the IPSec tunnel Profiles """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    from pyvmc_nsx import getVPNIPSecProfile
+    json_response = getVPNIPSecProfile (proxy_url, sessiontoken)
     sddc_VPN_ipsec_tunnel_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_tunnel_profiles:
@@ -598,21 +537,15 @@ def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
     return table
 
 def getSDDCL2VPNServices(proxy_url, sessiontoken):
-    """ Gets the L2VPN services """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default")
-    response = requests.get(myURL, headers=myHeader)
-    i = response.json()
+    from pyvmc_nsx import getL2VPNService
+    i = getL2VPNService (proxy_url, sessiontoken)
     table = PrettyTable(['Name', 'ID', 'mode'])
     table.add_row([i['display_name'], i['id'], i['mode']])
     return table
 
 def getSDDCL2VPNSession(proxy_url, sessiontoken):
-    """ Gets the L2VPN sessions """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions")
-    response = requests.get(myURL, headers=myHeader)
-    i = response.json()
+    from pyvmc_nsx import getL2VPNSession
+    i = getL2VPNSession (proxy_url, sessiontoken)
     sddc_l2vpn_sessions = i['results']
     table = PrettyTable(['Name', 'ID', 'Enabled?'])
     for i in sddc_l2vpn_sessions:
@@ -620,11 +553,8 @@ def getSDDCL2VPNSession(proxy_url, sessiontoken):
     return table
 
 def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
-    """ Gets the L2VPN sessions """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions")
-    response = requests.get(myURL, headers=myHeader)
-    i = response.json()
+    from pyvmc_nsx import getL2VPNSession
+    i = getL2VPNSession (proxy_url, sessiontoken)
     sddc_l2vpn_path = i['results'][0]['path']
     return sddc_l2vpn_path
 
@@ -2694,21 +2624,21 @@ elif intent_name == "show-egress-interface-counters":
 elif intent_name == "show-dns-zones":
     print(getSDDCDNS_Zones(proxy,session_token))
 elif intent_name == "show-sddc-hosts":
-    print(getCDChosts(SDDC_ID, ORG_ID, session_token))
+    getSDDChosts(SDDC_ID, ORG_ID, session_token)
 elif intent_name == "show-sddcs":
-    print(getSDDCS(ORG_ID, session_token))
+    getSDDCS(ORG_ID, session_token)
 elif intent_name == "show-org-users":
-    print(showORGusers(ORG_ID, session_token))
+    showORGusers(ORG_ID, session_token)
 elif intent_name == "show-vms":
     print(getVMs(proxy,session_token))
 elif intent_name == "show-connected-accounts":
-    print(getConnectedAccounts(ORG_ID,session_token))
+    getConnectedAccounts(ORG_ID,session_token)
 elif intent_name == "show-compatible-subnets":
     n = (len(sys.argv))
     if ( n < 4):
         print("Usage: show-compatible-subnets linkedAccountId region")
     else:
-        print(getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3]))
+        getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3])
 elif intent_name == "get-access-token":
     print(session_token)
 elif intent_name == "show-vpn":
@@ -3048,12 +2978,9 @@ elif intent_name == "remove-sddc-public-ip":
         else :
             print("Issues deleting the Public IP. Check the syntax.")
 elif intent_name == "show-vpn-internet-ip":
-    public_ip = getSDDCVPNInternetIP(proxy, session_token)
-    print(public_ip)
+    getSDDCVPNInternetIP(proxy, session_token)
 elif intent_name == "show-sddc-state":
-    sddc_state = getSDDCState(ORG_ID, SDDC_ID, session_token)
-    print("\nThis is your current environment:")
-    print(sddc_state)
+    getSDDCState(ORG_ID, SDDC_ID, session_token)
 elif intent_name == "new-mgw-rule":
     sequence_number = 0
     display_name = sys.argv[2]
