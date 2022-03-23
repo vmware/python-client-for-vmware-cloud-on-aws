@@ -44,6 +44,8 @@ from prettytable import PrettyTable
 from requests.sessions import session
 from datetime import datetime
 from requests.auth import HTTPBasicAuth
+from pyvmc_csp import *
+from pyvmc_nsx import *
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
@@ -97,8 +99,8 @@ def getAccessToken(myKey):
     return access_token
 
 def getConnectedAccounts(orgID, sessiontoken):
-    from pyvmc_csp import getConnectedAccounts
-    accounts = getConnectedAccounts(strProdURL, orgID, sessiontoken)
+    """Prints all connected AWS accounts"""
+    accounts = get_connected_accounts_json(strProdURL, orgID, sessiontoken)
     orgtable = PrettyTable(['OrgID'])
     orgtable.add_row([orgID])
     print(str(orgtable))
@@ -108,8 +110,8 @@ def getConnectedAccounts(orgID, sessiontoken):
     print(table)
 
 def getCompatibleSubnets(orgID,sessiontoken,linkedAccountId,region):
-    from pyvmc_csp import getCompatSubnets
-    jsonResponse = getCompatSubnets (strProdURL, orgID, sessiontoken, linkedAccountId, region)
+    """Lists all of the compatible subnets by Account ID and AWS Region"""
+    jsonResponse = get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAccountId, region)
     vpc_map = jsonResponse['vpc_map']
     table = PrettyTable(['vpc','description'])
     subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
@@ -122,16 +124,15 @@ def getCompatibleSubnets(orgID,sessiontoken,linkedAccountId,region):
     print(subnet_table)
 
 def getSDDCS(orgID, sessiontoken):
-    from pyvmc_csp import getSddcs
-    from pyvmc_csp import getSDDCInfo
-    sddcInfo = getSddcs(strProdURL, orgID, sessiontoken)
+    """Prints all SDDCs in an Org with their clusters and number of hosts"""
+    sddcInfo = get_sddcs_json(strProdURL, orgID, sessiontoken)
     orgtable = PrettyTable(['OrgID'])
     orgtable.add_row([orgID])
     print(str(orgtable))
     table = PrettyTable(['Name', 'Cloud', 'Status', 'Hosts', 'ID'])
     for i in sddcInfo:
         hostcount = 0
-        mySDDCs = getSDDCInfo (strProdURL, orgID, sessiontoken, i['id'])
+        mySDDCs = get_sddc_info_json(strProdURL, orgID, sessiontoken, i['id'])
         clusters = mySDDCs['resource_config']['clusters']
         if clusters:
             hostcount = 0
@@ -141,8 +142,8 @@ def getSDDCS(orgID, sessiontoken):
     print(table)
 
 def getSDDChosts(sddcID, orgID, sessiontoken):
-    from pyvmc_csp import getSDDCInfo
-    jsonResponse = getSDDCInfo (strProdURL, orgID, sessiontoken, sddcID)
+    """Prints out all SDDC Hosts"""
+    jsonResponse = get_sddc_info_json(strProdURL, orgID, sessiontoken, sddcID)
     cdcID = jsonResponse['resource_config']['vc_ip']
     cdcID = cdcID.split("vcenter")
     cdcID = cdcID[1]
@@ -157,8 +158,8 @@ def getSDDChosts(sddcID, orgID, sessiontoken):
     print(table)
 
 def showORGusers(orgID, sessiontoken):
-    from pyvmc_csp import getCSPUsers
-    jsonResponse = getCSPUsers (strCSPProdURL, orgID, sessiontoken)
+    """Prints out all Org users, sorted by last name"""
+    jsonResponse = get_csp_users_json(strCSPProdURL, orgID, sessiontoken)
     users = jsonResponse['results']
     table = PrettyTable(['First Name', 'Last Name', 'User Name'])
     for i in users:
@@ -166,28 +167,28 @@ def showORGusers(orgID, sessiontoken):
     print (table.get_string(sortby="Last Name"))
 
 def getSDDCVPNInternetIP(proxy_url, sessiontoken):
-    from pyvmc_nsx import vpnPublicIP
-    json_response = vpnPublicIP (proxy_url, sessiontoken)
-    vpn_internet_IP = json_response['vpn_internet_ips'][0]
-    print(vpn_internet_IP)
+    """Prints out Public IP assigned to VPN"""
+    json_response = vpn_public_ip_json(proxy_url, sessiontoken)
+    vpn_internet_ip = json_response['vpn_internet_ips'][0]
+    print(vpn_internet_ip)
 
 def getSDDCState(org_id, sddc_id, sessiontoken):
-    from pyvmc_csp import getSDDCInfo
-    sddc_state = getSDDCInfo(strProdURL, org_id, sessiontoken, sddc_id)
+    """Prints out state of selected SDDC"""
+    sddc_state = get_sddc_info_json(strProdURL, org_id, sessiontoken, sddc_id)
     table = PrettyTable(['Name', 'Id', 'Status', 'Type', 'Region', 'Deployment Type'])
     table.add_row([sddc_state['name'], sddc_state['id'], sddc_state['sddc_state'], sddc_state['sddc_type'], sddc_state['resource_config']['region'], sddc_state['resource_config']['deployment_type']])
     print("\nThis is your current environment:")
     print (table)
 
 def getNSXTproxy(orgID, sddcID, sessiontoken):
-    from pyvmc_csp import getSDDCInfo 
-    json_response = getSDDCInfo (strProdURL, orgID, sessiontoken, sddcID)
+    """Returns the NSX Reverse Proxy URL"""
+    json_response = get_sddc_info_json(strProdURL, orgID, sessiontoken, sddcID)
     proxy_url = json_response['resource_config']['nsx_api_public_endpoint_url']
     return proxy_url
 
 def getSDDCnetworks(proxy_url, sessiontoken):
-    from pyvmc_nsx import getCGWSegments
-    json_response = getCGWSegments (proxy_url, sessiontoken)
+    """Prints out all Compute Gateway segemtns in all the SDDCs in the Org"""
+    json_response = get_cgw_segments_json(proxy_url, sessiontoken)
     sddc_networks = json_response['results']
     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
     table_extended = PrettyTable(['Name', 'id','Tunnel ID'])
@@ -309,8 +310,8 @@ def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     return
 
 def getSDDCNAT(proxy_url, sessiontoken):
-    from pyvmc_nsx import getSDDCNATInfo
-    json_response, json_response_status_code = getSDDCNATInfo (proxy_url, sessiontoken)
+    """Prints out all SDDC NAT rules"""
+    json_response, json_response_status_code = get_sddc_nat_info_json(proxy_url, sessiontoken)
     if json_response_status_code == 200:
         sddc_NAT = json_response['results']
         table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
@@ -325,8 +326,8 @@ def getSDDCNAT(proxy_url, sessiontoken):
         return
 
 def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
-    from pyvmc_nsx import getNATStats
-    json_response, json_response_status_code = getNATStats (proxy_url, sessiontoken, nat_id)
+    """Prints NAT statistics for provided NAT rule ID"""
+    json_response, json_response_status_code = get_nat_stats_json(proxy_url, sessiontoken, nat_id)
     if json_response_status_code == 200:
         sddc_NAT_stats = json_response['results'][0]['rule_statistics']
         table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
@@ -384,9 +385,9 @@ def removeSDDCNAT(proxy_url, sessiontoken, id):
     response = requests.delete(myURL, headers=myHeader)
     return response
 
-def getSDDCVPN(proxy_url, sessiontoken):
-    from pyvmc_nsx import getSDDCVpnInfo
-    json_response, json_response_status_code = getSDDCVpnInfo (proxy_url, sessiontoken)
+def getSDDCVPN(proxy_url,sessiontoken):
+    """Prints out SDDC VPN session information"""
+    json_response, json_response_status_code = get_sddc_vpn_info_json(proxy_url, sessiontoken)
     if json_response_status_code == 200:
         sddc_VPN = json_response['results']
         table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
@@ -519,8 +520,8 @@ def removeSDDCL2VPN(proxy_url, sessiontoken, id):
     return response
 
 def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
-    from pyvmc_nsx import getVPNIKEProfile
-    json_response = getVPNIKEProfile (proxy_url, sessiontoken)
+    """Prints out VPN IKE profiles for the SDDC"""
+    json_response = get_vpn_ike_profile_json(proxy_url, sessiontoken)
     sddc_VPN_ipsec_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'IKE Version', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_profiles:
@@ -528,8 +529,8 @@ def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
     return table
 
 def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
-    from pyvmc_nsx import getVPNIPSecProfile
-    json_response = getVPNIPSecProfile (proxy_url, sessiontoken)
+    """Prints out VPN IPSEC profiles for the SDDC"""
+    json_response = get_vpn_ipsec_profile_json(proxy_url, sessiontoken)
     sddc_VPN_ipsec_tunnel_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Digest', 'DH Group', 'Encryption'])
     for i in sddc_VPN_ipsec_tunnel_profiles:
@@ -537,15 +538,15 @@ def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
     return table
 
 def getSDDCL2VPNServices(proxy_url, sessiontoken):
-    from pyvmc_nsx import getL2VPNService
-    i = getL2VPNService (proxy_url, sessiontoken)
+    """Prints out L2VPN services"""
+    i = get_l2vpn_service_json(proxy_url, sessiontoken)
     table = PrettyTable(['Name', 'ID', 'mode'])
     table.add_row([i['display_name'], i['id'], i['mode']])
     return table
 
 def getSDDCL2VPNSession(proxy_url, sessiontoken):
-    from pyvmc_nsx import getL2VPNSession
-    i = getL2VPNSession (proxy_url, sessiontoken)
+    """Prints out L2VPN sessions"""
+    i = get_l2vpn_session_json(proxy_url, sessiontoken)
     sddc_l2vpn_sessions = i['results']
     table = PrettyTable(['Name', 'ID', 'Enabled?'])
     for i in sddc_l2vpn_sessions:
@@ -553,8 +554,8 @@ def getSDDCL2VPNSession(proxy_url, sessiontoken):
     return table
 
 def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
-    from pyvmc_nsx import getL2VPNSession
-    i = getL2VPNSession (proxy_url, sessiontoken)
+    """Prints out L2VPN Session Path"""
+    i = get_l2vpn_session_json(proxy_url, sessiontoken)
     sddc_l2vpn_path = i['results'][0]['path']
     return sddc_l2vpn_path
 
