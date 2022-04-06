@@ -46,6 +46,7 @@ from datetime import datetime
 from requests.auth import HTTPBasicAuth
 from pyvmc_csp import *
 from pyvmc_nsx import *
+from pyvmc_vmc import *
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
@@ -2441,6 +2442,240 @@ def disable_wcp( org_id, sddc_id, cluster_id, session_token):
     task_id = json_response ['id']
     return task_id
 
+
+# ============================
+# NSX-T Advanced Firewall Add-on
+# ============================
+
+def getNSXAFAddOn(org_id, sddc_id, session_token):
+    json_response = get_sddc_info_json(strProdURL, org_id, sddc_id, session_token)
+    sddcName = json_response['name']
+    nsxAFTable = PrettyTable(['SDDC Name', 'NSX Advanced Firewall Enabled?'])
+    nsxAFStatus1 = json_response['resource_config']['nsxt_addons']
+    if nsxAFStatus1 is None:
+        nsxAFTable.add_row([sddcName, "False"])
+    else:
+        nsxAFStatus = json_response['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']
+        nsxAFTable.add_row([sddcName, nsxAFStatus])
+    # pretty_data = json.dumps(json_response, indent=4)
+    # print(pretty_data)
+    print(nsxAFTable)
+
+
+def getNsxIdsEnabledClusters(proxy, session_token):
+    json_response = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+    clustersTable = PrettyTable(['Cluster ID', 'Distributed IDS Enabled'])
+    clusterArray = json_response['results']
+    for i in clusterArray:
+        clusterStatus = i['ids_enabled']
+        clusterID = i['cluster']['target_id']
+        clustersTable.add_row([clusterID, clusterStatus])
+    print(clustersTable)
+
+
+def enableNsxIdsCluster(proxy, session_token, targetID):
+    json_data = {
+        "ids_enabled": True,
+        "cluster": {
+            "target_id": targetID
+        }
+    }
+    response, myURL = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    if response.status_code == 200:
+        print("IDS enabled on cluster {}".format(targetID))
+    else:
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+
+def disableNsxIdsCluster(proxy, session_token, targetID):
+    json_data = {
+        "ids_enabled": False,
+        "cluster": {
+            "target_id": targetID
+        }
+    }
+    response, myURL = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    if response.status_code == 200:
+        print("IDS disabled on cluster {}".format(targetID))
+    else:
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+
+def enableNsxIdsAll(proxy, session_token):
+    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+    clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
+    clusterResults = cluster_json['results']
+    for i in clusterResults:
+        targetID = i['cluster']['target_id']
+        if i['ids_enabled'] == False:
+            json_body = {
+                "ids_enabled": True,
+                "cluster": {
+                    "target_id": targetID
+                }
+            }
+            response, myURL = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
+            if response.status_code == 200:
+                clusterTable.add_row([targetID, "True"])
+            else:
+                print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        else:
+            clusterTable.add_row([targetID, "True"])
+    print(clusterTable)
+
+
+def disableNsxIdsAll(proxy, session_token):
+    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+    clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
+    clusterResults = cluster_json['results']
+    for i in clusterResults:
+        targetID = i['cluster']['target_id']
+        if i['ids_enabled'] == True:
+            json_body = {
+                "ids_enabled": False,
+                "cluster": {
+                    "target_id": targetID
+                }
+            }
+            response, myURL = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
+            if response.status_code == 200:
+                clusterTable.add_row([targetID, "False"])
+            else:
+                print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        else:
+            clusterTable.add_row([targetID, "False"])
+    print(clusterTable)
+
+
+def enableNsxIdsAutoUpdate(proxy, session_token):
+    json_data = {
+        "auto_update": True
+    }
+    response, myURL = enable_nsx_ids_auto_update_json(proxy, session_token, json_data)
+    if response.status_code == 202:
+        print("IDS Signature auto-update enabled")
+    else:
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+
+def NsxIdsUpdateSignatures(proxy, session_token):
+    response, myURL = nsx_ids_update_signatures_json(proxy, session_token)
+    if response.status_code == 202:
+        print("Signature update started")
+    else:
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+
+def getNsxIdsSigVersions(proxy, session_token):
+    response = get_ids_signature_versions_json(proxy, session_token)
+    sigTable = PrettyTable(['Signature Version', 'State', 'Status', 'Update Time (UTC)'])
+    sigResponse = response['results']
+    for i in sigResponse:
+        sigVer = i['version_id']
+        sigState = i['state']
+        sigStatus = i['status']
+        sigTimeUnix = i['update_time']
+        sigTimeUnix /= 1000
+        sigTime = datetime.utcfromtimestamp(sigTimeUnix).strftime('%Y-%m-%d %H:%M:%S')
+        sigTable.add_row([sigVer, sigState, sigStatus, sigTime])
+    sigTable.sortby = "State"
+    print(sigTable)
+
+
+def getIdsProfiles(proxy, session_token):
+    response = get_ids_profiles_json(proxy, session_token)
+    profileTable = PrettyTable(['Name', 'Severity', 'Filter Name', 'Filter Value'])
+    profileResponse = response['results']
+    for i in range(len(profileResponse)):
+        profileName = profileResponse[i]['display_name']
+        profileSev = profileResponse[i]['profile_severity']
+        if 'criteria' in profileResponse[i]:
+            profileCriteriaArray = profileResponse[i]['criteria']
+            for x in range(len(profileCriteriaArray)):
+                if 'resource_type' in profileCriteriaArray[x] and profileCriteriaArray[x][
+                    'resource_type'] == "IdsProfileFilterCriteria":
+                    filterName = profileCriteriaArray[x]['filter_name']
+                    filterValue = profileCriteriaArray[x]['filter_value']
+                    profileTable.add_row([profileName, profileSev, filterName, filterValue])
+                else:
+                    pass
+
+        else:
+            profileTable.add_row([profileName, profileSev, "", ""])
+    print(profileTable)
+
+
+# def searchIdsSignatures(orgid, sddcid, session_token):
+#     myHeader = {'csp-auth-token': session_token}
+#     sddcURL = f'{strProdURL}/vmc/api/orgs/{orgid}/sddcs/{sddcid}'
+#     print("Please Wait...Signatures Loading")
+#     sddcResponse = requests.get(sddcURL, headers=myHeader)
+#     json_response = sddcResponse.json()
+#     sddcInfo = json_response['resource_config']
+#     localNSX = sddcInfo['nsx_mgr_url']
+#     localNSXUsername = sddcInfo['nsx_cloud_admin']
+#     localNSXPassword = sddcInfo['nsx_cloud_admin_password']
+#     headers = {"Authorization": f"Bearer {session_token}"}
+#     sigVerURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions"
+#     response = requests.get(sigVerURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
+#     response = response.json()
+#     sigVersion = response['results']
+#     for i in range(len(sigVersion)):
+#         if 'state' in sigVersion[i] and sigVersion[i]['state'] == "ACTIVE":
+#             sigActiveID = sigVersion[i]['id']
+#         else:
+#             pass
+#     myURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions/{sigActiveID}/signatures"
+#     response = requests.get(myURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
+#     json_response = response.json()
+#     idsSigs = json_response['results']
+#     result_count = json_response['result_count']
+#     while 'cursor' in json_response:
+#         myURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions/{sigActiveID}/signatures?cursor=" + \
+#                 json_response['cursor']
+#         response = requests.get(myURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
+#         if response is None or response.status_code != 200:
+#             print(f'API Call Status {response.status_code}, text:{response.text}')
+#             return False
+#         json_response = response.json()
+#         idsSigs.extend(json_response['results'])
+#     search = ''
+#     idsTable = PrettyTable(
+#         ['Signature ID', 'IDS Details', 'Product Affected', 'Attack Target', 'Attack Type', 'CVSS', 'CVE'])
+#     while search != "5":
+#         print("\nPlease select the category for which you would like a list of signatures:")
+#         print("\t1 - CVE Number")
+#         print("\t2 - CVSS")
+#         print("\t3 - Product Affected")
+#         print("\n")
+#         search = input('What would you like to search for? ')
+#         if search == "1":
+#             cveNum = input('Enter the CVE number exactly ')
+#             for i in range(len(idsSigs)):
+#                 if idsSigs[i]['cves'][0] == cveNum:
+#                     idsName = idsSigs[i]['name']
+#                     idsID = idsSigs[i]['signature_id']
+#                     idsProd = idsSigs[i]['product_affected']
+#                     idsAttTar = idsSigs[i]['attack_target']
+#                     idsAttType = idsSigs[i]['class_type']
+#                     idsCVSS = idsSigs[i]['cvssv3']
+#                     idsTable.add_row([idsID, idsName, idsProd, idsAttTar, idsAttType, idsCVSS, cveNum])
+#             print(idsTable)
+#         else:
+#             print("Please choose 1, 2, or 3 - Try again or check the help.")
+
+
+def listIdsPolicies(proxy, session_token):
+    json_response = get_ids_policies_json(proxy, session_token)
+    policyTable = PrettyTable(['Policy Name', 'Stateful', 'Locked'])
+    policyResponse = json_response['results']
+    for i in range(len(policyResponse)):
+        policyName = policyResponse[i]['display_name']
+        policyState = policyResponse[i]['stateful']
+        policyLocked = policyResponse[i]['locked']
+        policyTable.add_row([policyName, policyState, policyLocked])
+    print(policyTable)
+
 def getHelp():
     print("\nWelcome to PyVMC !")
     print("\nHere are the currently supported commands: ")
@@ -2564,6 +2799,22 @@ def getHelp():
     print("\tenable-tkg: Enable Tanzu Kubernetes Grid on an SDDC")
     print("\tdisable-tkg: Disable Tanzu Kubernetes Grid on an SDDC")
     print("\n")
+    print("\nNSX-T Advanced Firewall Add-on - Add-on must be activated via GUI in the Cloud Services Portal")
+    print("\tshow-nsxaf-status: Display the status of the NSX Advanced Firewall Add-on")
+    print("\tDistributed IDS Operations")
+    print("\t   show-ids-cluster-status: Show IDS status for each cluster in the SDDC")
+    print("\t   enable-cluster-ids [CLUSTER_ID]: Enable IDS on cluster")
+    print("\t   disable-cluster-ids [CLUSTER_ID]: Disable IDS on cluster")
+    print("\t   enable-all-cluster-ids: Enable IDS on all clusters")
+    print("\t   disable-all-cluster-ids: Disable IDS on all clusters")
+    print("\t   enable-ids-auto-update: Enable IDS signature auto update")
+    print("\t   ids-update-signatures: Force update of IDS signatures")
+    print("\t   show-ids-signature-versions: Show downloaded signature versions")
+    print("\t   show-ids-profiles: Show all IDS profiles")
+    print("\t   search-ids-signatures: Search through the active IDS signature for signature ID and description")
+    print("\t   show-ids-policies: List all IDS policies")
+    print("\t   show-ids-rules [POLICY_NAME]: SHow all IDS rules under POLICY_NAME")
+    print("\t   show-ids-rules-all: List all IDS rules")
 
 
 # --------------------------------------------
@@ -3538,6 +3789,48 @@ elif intent_name == "get-tkg-info":
     print("    TKG info:")  
     cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
     get_tkg_info(ORG_ID, cluster_id, session_token)
+
+# =============================
+# NSX-T Advanced Firewall Add-on
+# =============================
+
+elif intent_name == "show-nsxaf-status":
+    getNSXAFAddOn(ORG_ID, SDDC_ID, session_token)
+
+elif intent_name == "show-ids-cluster-status":
+    getNsxIdsEnabledClusters(proxy, session_token)
+
+elif intent_name == "enable-cluster-ids":
+    cluster_id = sys.argv[2]
+    enableNsxIdsCluster (proxy, session_token, cluster_id)
+
+elif intent_name == "disable-cluster-ids":
+    cluster_id = sys.argv[2]
+    disableNsxIdsCluster (proxy, session_token, cluster_id)
+
+elif intent_name == "enable-all-cluster-ids":
+    enableNsxIdsAll (proxy, session_token)
+
+elif intent_name == "disable-all-cluster-ids":
+    disableNsxIdsAll (proxy, session_token)
+
+elif intent_name == "enable-ids-auto-update":
+    enableNsxIdsAutoUpdate (proxy, session_token)
+
+elif intent_name == "ids-update-signatures":
+    NsxIdsUpdateSignatures (proxy, session_token)
+
+elif intent_name == "show-ids-signature-versions":
+    getNsxIdsSigVersions (proxy, session_token)
+
+elif intent_name == "show-ids-profiles":
+    getIdsProfiles (proxy, session_token)
+
+elif intent_name == "search-ids-signatures":
+    searchIdsSignatures (ORG_ID, SDDC_ID, session_token)
+
+elif intent_name == "show-ids-policies":
+    listIdsPolicies (proxy, session_token)
         
 elif intent_name == "help":
     getHelp()
