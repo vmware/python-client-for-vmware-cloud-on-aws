@@ -198,3 +198,93 @@ def get_l2vpn_session_json(proxy_url, sessiontoken):
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     return json_response
+
+
+def get_vpn_stats_json(proxy_url, session_token, tunnel_id):
+    """returns JSON response with VPN statistics"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{tunnel_id}/statistics'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    return json_response
+
+
+def get_ipsec_vpn_services(proxy_url, session_token, vpn_id):
+    """returns JSON response with VPN services"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    return json_response
+
+
+def get_ipsec_vpn_endpoints(proxy_url, session_token):
+    """returns JSON response with IPSEC VPN endpoints"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    return json_response
+
+
+def new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name):
+    """Creates new IPSEC VPN session and returns HTML status code"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+
+def new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data):
+    """Creates new IPSEC VPN Profile and returns HTML status code"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+
+def new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_data):
+    """Creates new IPSEC VPN IKE profile and returns HTML status code"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+
+def new_l2vpn_json (proxy_url, session_token, display_name, json_data):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response_status_code = response.status_code
+    return json_response_status_code
+
+
+def delete_ipsec_vpn_json(proxy_url, session_token, vpn_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
+    json_response = requests.delete(myURL, headers=myHeader)
+    return json_response
+
+
+def delete_l2vpn_json(proxy_url, session_token, vpn_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{vpn_id}'
+    json_response = requests.delete(myURL, headers=myHeader)
+    return json_response
+
+
+def delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{vpn_id}'
+    json_response = requests.delete(myURL, headers=myHeader)
+    return json_response
+
+
+def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{id}'
+    json_response = requests.delete(myURL, headers=myHeader)
+    return json_response

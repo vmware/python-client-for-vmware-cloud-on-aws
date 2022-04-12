@@ -2646,11 +2646,8 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
 # ============================
 
 
-def newSDDCL2VPN(proxy_url, sessiontoken, display_name):
+def newSDDCL2VPN(proxy_url, session_token, display_name):
     """ Creates the configured L2 VPN """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/" + display_name)
-    print("PUT API call to "+myURL)
     json_data = {
     "transport_tunnels": [
         "/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + display_name
@@ -2659,43 +2656,32 @@ def newSDDCL2VPN(proxy_url, sessiontoken, display_name):
     "id": display_name,
     "display_name": "L2VPN",
 }
-    print("Payload Content:")
-    print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = new_l2vpn_json(proxy_url, session_token, display_name, json_data)
     return json_response_status_code
 
 
-def removeSDDCL2VPN(proxy_url, sessiontoken, id):
+def removeSDDCL2VPN(proxy_url, session_token, l2vpn_id):
     """ Remove a L2VPN """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/" + id)
-    response = requests.delete(myURL, headers=myHeader)
-    return response
+    json_response = delete_l2vpn_json(proxy_url, session_token, l2vpn_id)
+    return json_response
 
 
-def removeSDDCVPN(proxy_url, sessiontoken, id):
+def removeSDDCVPN(proxy_url, session_token, vpn_id):
     """ Remove a VPN session rule """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + id)
-    response = requests.delete(myURL, headers=myHeader)
-    return response
+    json_response = delete_ipsec_vpn_json(proxy_url, session_token, vpn_id)
+    return json_response
 
 
-def removeSDDCIPSecVpnIkeProfile(proxy_url, sessiontoken, id):
+def removeSDDCIPSecVpnIkeProfile(proxy_url, session_token, vpn_id):
     """ Remove a VPN session rule """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles/" + id)
-    response = requests.delete(myURL, headers=myHeader)
-    return response
+    json_response = delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id)
+    return json_response
 
 
-def removeSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, id):
+def removeSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, vpn_id):
     """ Remove a VPN Tunnel Profile  rule """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + id)
-    response = requests.delete(myURL, headers=myHeader)
-    return response
+    json_response = delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id)
+    return json_response
 
 
 def getSDDCL2VPNSession(proxy_url, sessiontoken):
@@ -2757,26 +2743,19 @@ def getSDDCVPNInternetIP(proxy_url, sessiontoken):
     print(vpn_internet_ip)
 
 
-def getSDDCVPNIpsecEndpoints(proxy_url, sessiontoken):
+def getSDDCVPNIpsecEndpoints(proxy_url, session_token):
     """ Gets the IPSec Local Endpoints """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    sddc_VPN_ipsec_endpoints = json_response['results']
+    json_response = get_ipsec_vpn_endpoints(proxy_url, session_token)
+    sddc_vpn_ipsec_endpoints = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Address'])
-    for i in sddc_VPN_ipsec_endpoints:
+    for i in sddc_vpn_ipsec_endpoints:
         table.add_row([i['display_name'], i['id'], i['local_address']])
     return table
 
 
-def getSDDCVPNServices(proxy_url, sessiontoken, vpn_id):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + vpn_id)
-    response = requests.get(myURL, headers=myHeader)
-    print(myURL)
-    i = response.json()
-    print(i)
+def getSDDCVPNServices(proxy_url, session_token, vpn_id):
+    """Returns Table of available VPN services"""
+    i = get_ipsec_vpn_services(proxy_url, session_token, vpn_id)
     table = PrettyTable(['Name', 'Id', 'Peer'])
     table.add_row([i['display_name'], i['id'], i['peer_address']])
     return table
@@ -2789,11 +2768,8 @@ def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
     return sddc_l2vpn_path
 
 
-def newSDDCIPSecVpnIkeProfile(proxy_url, sessiontoken, display_name):
+def newSDDCIPSecVpnIkeProfile(proxy_url, session_token, display_name):
     """ Creates the configured IPSec VPN Ike Profile """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles/" + display_name)
-    print("PUT API call to "+myURL)
     json_data = {
     "resource_type":"IPSecVpnIkeProfile",
     "display_name": display_name,
@@ -2803,18 +2779,12 @@ def newSDDCIPSecVpnIkeProfile(proxy_url, sessiontoken, display_name):
     "dh_groups":["GROUP14"],
     "ike_version":"IKE_V2"
     }
-    print("Payload Content:")
-    print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_data)
     return json_response_status_code
 
 
-def newSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, display_name):
+def newSDDCIPSecVpnTunnelProfile(proxy_url, session_token, display_name):
     """ Creates the configured IPSec VPN Tunnel Profile """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + display_name)
-    print("PUT API call to "+myURL)
     json_data = {
     "resource_type":"IPSecVpnTunnelProfile",
     "display_name": display_name,
@@ -2824,18 +2794,12 @@ def newSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, display_name):
     "dh_groups":["GROUP14"],
     "enable_perfect_forward_secrecy":True
     }
-    print("Payload Content:")
-    print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data)
     return json_response_status_code
 
 
-def newSDDCIPSecVpnSession(proxy_url, sessiontoken, display_name, endpoint, peer_ip):
+def newSDDCIPSecVpnSession(proxy_url, session_token, display_name, endpoint, peer_ip):
     """ Creates the configured IPSec VPN Tunnel Profile """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + display_name)
-    print("PUT API call to "+myURL)
     json_data = {
     "resource_type":"RouteBasedIPSecVpnSession",
     "display_name": display_name,
@@ -2859,21 +2823,16 @@ def newSDDCIPSecVpnSession(proxy_url, sessiontoken, display_name, endpoint, peer
         ]
         }]
     }
-    print("Payload Content:")
-    print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name)
     return json_response_status_code
 
 
 def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + tunnelID + "/statistics")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    sddc_VPN_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
+    """Returns table of VPN Statistics"""
+    json_response = get_vpn_stats_json(proxy_url, sessiontoken, tunnelID)
+    sddc_vpn_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
     table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
-    for i in sddc_VPN_statistics:
+    for i in sddc_vpn_statistics:
         table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
     return table
 
