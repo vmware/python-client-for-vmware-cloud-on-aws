@@ -1517,14 +1517,11 @@ def listIdsPolicies(proxy, session_token):
 # NSX-T - BGP and Routing
 # ============================
 
-
 def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
-    myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
-    response = requests.get(myURL, headers=myHeader)
-    if response.status_code == 200:
-        json_response = response.json()
-        neighbor_json = json_response
+    """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
+    neighbor = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    if neighbor.status_code == 200:
+        neighbor_json = neighbor.json()
         for key in list(neighbor_json.keys()):
             if key.startswith('_'):
                 del neighbor_json[key]
@@ -1542,7 +1539,7 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
         print("\n")
         test=input('What would you like to do? ')
         if test == "1":
-            pretty_json = json.dumps(json_response, indent=2)
+            pretty_json = json.dumps(neighbor_json, indent=2)
             print(pretty_json)
             print()
         elif test == "2":
@@ -1564,58 +1561,43 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
                 del neighbor_json["out_route_filters"]
             neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
         elif test == "5":
-            response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
-            if response.status_code == 200:
-                print("Complete")
+            attach_neighbor = attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, neighbor_json)
+            if attach_neighbor.status_code == 200:
+                print("Complete - route filter entry:")
                 print()
-                pretty_json = json.dumps(json_response, indent=2)
+                pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
                 print(pretty_json)
                 print()
             else:
-                print(response.status_code)
-                print(response.json())
+                print(attach_neighbor.status_code)
                 print()
         elif test == "6":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
-
 def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
-    myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
-    response = requests.get(myURL, headers=myHeader)
-    if response.status_code == 200:
-        json_response = response.json()
-        neighbor_json = json_response
-        for key in list(neighbor_json.keys()):
-            if key.startswith('_'):
-                del neighbor_json[key]
-        neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-        response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
-        if response.status_code == 200:
-            print("Prefix lists detached from " + neighbor_id)
-        else:
-            print(response.status_code)
-            print(response.json())
-            print()
-    else:
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-
+    """Detaches all prefix lists from specified T0 BGP neighbor - applicable for route-based VPN"""
+    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    for key in list(neighbor_json.keys()):
+        if key.startswith('_'):
+            del neighbor_json[key]
+    neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+    detach_sddc_t0_prefix_lists(proxy, session_token, neighbor_id, neighbor_json)
+    print("Prefix lists detached from " + neighbor_id)
 
 def newBGPprefixlist(csp_url, session_token):
-    myHeader = {'Authorization': f'Bearer {session_token}', 'Content-type': 'application/json'}
+    """Creates new prefix list for T0 edge gateway - applicable for route based VPN"""
 #   capture details for new prefix list
-    description= input('Enter a description name for the prefix list:  ')
-    display_name= input('Enter a display name for the prefix list:  ')
-    prefix_list_id= input('Enter an ID string for the prefix list:  ')
+    description= input('Enter a description name for the prefix list:  ').lower()
+    display_name= input('Enter a display name for the prefix list:  ').lower()
+    prefix_list_id= input('Enter an ID string for the prefix list:  ').lower()
 #   create python dictionary to contain the prefix list
     prefix_list = {}
     prefix_list['description'] = description
     prefix_list["display_name"] = display_name
     prefix_list["id"] = prefix_list_id
     prefix_list["prefixes"] = []
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
 #   append individual prefixes to the list
 #   begin input loop
     test = ''
@@ -1630,9 +1612,9 @@ def newBGPprefixlist(csp_url, session_token):
         if test== "2":
 #           capture details of new prefix from user
             cidr = input('Enter "ANY" or a network or IP address in CIDR format:  ')
-            action= input('Enter the action (PERMIT or DENY):  ')
+            action= input('Enter the action (PERMIT or DENY):  ').upper()
             if action == "PERMIT" or action == "DENY":
-                scope= input('Optional - Enter either le or ge:  ')
+                scope= input('Optional - Enter either le or ge:  ').lower()
                 if scope != "":
                     length= int(input('Required - Enter the length of the mask to apply:  '))
             else:
@@ -1650,30 +1632,16 @@ def newBGPprefixlist(csp_url, session_token):
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
         elif test == "1":
-            response = requests.patch(myURL, headers=myHeader, json=prefix_list)
-            if response.status_code == 200:
+            json_response = new_bgp_prefix_list_json(csp_url, session_token, prefix_list_id, prefix_list)
+            if json_response == 200:
                 print("prefix list added")
             else:
-                print(response.status_code)
-                print(response.json())
+                print(json_response)
                 print()
         elif test == "4":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
-
-
-def removeBPGprefixlist(csp_url, session_token, prefix_list_id):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.status_code
-    if json_response == 200 :
-        print("The BGP prefix list " + prefix_list_id + " has been deleted")
-    else :
-        print("Error " + json_response + ". Please try again.")
-    return json_response
-
 
 def getSDDCBGPAS(proxy_url,sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1682,7 +1650,6 @@ def getSDDCBGPAS(proxy_url,sessiontoken):
     SDDC_BGP = response.json()
     SDDC_BGP_AS = SDDC_BGP['local_as_num']
     return SDDC_BGP_AS
-
 
 def setSDDCBGPAS(proxy_url,sessiontoken,asn):
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1696,7 +1663,6 @@ def setSDDCBGPAS(proxy_url,sessiontoken,asn):
     json_response_status_code = response.status_code
     return json_response_status_code
 
-
 def getSDDCMTU(proxy_url,sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = (proxy_url + "/cloud-service/api/v1/infra/external/config")
@@ -1704,7 +1670,6 @@ def getSDDCMTU(proxy_url,sessiontoken):
     json_response = response.json()
     sddc_MTU = json_response['intranet_mtu']
     return sddc_MTU
-
 
 def setSDDCMTU(proxy_url,sessiontoken,mtu):
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1716,7 +1681,6 @@ def setSDDCMTU(proxy_url,sessiontoken,mtu):
     json_response_status_code = response.status_code
     return json_response_status_code
 
-
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1725,7 +1689,6 @@ def getSDDCEdgeCluster(proxy_url, sessiontoken):
     json_response = response.json()
     edge_cluster_id = json_response['results'][0]['id']
     return edge_cluster_id
-
 
 def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
     """ Gets the Edge Nodes Path """
@@ -1740,7 +1703,6 @@ def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
     else:
         print("fail")
 
-
 def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
     ### Displays counters for egress interface ###
     myHeader = {'csp-auth-token': sessiontoken}
@@ -1754,7 +1716,6 @@ def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
     else:
         print("fail")
 
-
 def getSDDCBGPVPN(proxy_url, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = (proxy_url + "/cloud-service/api/v1/infra/direct-connect/bgp")
@@ -1767,131 +1728,104 @@ def getSDDCBGPVPN(proxy_url, sessiontoken):
     else:
         return "The preferred path is over Direct Connect, with VPN as a back-up."
 
-
 def getSDDCT0BGPneighbors(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
-    response = requests.get(myURL, headers=myHeader)
-    if response.status_code == 200:
-        json_response = response.json()
-        bgp_neighbors = json_response['results']
-        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
-        for neighbor in bgp_neighbors:
-            if neighbor.get("in_route_filters"):
-                in_filter = neighbor['in_route_filters']
+    """Prints BGP neighbors for T0 edge gateway"""
+    bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
+    neighbors = bgp_neighbors['results']
+    bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
+    for neighbor in neighbors:
+        if neighbor.get("in_route_filters"):
+            in_filter = neighbor['in_route_filters']
+        else:
+            in_filter = "-"
+        if neighbor.get("out_route_filters"):
+            out_filter = neighbor['out_route_filters']
+        else:
+            out_filter = "-"
+        bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
+    print('NEIGHBORS:')
+    print(bgp_table)
+    if len(sys.argv) == 3:
+        if sys.argv[2] == "showjson":
+            print('RAW JSON:')
+            print(json.dumps(neighbors,indent=2))
+    
+def getSDDCT0BGPRoutes(csp_url, session_token):
+    """Prints BGP routes for T0 edge gateway"""
+    bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
+    learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
+    advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
+    neighbors = bgp_neighbors['results']
+    for i in range(len(neighbors)):
+        bgp_neighbor_id = neighbors[i]['id']
+        route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
+        route_advertised_json = get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id)
+#       Building the learned routes table
+        edgeLearnedRoutes = route_learned_json['results'][0]['egde_node_routes']
+        sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
+        bgpLearnedRoutes = edgeLearnedRoutes[1]['routes']
+        for x in range(len(bgpLearnedRoutes)):
+            learnedRoutesTable.add_row([bgp_neighbor_id,sourceAddrLearned,bgpLearnedRoutes[x]['as_path'],bgpLearnedRoutes[x]['network'],bgpLearnedRoutes[x]['next_hop']])
+#       Building the advertised routes table
+        edgeAdvertisedRoutes = route_advertised_json['results'][0]['egde_node_routes']
+        sourceAddrAdvertised = edgeAdvertisedRoutes[0]['source_address']
+        bgpAdvertisedRoutes = edgeAdvertisedRoutes[1]['routes']
+        for y in range(len(bgpAdvertisedRoutes)):
+            advertisedRoutesTable.add_row([bgp_neighbor_id,sourceAddrAdvertised,bgpAdvertisedRoutes[y]['network'],bgpAdvertisedRoutes[y]['next_hop']])
+    print ('BGP Advertised Routes')
+    print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
+    print ('BGP Learned Routes')
+    print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
+    
+def getSDDCT0PrefixLists(csp_url, session_token):
+    """Prints prefix lists for T0 edge gateway - applicable for route-based VPN"""
+    prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
+    prefix_results = prefix_lists['results']
+#   clear results for any prefix lists found that contain "System created prefix list"
+    str_check = 'System created prefix list'
+    for item in range(len(prefix_results)):
+        if "description" in prefix_results[item]:
+            if str_check in prefix_results[item]['description']:
+                prefix_results[item].clear()
+#   remove empty dictionaries
+    prefix_results = list(filter(None, prefix_results))
+#   print a nicely formatted list of only user-uploaded prefix lists; system created lists were eliminated in above code
+    if len(prefix_results) != 0:
+        for prefixlist in prefix_results:
+            if "description" in prefixlist:
+                prefixlisttable = PrettyTable(['ID','Display Name','Description'])
+                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
             else:
-                in_filter = "-"
-            if neighbor.get("out_route_filters"):
-                out_filter = neighbor['out_route_filters']
-            else:
-                out_filter = "-"
-            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
-        print('NEIGHBORS:')
-        print(bgp_table)
+                prefixlisttable = PrettyTable(['ID','Display Name'])
+                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"]])
+            print("PREFIX:")
+            print(prefixlisttable)
+            prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
+            i = 0
+            if prefixlist.get('prefixes'):
+                for prefix in prefixlist['prefixes']:
+                    i+=1
+                    if prefix.get('ge'):
+                        comparison = "ge (greater-than-or-equal)"
+                    elif prefix.get('le'):
+                        comparison = "le (less-than-or-equal)"
+                    else:
+                        comparison = '-'
+                    prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+                print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+                print(prefixtable)
+                print("")
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
                 print('RAW JSON:')
-                print(json.dumps(bgp_neighbors,indent=2))
+                print(json.dumps(prefix_lists,indent=2))
     else:
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-
-
-def getSDDCT0BGPRoutes(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    neighborURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
-    jsonResponse = requests.get(neighborURL, headers=myHeader)
-    learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
-    advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
-    if jsonResponse.status_code == 200:
-        neighborResponse = jsonResponse.json()
-        neighbors = neighborResponse['results']
-        for i in range(len(neighbors)):
-            bgpNeighborID = neighbors[i]['id']
-            routeLearnedURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgpNeighborID + '/routes'
-            routeAdvertisedURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgpNeighborID + '/advertised-routes'
-            jsonResponseLearned = requests.get(routeLearnedURL, headers=myHeader)
-            jsonResponseAdvertised = requests.get(routeAdvertisedURL, headers=myHeader)
-            if jsonResponseLearned.status_code == 200 and jsonResponseAdvertised.status_code == 200:
-#               Building the learned routes table
-                routeLearnedResponse = jsonResponseLearned.json()
-                edgeLearnedRoutes = routeLearnedResponse['results'][0]['egde_node_routes']
-                sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
-                bgpLearnedRoutes = edgeLearnedRoutes[1]['routes']
-                for x in range(len(bgpLearnedRoutes)):
-                   learnedRoutesTable.add_row([bgpNeighborID,sourceAddrLearned,bgpLearnedRoutes[x]['as_path'],bgpLearnedRoutes[x]['network'],bgpLearnedRoutes[x]['next_hop']])
-
-#               Building the advertised routes table
-                routeAdvertisedResponse = jsonResponseAdvertised.json()
-                edgeAdvertisedRoutes = routeAdvertisedResponse['results'][0]['egde_node_routes']
-                sourceAddrAdvertised = edgeAdvertisedRoutes[0]['source_address']
-                bgpAdvertisedRoutes = edgeAdvertisedRoutes[1]['routes']
-                for y in range(len(bgpAdvertisedRoutes)):
-                    advertisedRoutesTable.add_row([bgpNeighborID,sourceAddrAdvertised,bgpAdvertisedRoutes[y]['network'],bgpAdvertisedRoutes[y]['next_hop']])
-            else:
-                print (f'API call failed with status code {jsonResponseLearned.status_code}. URL: {routeLearnedURL}.')
-                print (f'API call failed with status code {jsonResponseAdvertised.status_code}. URL: {routeAdvertisedURL}.')
-
-        print ('BGP Advertised Routes')
-        print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
-        print ('BGP Learned Routes')
-        print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
-    else:
-        print (f'API call failed with status code {jsonResponse.status_code}. URL: {neighborURL}.')
-
-
-def getSDDCT0PrefixLists(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{csp_url}/policy/api/v1/infra/tier-0s/vmc/prefix-lists'
-    response = requests.get(myURL, headers=myHeader)
-    if response.status_code == 200:
-        json_response = response.json()
-        prefixlists = json_response['results']
-        # clear results for any prefix lists found that contain "System created prefix list"
-        # this will return empty dictionaries for any containing the above string
-        for prefix in prefixlists:
-            if prefix['description'].__contains__('System created prefix list'):
-                prefix.clear()
-        # remove empty dictionaries
-        while {} in prefixlists:
-            prefixlists.remove({})
-        # print a nicely formatted list of only user-uploaded prefix lists; system created lists were eliminated in above code
-        if len(prefixlists) != 0:
-            for prefixlist in prefixlists:
-                prefixlisttable = PrettyTable(['ID','Display Name','Description'])
-                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
-                print("PREFIX:")
-                print(prefixlisttable)
-                prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
-                i = 0
-                if prefixlist.get('prefixes'):
-                    for prefix in prefixlist['prefixes']:
-                        i+=1
-                        if prefix.get('ge'):
-                            comparison = "ge (greater-than-or-equal)"
-                        elif prefix.get('le'):
-                            comparison = "le (less-than-or-equal)"
-                        else:
-                            comparison = '-'
-                        prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
-                    print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
-                    print(prefixtable)
-                    print("")
-            if len(sys.argv) == 3:
-                if sys.argv[2] == "showjson":
-                    print('RAW JSON:')
-                    print(json.dumps(prefixlists,indent=2))
-        else:
-            print("No user created prefixes found.")
-    else:
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-
+        print("No user created prefixes found.")
 
 def getSDDCT0routes(proxy_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint".format(proxy_url)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    t0_routes = json_response['results'][1]['route_entries']
+    """Prints all routes for T0 edge gateway"""
+    t0_routes_json = get_sddc_t0_routes_json(proxy, session_token)
+    t0_routes = t0_routes_json['results'][1]['route_entries']
     route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_routes:
         route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
@@ -1900,11 +1834,9 @@ def getSDDCT0routes(proxy_url, session_token):
     print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
     print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
 
-
 # ============================
 # NSX-T - DNS
 # ============================
-
 
 def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
     """ Gets the DNS Services. Use 'mgw' or 'cgw' as the parameter """
@@ -1917,7 +1849,6 @@ def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
     table = PrettyTable(['ID', 'Name', 'Listener IP'])
     table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
     return table
-
 
 def getSDDCDNS_Zones(proxy_url,sessiontoken):
     """ Gets the SDDC Zones """
@@ -1932,7 +1863,6 @@ def getSDDCDNS_Zones(proxy_url,sessiontoken):
     for i in sddc_dns:
         table.add_row([i['id'], i['display_name'], i['dns_domain_names'], i['upstream_servers']])
     return table
-
 
 # ============================
 # NSX-T - Firewall - Gateway
@@ -3369,7 +3299,11 @@ elif intent_name == "new-t0-prefix-list":
     newBGPprefixlist(proxy, session_token)
 elif intent_name == "remove-t0-prefix-list":
     prefix_list_id = sys.argv[2]
-    removeBPGprefixlist(proxy, session_token, prefix_list_id)
+    json_response = remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
+    if json_response == 200 :
+        print("The BGP prefix list " + prefix_list_id + " has been deleted")
+    else :
+        print("Error " + json_response + ". Please try again.")
 elif intent_name == "set-sddc-bgp-as":
     if len(sys.argv) != 3:
         print("Incorrect syntax.")

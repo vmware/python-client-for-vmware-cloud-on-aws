@@ -1,4 +1,5 @@
 import json
+from weakref import proxy
 import requests
 from requests.sessions import session
 from requests.auth import HTTPBasicAuth
@@ -8,7 +9,6 @@ from requests.auth import HTTPBasicAuth
 # Advanced Firewall
 # ============================
 
-
 def get_nsx_ids_cluster_enabled_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs"
@@ -16,20 +16,17 @@ def get_nsx_ids_cluster_enabled_json(proxy, session_token):
     json_response = response.json()
     return json_response
 
-
 def enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{targetID}"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
     return response, myURL
 
-
 def disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{targetID}"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
     return response, myURL
-
 
 def enable_nsx_ids_auto_update_json(proxy, session_token, json_data):
     myHeader = {'csp-auth-token': session_token}
@@ -57,7 +54,6 @@ def get_ids_profiles_json(proxy, session_token):
     prof_response = response.json()
     return prof_response
 
-
 def get_ids_policies_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies'
@@ -65,11 +61,94 @@ def get_ids_policies_json(proxy, session_token):
     json_response = response.json()
     return json_response
 
-
 # ============================
 # BGP and Routing
 # ============================
+def attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json):
+    """Creates a new BGP prefix lists for T0 edge gateway - applicable for route based VPN"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
+    response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
+    return response
 
+def get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgp_neighbor_id + '/advertised-routes'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        return json_response
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def get_sddc_t0_bgp_neighbors_json(proxy, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        return json_response
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def detach_sddc_t0_prefix_lists(proxy, session_token, neighbor_id, neighbor_json):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
+    response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
+    if response.status_code != 200:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
+    response = requests.get(myURL, headers=myHeader)
+    return response
+
+def get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + bgp_neighbor_id + '/routes'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        return json_response
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def get_sddc_t0_prefixlists_json(proxy, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/prefix-lists'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        return json_response
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def get_sddc_t0_routes_json(proxy, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/routing-table?enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        json_response = response.json()
+        return json_response
+    else:
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+
+def new_bgp_prefix_list_json(proxy, session_token, prefix_list_id, prefix_list):
+    """Creates a new BGP prefix lists for T0 edge gateway - applicable for route based VPN"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
+    response = requests.patch(myURL, headers=myHeader, json=prefix_list)
+    json_response = response.status_code
+    return json_response
+
+def remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id):
+    """Removes BGP prefix lists from T0 edge gateway - applicable for route based VPN"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.status_code
+    return json_response
 
 # ============================
 # DNS
