@@ -84,6 +84,18 @@ Here are the currently supported commands:
 
 - Inventory Groups
     - new-group [CGW/MGW] [Group_ID]: create a new group
+        - new-group [MGW] [Group_ID]: Create a new IP-based MGW group, the script prompts for a list of IPs
+        - new-group [MGW] [Group_ID] [IPs]: Create a new IP-based MGW group using a list of comma-separated IP addresses
+        - new-group [CGW] [Group_ID] [ip-based]: Create a new IP-based CGW group, the script prompts for a list of IPs
+        - new-group [CGW] [Group_ID] [ip-based] [IPs]: Create a new IP-based MGW group using a list of comma-separated IP addresses
+        - new-group [CGW] [Group_ID] [criteria-based]: Create a new criteria-based virtual machine CGW group, the script prompts for the following:
+            - Key [Name, Tag, OSName, ComputerName]
+            - Operator [EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH]
+            - Value
+        - new-group [CGW] [Group_ID] [criteria-based] [Name, Tag, OSName,ComputerName] [EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH] [value]: Create a new criteria-based virtual machine CGW group
+        - new-group [CGW] [Group_ID] [member-based]: Create a new member-based virtual machine CGW group, the script prompts for a list of VM names
+        - new-group [CGW] [Group_ID] [member-based] [vms]: Create a new member-based virtual machine CGW group, using a comma-separated list of VM names
+        - new-group [CGW] [Group_ID] [group-based] [existing-group-name]: Create a new group-based CGW group, passing an existing group name to include as group member
     - remove-group [CGW/MGW][Group_ID]: remove a group
     - show-group [CGW/MGW] [Group_ID]: show existing groups
     - show-group-association [CGW/MGW] [Group_ID]: show security rules used by a groups
