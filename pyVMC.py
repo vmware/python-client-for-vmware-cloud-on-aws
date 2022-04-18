@@ -97,39 +97,29 @@ class data():
 
 
 def addUsersToCSPGroup(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token,'Content-Type': 'application/json'}
-
     if len(sys.argv) < 4:
         print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
         sys.exit()
-
     groupId = sys.argv[2]
     usernamesToAdd = sys.argv[3].split(',')
-
-    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupId}/users'
     params = {
             'notifyUsers': 'false',
             'usernamesToAdd': usernamesToAdd
     }
-    response = requests.post(myURL,data=json.dumps(params), headers=myHeader)
-    response_json = response.json()
-    if response.status_code == 200:
-        print(f"Added: {response_json['succeeded']}" )
-        print(f"Failed: {response_json['failed']}" )
+    json_response, json_response_status_code, myURL = add_users_csp_group_json(csp_url, ORG_ID, session_token, groupId, params)
+    if json_response_status_code == 200:
+        print(f"Added: {json_response['succeeded']}" )
+        print(f"Failed: {json_response['failed']}" )
     else:
-        print (f'Operation failed with status code {response.status_code}. URL: {myURL}. Body: {params}')
+        print(f'Operation failed with status code {json_response_status_code}. URL: {myURL}. Body: {params}')
 
 
 def findCSPUserByServiceRole(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
     if len(sys.argv) < 3:
         print('Usage: find-csp-user-by-service-role [role]')
         sys.exit()
-
-    role_name= sys.argv[2]
-    myURL = csp_url + f'/csp/gateway/am/api/v2/orgs/{ORG_ID}/users'
-    response = requests.get(myURL,headers=myHeader)
-    json_response = response.json()
+    role_name = sys.argv[2]
+    json_response = get_csp_users_json(csp_url, ORG_ID, session_token)
     users = json_response['results']
     table = PrettyTable(['Email','Service Role', 'Org Role'])
     for user in users:
@@ -144,15 +134,12 @@ def findCSPUserByServiceRole(csp_url, session_token):
 
 
 def getCSPGroupDiff(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
     if len(sys.argv) < 3:
         print('Usage: show-csp-group-diff [groupID] [showall|skipmembers|skipowners]')
         sys.exit()
-
     # Optional filter for org owners and members
     SKIP_MEMBERS = False
     SKIP_OWNERS = False
-
     if len(sys.argv) == 4:
         if sys.argv[3] == "skipmembers":
             SKIP_MEMBERS = True
@@ -160,23 +147,15 @@ def getCSPGroupDiff(csp_url, session_token):
         elif sys.argv[3] == "skipowners":
             SKIP_OWNERS = True
             print('Skipping owners...')
-
     groupId = sys.argv[2]
-    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupId}'
-    response = requests.get(myURL,headers=myHeader)
-    json_response = response.json()
-    grouproles = json_response['serviceRoles']
-
-    myURL = csp_url + f'/csp/gateway/am/api/v2/orgs/{ORG_ID}/users'
-    response = requests.get(myURL,headers=myHeader)
-    json_response = response.json()
-    users = json_response['results']
+    json_response_groups = get_csp_group_info_json(csp_url, ORG_ID, session_token, groupId)
+    grouproles = json_response_groups['serviceRoles']
+    json_response_users = get_csp_users_json(csp_url, ORG_ID, session_token)
+    users = json_response_users['results']
     grouprolelist = []
     for role in grouproles:
         for rname in role['serviceRoleNames']:
             grouprolelist.append(rname)
-
-
     print('Group role list:')
     print(grouprolelist)
     i = 0
@@ -186,28 +165,22 @@ def getCSPGroupDiff(csp_url, session_token):
             if orgrole['name'] == 'org_owner':
                 IS_OWNER = True
                 break
-
         IS_MEMBER = False
         for orgrole in user['organizationRoles']:
             if orgrole['name'] == 'org_member':
                 IS_MEMBER = True
                 break
-
         if IS_OWNER and SKIP_OWNERS:
             continue
-
         if IS_MEMBER and SKIP_MEMBERS:
             continue
-
         i += 1
         if i % 25 == 0:
             wait = input("Press Enter to show more users, q to quit: ")
             if wait == 'q':
                 sys.exit()
-
             print('Group role list:')
             print(grouprolelist)
-
         print(user['user']['email'],f'({i} of {len(users)})')
         print(f'Member: {IS_MEMBER}, Owner: {IS_OWNER}')
         userrolelist = []
@@ -226,28 +199,20 @@ def getCSPGroupMembers(csp_url, session_token):
     if len(sys.argv) < 3:
         print('Usage: show-csp-group-members [groupID]')
     groupid = sys.argv[2]
-    myHeader = {'csp-auth-token': session_token}
-    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups/{groupid}/users'
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_csp_users_group_json(csp_url, ORG_ID, session_token, groupid)
     users = json_response['results']
     table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
     for user in users:
         table.add_row([user['username'],user['firstName'],user['lastName'],user['email'],user['userId']])
-
     print(table)
 
 
 def getCSPGroups(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/groups'
-    response = requests.get(myURL,headers=myHeader)
-    json_response = response.json()
+    json_response = get_csp_groups_json(csp_url, ORG_ID, session_token)
     groups = json_response['results']
     table = PrettyTable(['ID','Name', 'Group Type','User Count'])
     for grp in groups:
         table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-
     print(table)
 
 
@@ -255,34 +220,25 @@ def getCSPOrgUsers(csp_url,session_token):
     if len(sys.argv) < 3:
         print('Usage: show-csp-org-users [searchTerms]')
     else:
-        myHeader = {'csp-auth-token': session_token,'Content-Type': 'application/json'}
         searchTerm = sys.argv[2]
-        myURL = csp_url + f'/csp/gateway/am/api/orgs/{ORG_ID}/users/search'
         params = {
             'userSearchTerm': searchTerm
         }
-        #response = requests.post(myURL,data=json.dumps(body), headers=myHeader)
-        response = requests.get(myURL,headers=myHeader, params=params)
-        if response.status_code == 200:
-            response_json = response.json()
-            users = response_json['results']
+        json_response, json_response_status_code, myURL = search_csp_users_json(csp_url, session_token, params, ORG_ID)
+        if json_response_status_code == 200:
+            users = json_response['results']
             if len(users) >= 20:
                 print("Search API is limited to 20 results, refine your search term for accurate results.")
-            table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
+            table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
             for user in users:
-                table.add_row([user['user']['username'],user['user']['firstName'],user['user']['lastName'],user['user']['email'],user['user']['userId']])
-
+                table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
             print(table)
         else:
-            print (f'Search failed with status code {response.status_code}. URL: {myURL}. Body: {body}')
+            print(f'Search failed with status code {json_response_status_code}. URL: {myURL}. Body: {params}')
 
 
 def getCSPServiceRoles(csp_url, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = csp_url + f'/csp/gateway/am/api/loggedin/user/orgs/{ORG_ID}/service-roles'
-    response = requests.get(myURL,headers=myHeader)
-    json_response = response.json()
-    #print(json.dumps(json_response, indent=4))
+    json_response = get_csp_service_roles_json(csp_url, ORG_ID, session_token)
     for svc_def in json_response['serviceRoles']:
         for svc_role in svc_def['serviceRoleNames']:
             print(svc_role)
