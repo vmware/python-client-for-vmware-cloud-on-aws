@@ -259,24 +259,19 @@ def showORGusers(orgID, sessiontoken):
 # ============================
 
 
-def setSDDCConnectedServices(proxy_url,sessiontoken, value):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/linked-vpcs")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+def setSDDCConnectedServices(proxy_url, sessiontoken, value):
+    """Sets SDDC access to S3 to either internet or connected VPC via input value"""
+    json_response = get_conencted_vpc_json(proxy_url, sessiontoken)
     sddc_connected_vpc = json_response['results'][0]
-    mySecondURL = (proxy_url + "/cloud-service/api/v1/infra/linked-vpcs/" + sddc_connected_vpc['linked_vpc_id'] + "/connected-services/s3")
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
     json_data = {
-    "name": "s3" ,
-    "enabled": value
+        "name": "s3",
+        "enabled": value
     }
-    thirdresponse = requests.put(mySecondURL, headers=myHeader, json=json_data)
-    json_response_status_code = thirdresponse.status_code
+    json_response_status_code = set_connected_vpc_services_json(proxy, sessiontoken, sddc_connected_vpc['linked_vpc_id'], json_data)
     return json_response_status_code
 
 
-def getCompatibleSubnets(orgID,sessiontoken,linkedAccountId,region):
+def getCompatibleSubnets(orgID, sessiontoken, linkedAccountId,region):
     """Lists all of the compatible subnets by Account ID and AWS Region"""
     jsonResponse = get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAccountId, region)
     vpc_map = jsonResponse['vpc_map']
@@ -303,25 +298,19 @@ def getConnectedAccounts(orgID, sessiontoken):
     print(table)
 
 
-def getSDDCConnectedVPC(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/linked-vpcs")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+def getSDDCConnectedVPC(proxy_url, session_token):
+    """Returns table with Connected VPC and Services information"""
+    json_response = get_conencted_vpc_json(proxy_url, session_token)
     sddc_connected_vpc = json_response['results'][0]
-    mySecondURL = (proxy_url + "/cloud-service/api/v1/infra/linked-vpcs/" + sddc_connected_vpc['linked_vpc_id'] + "/connected-services")
-    response_second = requests.get(mySecondURL, headers=myHeader)
-    sddc_connected_vpc_services = response_second.json()
+    sddc_connected_vpc_services = get_connected_vpc_services_json(proxy_url, session_token, sddc_connected_vpc['linked_vpc_id'])
     table = PrettyTable(['Customer-Owned Account', 'Connected VPC ID', 'Subnet', 'Availability Zone', 'ENI', 'Service Access'])
     table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], sddc_connected_vpc['active_eni'],sddc_connected_vpc_services['results'][0]['enabled']])
     return table
 
 
 def getSDDCShadowAccount(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/accounts")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    """Returns SDDC Shadow Account"""
+    json_response = get_sddc_shadow_account_json(proxy_url, sessiontoken)
     sddc_shadow_account = json_response['shadow_account']
     return sddc_shadow_account
 
@@ -369,14 +358,10 @@ def getSDDCS(orgID, sessiontoken):
     print(table)
 
 
-def getVMs(proxy_url,sessiontoken):
+def getVMs(proxy_url, session_token):
     """ Gets a list of all compute VMs, with their power state and their external ID. """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    VMlist_url = (proxy_url_short + "policy/api/v1/infra/realized-state/enforcement-points/vmc-enforcementpoint/virtual-machines")
-    response = requests.get(VMlist_url, headers=myHeader)
-    response_dictionary = response.json()
-    extracted_dictionary = response_dictionary['results']
+    json_response = get_vms_json(proxy_url, session_token)
+    extracted_dictionary = json_response['results']
     table = PrettyTable(['Display_Name', 'Status', 'External_ID'])
     for i in extracted_dictionary:
         table.add_row([i['display_name'], i['power_state'], i['external_id']])
