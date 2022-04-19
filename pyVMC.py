@@ -1519,12 +1519,14 @@ def listIdsPolicies(proxy, session_token):
 
 def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
     """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
-    neighbor = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
-    if neighbor.status_code == 200:
-        neighbor_json = neighbor.json()
-        for key in list(neighbor_json.keys()):
+    json_response, json_response_status_code, myURL = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    if json_response_status_code == 200:
+        for key in list(json_response.keys()):
             if key.startswith('_'):
-                del neighbor_json[key]
+                del json_response[key]
+    else:
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 #   while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
 #   begin input loop
     test = ''
@@ -1539,37 +1541,41 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
         print("\n")
         test=input('What would you like to do? ')
         if test == "1":
-            pretty_json = json.dumps(neighbor_json, indent=2)
+            pretty_json = json.dumps(json_response, indent=2)
             print(pretty_json)
             print()
         elif test == "2":
             prefix_list_id = input('Please enter the prefix list ID exactly ')
-            neighbor_json['route_filtering'][0]["in_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
+            json_response['route_filtering'][0]["in_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
             print()
             print("Prefix list " + prefix_list_id + " has been added to in_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
             print()
         elif test =="3":
             prefix_list_id = input('Please enter the prefix list ID exactly ')
-            neighbor_json['route_filtering'][0]["out_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
+            json_response['route_filtering'][0]['out_route_filters'] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
             print()
-            print("Prefix list " + prefix_list_id + " has been added to out_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
+            print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review before commit.')
             print()
         elif test =="4":
-            if neighbor_json.get("in_route_filters"):
-                del neighbor_json["in_route_filters"]
-            if neighbor_json.get("out_route_filters"):
-                del neighbor_json["out_route_filters"]
-            neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+            if json_response.get("in_route_filters"):
+                del json_response["in_route_filters"]
+            if json_response.get("out_route_filters"):
+                del json_response["out_route_filters"]
+            json_response['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+            print()
+            print(f'Prefix lists have been been cleard for neighbor id {neighbor_id}. Please review before commit.')
+            print()
         elif test == "5":
-            attach_neighbor = attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, neighbor_json)
-            if attach_neighbor.status_code == 200:
+            attach_json_response, attach_response_status_code, myURL = attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, json_response)
+            if attach_response_status_code == 200:
                 print("Complete - route filter entry:")
                 print()
-                pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
+                pretty_json = json.dumps(json_response["route_filtering"], indent=2)
                 print(pretty_json)
                 print()
             else:
-                print(attach_neighbor.status_code)
+                print (f'API call failed with status code {attach_response_status_code}. URL: {myURL}.')
+                print(attach_json_response['error_message'])
                 print()
         elif test == "6":
             break
@@ -1578,15 +1584,32 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
 
 def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
     """Detaches all prefix lists from specified T0 BGP neighbor - applicable for route-based VPN"""
-    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
-    for key in list(neighbor_json.keys()):
-        if key.startswith('_'):
-            del neighbor_json[key]
-    neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-    detach_sddc_t0_prefix_lists(proxy, session_token, neighbor_id, neighbor_json)
-    print("Prefix lists detached from " + neighbor_id)
+    neighbor_json, neighbor_json_response_status_code, myURL = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    if neighbor_json_response_status_code == 200:
+        for key in list(neighbor_json.keys()):
+            if key.startswith('_'):
+                del neighbor_json[key]
+        neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+        json_response, json_response_status_code, myURL = detach_sddc_t0_prefix_lists(proxy, session_token, neighbor_id, neighbor_json)
+        if json_response_status_code == 200:
+            print(f'Prefix lists detached from {neighbor_id}')
+        else:
+            print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+            print(json_response['error_message'])
+    else:
+        print (f'API call failed with status code {neighbor_json_response_status_code}. URL: {myURL}.')
+        print(neighbor_json['error_message'])
 
-def newBGPprefixlist(csp_url, session_token):
+def getSDDCBGPAS(proxy,session_token):
+    """Get BGP ASN for DX Interface"""
+    sddc_bgp_as, sddc_bgp_as_json_response, sddc_bgp_as_response_status_code, myURL = get_sddc_bgp_as_json(proxy,session_token)
+    if sddc_bgp_as_response_status_code == 200:
+        print(f'The SDDC BGP Autonomous System is ASN {sddc_bgp_as}')
+    else:
+        print (f'API call failed with status code {sddc_bgp_as_response_status_code}. URL: {myURL}.')
+        print(sddc_bgp_as_json_response['error_message'])
+
+def newBGPprefixlist(proxy, session_token):
     """Creates new prefix list for T0 edge gateway - applicable for route based VPN"""
 #   capture details for new prefix list
     description= input('Enter a description name for the prefix list:  ').lower()
@@ -1632,207 +1655,243 @@ def newBGPprefixlist(csp_url, session_token):
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
         elif test == "1":
-            json_response = new_bgp_prefix_list_json(csp_url, session_token, prefix_list_id, prefix_list)
-            if json_response == 200:
+            json_response_status_code, myURL = new_bgp_prefix_list_json(proxy, session_token, prefix_list_id, prefix_list)
+            if json_response_status_code == 200:
                 print("prefix list added")
             else:
-                print(json_response)
+                print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
                 print()
         elif test == "4":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
-def getSDDCBGPAS(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/direct-connect/bgp")
-    response = requests.get(myURL, headers=myHeader)
-    SDDC_BGP = response.json()
-    SDDC_BGP_AS = SDDC_BGP['local_as_num']
-    return SDDC_BGP_AS
-
 def setSDDCBGPAS(proxy_url,sessiontoken,asn):
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = (proxy_url_short + "cloud-service/api/v1/infra/direct-connect/bgp")
-    json_data = {
+    """Set BGP ASN for DX interface"""
+    asn_data = {
     "local_as_num": asn
     }
-    response = requests.patch(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    asn_response_status_code, json_response, myURL = set_sddc_bgp_as_json(proxy_url,sessiontoken,asn_data)
+    if asn_response_status_code == 200:
+        print("The BGP AS has been updated:")
+        getSDDCBGPAS(proxy_url,session_token)
+        print("Please wait a few minutes for the update to complete.")
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {asn_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+        getSDDCBGPAS(proxy_url,session_token)   
 
 def getSDDCMTU(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/external/config")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    sddc_MTU = json_response['intranet_mtu']
-    return sddc_MTU
+    """Get MTU for DX Interface"""
+    json_response, json_response_status_code, myURL = get_sddc_mtu_json(proxy_url,sessiontoken)
+    if json_response_status_code == 200:
+        sddc_MTU = json_response['intranet_mtu']
+        print(f'The MTU over the Direct Connect is {sddc_MTU} Bytes.')
+    else:
+        print(f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 def setSDDCMTU(proxy_url,sessiontoken,mtu):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/external/config")
-    json_data = {
-    "intranet_mtu" : mtu
-    }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
-
-def getSDDCEdgeCluster(proxy_url, sessiontoken):
-    """ Gets the Edge Cluster ID """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    edge_cluster_id = json_response['results'][0]['id']
-    return edge_cluster_id
-
-def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
-    """ Gets the Edge Nodes Path """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters/" + edge_cluster_id + "/edge-nodes"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
+    """Set MTU for DX interface"""
+    json_response, json_response_status_code, myURL = set_mtu_json(proxy_url,session_token,mtu)
     if json_response_status_code == 200:
-        edge_path = json_response['results'][edge_id]['path']
-        return edge_path
+        print("The MTU has been updated:")
+        getSDDCMTU(proxy_url,sessiontoken)
     else:
-        print("fail")
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
-def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
-    ### Displays counters for egress interface ###
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/interfaces/public-0/statistics?edge_path=" + edge_path + "&enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
-    if json_response_status_code == 200:
-        total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
-        return total_bytes
+def getEgressInterfaceCounters(proxy,session_token):
+    """Show instand, point-in-time byte counters for edge appliance"""
+    edge_json_response, edge_json_response_status_code, myURL = get_sddc_edge_cluster_json(proxy, session_token)
+    if edge_json_response_status_code == 200:
+        edge_cluster = edge_json_response['results'][0]['id']
+        edge_path_0, edge_path_0_response_json, edge_path_0_response_status_code, myURL = get_sddc_edge_nodes_json(proxy, session_token, edge_cluster, 0)
+        if edge_path_0_response_status_code == 200:
+            stat_0_json_response, stat_0_json_response_status_code, myURL = get_sddc_internet_stats_json(proxy,session_token, edge_path_0)
+            if stat_0_json_response_status_code == 200:
+                stat_0_total_bytes = stat_0_json_response['per_node_statistics'][0]['tx']['total_bytes']
+            else:
+                print (f'API call failed with status code {stat_0_json_response_status_code}. URL: {myURL}.')
+                print(stat_0_json_response['error_message'])
+        else:
+            print (f'API call failed with status code {edge_path_0_response_status_code}. URL: {myURL}.')
+            print(edge_path_0_response_json['error_message'])
+        edge_path_1, edge_path_1_response_json, edge_path_1_response_status_code, myURL = get_sddc_edge_nodes_json(proxy, session_token, edge_cluster, 1)
+        if edge_path_1_response_status_code == 200:
+            stat_1_json_response, stat_1_json_response_status_code, myURL = get_sddc_internet_stats_json(proxy,session_token, edge_path_1)
+            if stat_1_json_response_status_code == 200:
+                stat_1_total_bytes = stat_1_json_response['per_node_statistics'][0]['tx']['total_bytes']
+            else:
+                print (f'API call failed with status code {stat_1_json_response_status_code}. URL: {myURL}.')
+                print(stat_1_json_response['error_message'])
+        else:
+            print (f'API call failed with status code {edge_path_1_response_status_code}. URL: {myURL}.')
+            print(edge_path_1_response_json['error_message'])
+        total_stat = stat_0_total_bytes + stat_1_total_bytes
+        print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
     else:
-        print("fail")
-
+        print (f'API call failed with status code {edge_json_response_status_code}. URL: {myURL}.')
+        print(edge_json_response['error_message'])
+   
 def getSDDCBGPVPN(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/direct-connect/bgp")
-    response = requests.get(myURL, headers=myHeader)
-    SDDC_BGP = response.json()
-    SDDC_BGP_VPN = SDDC_BGP['route_preference']
-
-    if SDDC_BGP_VPN == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
-        return "The preferred path is over VPN, with Direct Connect as a back-up."
+    """Returns preferred path of either VPN or Direct Connect"""
+    json_response, json_response_status_code, myURL = get_sddc_bgp_vpn_json(proxy_url, sessiontoken)
+    SDDC_BGP_VPN = json_response['route_preference']
+    if json_response_status_code == 200:
+        if SDDC_BGP_VPN == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
+            return "The preferred path is over VPN, with Direct Connect as a back-up."
+        else:
+            return "The preferred path is over Direct Connect, with VPN as a back-up."
     else:
-        return "The preferred path is over Direct Connect, with VPN as a back-up."
+        print(f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 def getSDDCT0BGPneighbors(csp_url, session_token):
     """Prints BGP neighbors for T0 edge gateway"""
-    bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
-    neighbors = bgp_neighbors['results']
-    bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
-    for neighbor in neighbors:
-        if neighbor.get("in_route_filters"):
-            in_filter = neighbor['in_route_filters']
-        else:
-            in_filter = "-"
-        if neighbor.get("out_route_filters"):
-            out_filter = neighbor['out_route_filters']
-        else:
-            out_filter = "-"
-        bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
-    print('NEIGHBORS:')
-    print(bgp_table)
-    if len(sys.argv) == 3:
-        if sys.argv[2] == "showjson":
-            print('RAW JSON:')
-            print(json.dumps(neighbors,indent=2))
-    
-def getSDDCT0BGPRoutes(csp_url, session_token):
-    """Prints BGP routes for T0 edge gateway"""
-    bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
-    learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
-    advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
-    neighbors = bgp_neighbors['results']
-    for i in range(len(neighbors)):
-        bgp_neighbor_id = neighbors[i]['id']
-        route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
-        route_advertised_json = get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id)
-#       Building the learned routes table
-        edgeLearnedRoutes = route_learned_json['results'][0]['egde_node_routes']
-        sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
-        bgpLearnedRoutes = edgeLearnedRoutes[1]['routes']
-        for x in range(len(bgpLearnedRoutes)):
-            learnedRoutesTable.add_row([bgp_neighbor_id,sourceAddrLearned,bgpLearnedRoutes[x]['as_path'],bgpLearnedRoutes[x]['network'],bgpLearnedRoutes[x]['next_hop']])
-#       Building the advertised routes table
-        edgeAdvertisedRoutes = route_advertised_json['results'][0]['egde_node_routes']
-        sourceAddrAdvertised = edgeAdvertisedRoutes[0]['source_address']
-        bgpAdvertisedRoutes = edgeAdvertisedRoutes[1]['routes']
-        for y in range(len(bgpAdvertisedRoutes)):
-            advertisedRoutesTable.add_row([bgp_neighbor_id,sourceAddrAdvertised,bgpAdvertisedRoutes[y]['network'],bgpAdvertisedRoutes[y]['next_hop']])
-    print ('BGP Advertised Routes')
-    print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
-    print ('BGP Learned Routes')
-    print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
-    
-def getSDDCT0PrefixLists(csp_url, session_token):
-    """Prints prefix lists for T0 edge gateway - applicable for route-based VPN"""
-    prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
-    prefix_results = prefix_lists['results']
-#   clear results for any prefix lists found that contain "System created prefix list"
-    str_check = 'System created prefix list'
-    for item in range(len(prefix_results)):
-        if "description" in prefix_results[item]:
-            if str_check in prefix_results[item]['description']:
-                prefix_results[item].clear()
-#   remove empty dictionaries
-    prefix_results = list(filter(None, prefix_results))
-#   print a nicely formatted list of only user-uploaded prefix lists; system created lists were eliminated in above code
-    if len(prefix_results) != 0:
-        for prefixlist in prefix_results:
-            if "description" in prefixlist:
-                prefixlisttable = PrettyTable(['ID','Display Name','Description'])
-                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
+    bgp_neighbors, json_response_status_code, myURL = get_sddc_t0_bgp_neighbors_json(csp_url, session_token)
+    if json_response_status_code == 200:
+        neighbors = bgp_neighbors['results']
+        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
+        for neighbor in neighbors:
+            if neighbor.get("in_route_filters"):
+                in_filter = neighbor['in_route_filters']
             else:
-                prefixlisttable = PrettyTable(['ID','Display Name'])
-                prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"]])
-            print("PREFIX:")
-            print(prefixlisttable)
-            prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
-            i = 0
-            if prefixlist.get('prefixes'):
-                for prefix in prefixlist['prefixes']:
-                    i+=1
-                    if prefix.get('ge'):
-                        comparison = "ge (greater-than-or-equal)"
-                    elif prefix.get('le'):
-                        comparison = "le (less-than-or-equal)"
-                    else:
-                        comparison = '-'
-                    prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
-                print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
-                print(prefixtable)
-                print("")
+                in_filter = "-"
+            if neighbor.get("out_route_filters"):
+                out_filter = neighbor['out_route_filters']
+            else:
+                out_filter = "-"
+            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
+        print('NEIGHBORS:')
+        print(bgp_table)
         if len(sys.argv) == 3:
             if sys.argv[2] == "showjson":
                 print('RAW JSON:')
-                print(json.dumps(prefix_lists,indent=2))
+                print(json.dumps(neighbors,indent=2))
     else:
-        print("No user created prefixes found.")
+        print(f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(bgp_neighbors['error_message'])
+    
+def getSDDCT0BGPRoutes(csp_url, session_token):
+    """Prints BGP routes for T0 edge gateway"""
+    bgp_neighbors_json_response, bgp_neighbors_json_response_status_code, myURL = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
+    if bgp_neighbors_json_response_status_code == 200:
+        learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
+        advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
+        neighbors = bgp_neighbors_json_response['results']
+        for i in range(len(neighbors)):
+            bgp_neighbor_id = neighbors[i]['id']
+            route_learned_json, route_learned_json_status_code, myURL = get_sddc_t0_learned_routes_json(csp_url, session_token, bgp_neighbor_id)
+            if route_learned_json_status_code != 200:
+                print(f'API call failed with status code {route_learned_json_status_code}. URL: {myURL}.')
+                print(route_learned_json['error_message'])
+                break
+            route_advertised_json, route_advertised_json_status_code, myURL = get_sddc_t0_advertised_routes_json(csp_url, session_token, bgp_neighbor_id)
+            if route_advertised_json_status_code != 200:
+                print(f'API call failed with status code {route_advertised_json_status_code}. URL: {myURL}.')
+                print(route_advertised_json['error_message'])
+                break
+    #       Building the learned routes table
+            edgeLearnedRoutes = route_learned_json['results'][0]['egde_node_routes']
+            sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
+            bgpLearnedRoutes = edgeLearnedRoutes[1]['routes']
+            for x in range(len(bgpLearnedRoutes)):
+                learnedRoutesTable.add_row([bgp_neighbor_id,sourceAddrLearned,bgpLearnedRoutes[x]['as_path'],bgpLearnedRoutes[x]['network'],bgpLearnedRoutes[x]['next_hop']])
+    #       Building the advertised routes table
+            edgeAdvertisedRoutes = route_advertised_json['results'][0]['egde_node_routes']
+            sourceAddrAdvertised = edgeAdvertisedRoutes[0]['source_address']
+            bgpAdvertisedRoutes = edgeAdvertisedRoutes[1]['routes']
+            for y in range(len(bgpAdvertisedRoutes)):
+                advertisedRoutesTable.add_row([bgp_neighbor_id,sourceAddrAdvertised,bgpAdvertisedRoutes[y]['network'],bgpAdvertisedRoutes[y]['next_hop']])
+        print ('BGP Advertised Routes')
+        print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
+        print ('BGP Learned Routes')
+        print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
+    else:
+        print(f'API call failed with status code {bgp_neighbors_json_response_status_code}. URL: {myURL}.')
+        print(bgp_neighbors_json_response['error_message'])
+    
+def getSDDCT0PrefixLists(csp_url, session_token):
+    """Prints prefix lists for T0 edge gateway - applicable for route-based VPN"""
+    prefix_lists, json_response_status_code, myURL= get_sddc_t0_prefixlists_json(csp_url, session_token)
+    if json_response_status_code ==200:
+        prefix_results = prefix_lists['results']
+    #   clear results for any prefix lists found that contain "System created prefix list"
+        str_check = 'System created prefix list'
+        for item in range(len(prefix_results)):
+            if "description" in prefix_results[item]:
+                if str_check in prefix_results[item]['description']:
+                    prefix_results[item].clear()
+    #   remove empty dictionaries
+        prefix_results = list(filter(None, prefix_results))
+    #   print a nicely formatted list of only user-uploaded prefix lists; system created lists were eliminated in above code
+        if len(prefix_results) != 0:
+            for prefixlist in prefix_results:
+                if "description" in prefixlist:
+                    prefixlisttable = PrettyTable(['ID','Display Name','Description'])
+                    prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"],prefixlist["description"]])
+                else:
+                    prefixlisttable = PrettyTable(['ID','Display Name'])
+                    prefixlisttable.add_row([prefixlist["id"],prefixlist["display_name"]])
+                print("PREFIX:")
+                print(prefixlisttable)
+                prefixtable = PrettyTable(['Sequence','Network','Comparison', 'Action'])
+                i = 0
+                if prefixlist.get('prefixes'):
+                    for prefix in prefixlist['prefixes']:
+                        i+=1
+                        if prefix.get('ge'):
+                            comparison = "ge (greater-than-or-equal)"
+                        elif prefix.get('le'):
+                            comparison = "le (less-than-or-equal)"
+                        else:
+                            comparison = '-'
+                        prefixtable.add_row([i,prefix['network'],comparison,prefix['action']])
+                    print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
+                    print(prefixtable)
+                    print("")
+            if len(sys.argv) == 3:
+                if sys.argv[2] == "showjson":
+                    print('RAW JSON:')
+                    print(json.dumps(prefix_lists,indent=2))
+        else:
+            print("No user created prefixes found.")
+    else:
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(prefix_lists['error_message'])
 
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
-    t0_routes_json = get_sddc_t0_routes_json(proxy, session_token)
-    t0_routes = t0_routes_json['results'][1]['route_entries']
-    route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
-    for routes in t0_routes:
-        route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
-    print ('T0 Routes')
-    print ('Route Type Legend:')
-    print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
-    print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+    t0_routes_json, json_response_status_code, myURL = get_sddc_t0_routes_json(proxy_url, session_token)
+    if json_response_status_code == 200:
+        t0_routes = t0_routes_json['results'][1]['route_entries']
+        route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
+        for routes in t0_routes:
+            route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
+        print ('T0 Routes')
+        print ('Route Type Legend:')
+        print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
+        print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+    else:
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(t0_routes_json['error_message'])
+        
+def getSDDCT0staticroutes(proxy,session_token):
+    """Prints all routes for T0 edge gateway"""
+    t0_static_routes_json, json_response_status_code, myURL = get_sddc_t0_static_routes_json(proxy, session_token)
+    if json_response_status_code == 200:
+        t0_static = t0_static_routes_json['results']
+        route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
+        for routes in t0_static:
+            route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
+        print('T0 Static Routes')
+        print()
+        print(route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+    else:
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(t0_static_routes_json['error_message'])
 
 # ============================
 # NSX-T - DNS
@@ -1840,34 +1899,31 @@ def getSDDCT0routes(proxy_url, session_token):
 
 def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
     """ Gets the DNS Services. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/tier-1s/" + gw + "/dns-forwarder"
-    response = requests.get(myURL, headers=myHeader)
-    sddc_dns_service = response.json()
-    table = PrettyTable(['ID', 'Name', 'Listener IP'])
-    table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
-    return table
+    sddc_dns_service, sddc_dns_service_status_code, myURL = get_sddc_dns_services_json(proxy_url,sessiontoken,gw)
+    if sddc_dns_service_status_code == 200:
+        table = PrettyTable(['ID', 'Name', 'Listener IP'])
+        table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
+        return table
+    else:
+        print (f'API call failed with status code {sddc_dns_service_status_code}. URL: {myURL}.')
+        print(sddc_dns_service['error_message'])
 
 def getSDDCDNS_Zones(proxy_url,sessiontoken):
     """ Gets the SDDC Zones """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/dns-forwarder-zones"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    sddc_dns = json_response['results']
-    table = PrettyTable(['ID', 'Name','DNS Domain Names','upstream_servers'])
-    for i in sddc_dns:
-        table.add_row([i['id'], i['display_name'], i['dns_domain_names'], i['upstream_servers']])
-    return table
+    json_response, json_response_status_code, myURL = get_sddc_dns_zones_json(proxy_url,sessiontoken)
+    if json_response_status_code == 200:
+        sddc_dns = json_response['results']
+        table = PrettyTable(['ID', 'Name','DNS Domain Names','upstream_servers'])
+        for i in sddc_dns:
+            table.add_row([i['id'], i['display_name'], i['dns_domain_names'], i['upstream_servers']])
+        return table
+    else:
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 # ============================
 # NSX-T - Firewall - Gateway
 # ============================
-
 
 def newSDDCCGWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, scope, sequence_number):
     myHeader = {'csp-auth-token': sessiontoken}
@@ -2427,9 +2483,6 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
 
 def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
     """ Creates a new SDDC Network. L2 VPN networks are not currently supported. """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + display_name)
-    # print(myURL)
     if routing_type == "DISCONNECTED" :
         json_data = {
                 "subnets":[{"gateway_address":gateway_address}],
@@ -2438,8 +2491,7 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
                 "advanced_config":{"connectivity":"OFF"},
                 "id":display_name
                 }
-        response = requests.put(myURL, headers=myHeader, json=json_data)
-        json_response_status_code = response.status_code
+        json_response, json_response_status_code, myURL = new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data)
         if json_response_status_code == 200 :
             print("The following network has been created:")
             table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
@@ -2447,6 +2499,8 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
             return table
         else :
             print("There was an error. Try again.")
+            print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+            print(json_response['error_message'])
             return
     else:
         if dhcp_range == "none" :
@@ -2457,8 +2511,7 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
                 "advanced_config":{"connectivity":"ON"},
                 "id":display_name
                 }
-            response = requests.put(myURL, headers=myHeader, json=json_data)
-            json_response_status_code = response.status_code
+            json_response, json_response_status_code, myURL = new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data)
             if json_response_status_code == 200 :
                 print("The following network has been created:")
                 table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
@@ -2466,6 +2519,8 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
                 return table
             else :
                 print("There was an error. Try again.")
+                print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+                print(json_response['error_message'])
                 return
         else :
             json_data = {
@@ -2477,8 +2532,7 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
                 "advanced_config":{"connectivity":"ON"},
                 "id":display_name
                 }
-            response = requests.put(myURL, headers=myHeader, json=json_data)
-            json_response_status_code = response.status_code
+            json_response, json_response_status_code, myURL = new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data)
             if json_response_status_code == 200 :
                 print("The following network has been created:")
                 table = PrettyTable(['Name', 'Gateway', 'DHCP', 'Domain Name', 'Routing Type'])
@@ -2486,13 +2540,12 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
                 return table
             else :
                 print("There was an error. Try again.")
+                print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+                print(json_response['error_message'])
                 return
-
 
 def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l2vpn_path):
     """ Creates a new stretched/extended Network. """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + display_name)
     print(myURL)
     json_data = {
                 "type":"EXTENDED",
@@ -2506,32 +2559,29 @@ def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l
                 "tunnel_id": tunnel_id}
     }
     print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    if json_response_status_code == 200 :
+    json_response, json_response_status_code, myURL = new_sddc_stretched_networks_json(proxy_url, sessiontoken, display_name, json_data)
+    if json_response_status_code == 200:
         print("The following network has been created:")
         table = PrettyTable(['Name', 'Tunnel ID', 'Routing Type'])
         table.add_row([display_name, tunnel_id, "extended"])
         return table
-    else :
+    else:
         print("There was an error. Try again.")
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
         return
-
 
 def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     """ Remove an SDDC Network """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + network_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.status_code
+    json_response_status_code, myURL = remove_sddc_networks_json(proxy_url, sessiontoken, network_id)
     # print(json_response)
     # Unfortunately, the response status code is always 200 whether or not we delete an existing or non-existing network segment.
-    if json_response == 200 :
+    if json_response_status_code == 200 :
         print("The network " + network_id + " has been deleted")
     else :
         print("There was an error. Try again.")
+        print (f'API call failed with status code {json_response_status_code}. URL: {myURL}.')
     return
-
 
 def getSDDCnetworks(proxy_url, sessiontoken):
     """Prints out all Compute Gateway segemtns in all the SDDCs in the Org"""
@@ -2550,7 +2600,6 @@ def getSDDCnetworks(proxy_url, sessiontoken):
     print(table)
     print("Extended Networks:")
     print(table_extended)
-
 
 def createLotsNetworks(proxy_url, sessiontoken,network_number):
     """ Creates lots of networks! """
@@ -2849,8 +2898,9 @@ def getHelp():
     print("\t   show-t0-bgp-routes: show all learned and advertised routes through BGP")
     print("\t   show-t0-prefix-lists: show T0 prefix lists")
     print("\t   show-t0-routes: show routes at the T0 router\n")
+    print("\t   show-t0-static-routes: show only static routes at the T0 router\n")
     print("\tDNS ")
-    print("\t   show-dns-services: show DNS services")
+    print("\t   show-dns-services (optional - [MGW] or [CGW]): show DNS services.  Optional - show only MGW or CGW DNS service.")
     print("\t   show-dns-zones: show DNS zones\n")
     print("\tFirewall - Gateway")
     print("\t   new-cgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SCOPE] [SEQUENCE-NUMBER]: create a new CGW security rule")
@@ -3299,24 +3349,17 @@ elif intent_name == "new-t0-prefix-list":
     newBGPprefixlist(proxy, session_token)
 elif intent_name == "remove-t0-prefix-list":
     prefix_list_id = sys.argv[2]
-    json_response = remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
-    if json_response == 200 :
-        print("The BGP prefix list " + prefix_list_id + " has been deleted")
+    json_response_status_code, myURL = remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
+    if json_response_status_code == 200 :
+        print(f'The BGP prefix list {prefix_list_id} has been deleted')
     else :
-        print("Error " + json_response + ". Please try again.")
+        print(f'Error {json_response_status_code}. Please try again. URL: {myURL}')
 elif intent_name == "set-sddc-bgp-as":
     if len(sys.argv) != 3:
         print("Incorrect syntax.")
     else:
         asn = sys.argv[2]
         setasn = setSDDCBGPAS(proxy,session_token,asn)
-        print(setasn)
-        if setasn == 200:
-            print("The BGP AS has been updated:")
-            print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
-        else:
-            print("There was an error. Check the syntax.")
-            print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
 elif intent_name == "set-mtu":
     if len(sys.argv) != 3:
         print("Incorrect syntax.")
@@ -3324,24 +3367,13 @@ elif intent_name == "set-mtu":
     if int(mtu) < 1500 or int(mtu) > 8900:
         print("Incorrect syntax. The MTU should be between 1500 and 8900 bytes.")
     else:
-        setMTU = setSDDCMTU(proxy,session_token,mtu)
-        if setMTU == 200:
-            print("The MTU has been updated:")
-            print("\nThe MTU over the Direct Connect is now set to " + str(getSDDCMTU(proxy,session_token)) + " Bytes.")
-        else:
-            print("There was an error. Check the syntax.")
+        setSDDCMTU(proxy,session_token,mtu)
 elif intent_name == "show-egress-interface-counters":
-    edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
-    edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
-    edge_path_1 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 1)
-    stat_0 = getSDDCInternetStats(proxy,session_token, edge_path_0)
-    stat_1 = getSDDCInternetStats(proxy,session_token, edge_path_1)
-    total_stat = stat_0 + stat_1
-    print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
+    getEgressInterfaceCounters(proxy, session_token)
 elif intent_name == "show-mtu":
-    print("The MTU over the Direct Connect is " + str(getSDDCMTU(proxy,session_token)) + " Bytes.")
+    getSDDCMTU(proxy,session_token)
 elif intent_name == "show-sddc-bgp-as":
-    print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
+    getSDDCBGPAS(proxy,session_token)
 elif intent_name == "show-sddc-bgp-vpn":
     print(getSDDCBGPVPN(proxy,session_token))
 elif intent_name == "show-t0-bgp-neighbors":
@@ -3352,6 +3384,8 @@ elif intent_name == "show-t0-prefix-lists":
     getSDDCT0PrefixLists(proxy, session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
+elif intent_name == "show-t0-static-routes":
+    getSDDCT0staticroutes(proxy,session_token)
 
 
 # ============================
@@ -3968,7 +4002,7 @@ elif intent_name == "new-network":
         print("Incorrect syntax. Try again or check the help.")
 elif intent_name == "remove-network":
     network_id = sys.argv[2]
-    print(removeSDDCNetworks(proxy, session_token,network_id))
+    removeSDDCNetworks(proxy, session_token,network_id)
 elif intent_name == "show-network":
     getSDDCnetworks(proxy, session_token)
 elif intent_name == "create-lots-networks":
