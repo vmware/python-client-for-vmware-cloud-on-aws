@@ -1460,12 +1460,10 @@ def listIdsPolicies(proxy, session_token):
 
 def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
     """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
-    neighbor = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
-    if neighbor.status_code == 200:
-        neighbor_json = neighbor.json()
-        for key in list(neighbor_json.keys()):
-            if key.startswith('_'):
-                del neighbor_json[key]
+    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    for key in list(neighbor_json.keys()):
+        if key.startswith('_'):
+            del neighbor_json[key]
 #   while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
 #   begin input loop
     test = ''
@@ -1487,13 +1485,13 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
             prefix_list_id = input('Please enter the prefix list ID exactly ')
             neighbor_json['route_filtering'][0]["in_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
             print()
-            print("Prefix list " + prefix_list_id + " has been added to in_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
+            print(f'Prefix list {prefix_list_id} has been added to in_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
             print()
         elif test =="3":
             prefix_list_id = input('Please enter the prefix list ID exactly ')
             neighbor_json['route_filtering'][0]["out_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
             print()
-            print("Prefix list " + prefix_list_id + " has been added to out_route_filters in JSON for neighbor id " + neighbor_id + ". Don't forget to review and commit.")
+            print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
             print()
         elif test =="4":
             if neighbor_json.get("in_route_filters"):
@@ -1502,20 +1500,17 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
                 del neighbor_json["out_route_filters"]
             neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
         elif test == "5":
-            attach_neighbor = attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, neighbor_json)
-            if attach_neighbor.status_code == 200:
-                print("Complete - route filter entry:")
-                print()
-                pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
-                print(pretty_json)
-                print()
-            else:
-                print(attach_neighbor.status_code)
-                print()
+            attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, neighbor_json)
+            print("Complete - route filter entry:")
+            print()
+            pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
+            print(pretty_json)
+            print()
         elif test == "6":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
+
 
 def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
     """Detaches all prefix lists from specified T0 BGP neighbor - applicable for route-based VPN"""
@@ -1524,8 +1519,9 @@ def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
         if key.startswith('_'):
             del neighbor_json[key]
     neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-    detach_sddc_t0_prefix_lists(proxy, session_token, neighbor_id, neighbor_json)
-    print("Prefix lists detached from " + neighbor_id)
+    detach_sddc_t0_prefix_lists_json(csp_url, session_token, neighbor_id, neighbor_json)
+    print(f'Prefix lists detached from {neighbor_id}')
+
 
 def newBGPprefixlist(csp_url, session_token):
     """Creates new prefix list for T0 edge gateway - applicable for route based VPN"""
@@ -1573,101 +1569,74 @@ def newBGPprefixlist(csp_url, session_token):
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
         elif test == "1":
-            json_response = new_bgp_prefix_list_json(csp_url, session_token, prefix_list_id, prefix_list)
-            if json_response == 200:
-                print("prefix list added")
-            else:
-                print(json_response)
-                print()
+            new_bgp_prefix_list_json(csp_url, session_token, prefix_list_id, prefix_list)
+            print("prefix list added")
         elif test == "4":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
+
 def getSDDCBGPAS(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/direct-connect/bgp")
-    response = requests.get(myURL, headers=myHeader)
-    SDDC_BGP = response.json()
-    SDDC_BGP_AS = SDDC_BGP['local_as_num']
-    return SDDC_BGP_AS
+    json_response = get_sddc_bgp_as_json(proxy_url,sessiontoken)
+    sddc_bgp_as = json_response['local_as_num']
+    print(f'The SDDC BGP Autonomous System is ASN {sddc_bgp_as}')
+
 
 def setSDDCBGPAS(proxy_url,sessiontoken,asn):
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = (proxy_url_short + "cloud-service/api/v1/infra/direct-connect/bgp")
     json_data = {
     "local_as_num": asn
     }
-    response = requests.patch(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
-
+    set_sddc_bgp_as_json(proxy_url,sessiontoken,json_data)
+    print("The BGP AS has been updated:")
+    getSDDCBGPAS(proxy_url,session_token)
+ 
+ 
 def getSDDCMTU(proxy_url,sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/external/config")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_sddc_mtu_json(proxy_url,sessiontoken)
     sddc_MTU = json_response['intranet_mtu']
-    return sddc_MTU
+    print(f'The MTU over the Direct Connect is {sddc_MTU} Bytes.')
+
 
 def setSDDCMTU(proxy_url,sessiontoken,mtu):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/external/config")
     json_data = {
     "intranet_mtu" : mtu
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    set_sddc_mtu_json(proxy_url,sessiontoken,json_data)
+    print("The MTU has been updated:")
+    getSDDCMTU(proxy_url,sessiontoken)
+
 
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_sddc_edge_cluster_json(proxy_url, sessiontoken)
     edge_cluster_id = json_response['results'][0]['id']
     return edge_cluster_id
 
+
 def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
     """ Gets the Edge Nodes Path """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = proxy_url + "/policy/api/v1/infra/sites/default/enforcement-points/vmc-enforcementpoint/edge-clusters/" + edge_cluster_id + "/edge-nodes"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
-    if json_response_status_code == 200:
-        edge_path = json_response['results'][edge_id]['path']
-        return edge_path
-    else:
-        print("fail")
+    json_response= get_sddc_edge_nodes_json(proxy_url, sessiontoken, edge_cluster_id)
+    edge_path = json_response['results'][edge_id]['path']
+    return edge_path
+
 
 def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
-    ### Displays counters for egress interface ###
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/interfaces/public-0/statistics?edge_path=" + edge_path + "&enforcement_point_path=/infra/sites/default/enforcement-points/vmc-enforcementpoint")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    json_response_status_code = response.status_code
-    if json_response_status_code == 200:
-        total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
-        return total_bytes
-    else:
-        print("fail")
+    """Displays counters for egress interface"""
+    json_response = get_sddc_internet_stats_json(proxy_url, sessiontoken, edge_path)
+    total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
+    return total_bytes
+
 
 def getSDDCBGPVPN(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/direct-connect/bgp")
-    response = requests.get(myURL, headers=myHeader)
-    SDDC_BGP = response.json()
-    SDDC_BGP_VPN = SDDC_BGP['route_preference']
-
-    if SDDC_BGP_VPN == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
+    """Retreives preferred path - VPN or DX."""
+    json_response = get_sddc_bgp_vpn_json(proxy_url, sessiontoken)
+    sddc_bgp_vpn = json_response['route_preference']
+    if sddc_bgp_vpn == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
         return "The preferred path is over VPN, with Direct Connect as a back-up."
     else:
         return "The preferred path is over Direct Connect, with VPN as a back-up."
+
 
 def getSDDCT0BGPneighbors(csp_url, session_token):
     """Prints BGP neighbors for T0 edge gateway"""
@@ -1690,7 +1659,8 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
         if sys.argv[2] == "showjson":
             print('RAW JSON:')
             print(json.dumps(neighbors,indent=2))
-    
+
+
 def getSDDCT0BGPRoutes(csp_url, session_token):
     """Prints BGP routes for T0 edge gateway"""
     bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
@@ -1717,8 +1687,9 @@ def getSDDCT0BGPRoutes(csp_url, session_token):
     print (advertisedRoutesTable.get_string(sortby="BGP Neighbor"))
     print ('BGP Learned Routes')
     print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
-    
-def getSDDCT0PrefixLists(csp_url, session_token):
+
+
+def getSDDCT0PrefixLists(proxy, session_token):
     """Prints prefix lists for T0 edge gateway - applicable for route-based VPN"""
     prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
     prefix_results = prefix_lists['results']
@@ -1763,9 +1734,10 @@ def getSDDCT0PrefixLists(csp_url, session_token):
     else:
         print("No user created prefixes found.")
 
+
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
-    t0_routes_json = get_sddc_t0_routes_json(proxy, session_token)
+    t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
     t0_routes = t0_routes_json['results'][1]['route_entries']
     route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_routes:
@@ -1775,35 +1747,38 @@ def getSDDCT0routes(proxy_url, session_token):
     print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
     print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
 
+
+def getSDDCT0staticroutes(proxy_url,session_token):
+    """Prints static routes configured on T0 edge gateway"""
+    t0_static_routes_json = get_sddc_t0_static_routes_json(proxy_url, session_token)
+    t0_static_routes = t0_static_routes_json['results']
+    route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
+    for routes in t0_static_routes:
+        route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
+    print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+
+
 # ============================
 # NSX-T - DNS
 # ============================
 
 def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
-    """ Gets the DNS Services. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/tier-1s/" + gw + "/dns-forwarder"
-    response = requests.get(myURL, headers=myHeader)
-    sddc_dns_service = response.json()
+    """Retreives the DNS zone services."""
+    sddc_dns_service = get_sddc_dns_services_json(proxy_url,sessiontoken,gw)
     table = PrettyTable(['ID', 'Name', 'Listener IP'])
     table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
     return table
 
+
 def getSDDCDNS_Zones(proxy_url,sessiontoken):
     """ Gets the SDDC Zones """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/dns-forwarder-zones"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_sddc_dns_zones_json(proxy_url,sessiontoken)
     sddc_dns = json_response['results']
     table = PrettyTable(['ID', 'Name','DNS Domain Names','upstream_servers'])
     for i in sddc_dns:
         table.add_row([i['id'], i['display_name'], i['dns_domain_names'], i['upstream_servers']])
     return table
+
 
 # ============================
 # NSX-T - Firewall - Gateway
@@ -2365,76 +2340,31 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
 # NSX-T - Segments
 # ============================
 
-
 def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
     """ Creates a new SDDC Network. L2 VPN networks are not currently supported. """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + display_name)
-    # print(myURL)
+    json_data = {
+            "subnets":[{"dhcp_ranges":[dhcp_range],
+            "gateway_address":gateway_address}],
+            "type":routing_type,
+            "display_name":display_name,
+            "domain_name":domain_name,
+            "id":display_name
+            }
     if routing_type == "DISCONNECTED" :
-        json_data = {
-                "subnets":[{"gateway_address":gateway_address}],
-                "type":routing_type,
-                "display_name":display_name,
-                "advanced_config":{"connectivity":"OFF"},
-                "id":display_name
-                }
-        response = requests.put(myURL, headers=myHeader, json=json_data)
-        json_response_status_code = response.status_code
-        if json_response_status_code == 200 :
-            print("The following network has been created:")
-            table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
-            table.add_row([display_name, gateway_address, routing_type])
-            return table
-        else :
-            print("There was an error. Try again.")
-            return
+        json_data.update({'advanced_config':{"connectivity":"OFF"}})
     else:
-        if dhcp_range == "none" :
-            json_data = {
-                "subnets":[{"gateway_address":gateway_address}],
-                "type":routing_type,
-                "display_name":display_name,
-                "advanced_config":{"connectivity":"ON"},
-                "id":display_name
-                }
-            response = requests.put(myURL, headers=myHeader, json=json_data)
-            json_response_status_code = response.status_code
-            if json_response_status_code == 200 :
-                print("The following network has been created:")
-                table = PrettyTable(['Name', 'Gateway', 'Routing Type'])
-                table.add_row([display_name, gateway_address, routing_type])
-                return table
-            else :
-                print("There was an error. Try again.")
-                return
-        else :
-            json_data = {
-                "subnets":[{"dhcp_ranges":[dhcp_range],
-                "gateway_address":gateway_address}],
-                "type":routing_type,
-                "display_name":display_name,
-                "domain_name":domain_name,
-                "advanced_config":{"connectivity":"ON"},
-                "id":display_name
-                }
-            response = requests.put(myURL, headers=myHeader, json=json_data)
-            json_response_status_code = response.status_code
-            if json_response_status_code == 200 :
-                print("The following network has been created:")
-                table = PrettyTable(['Name', 'Gateway', 'DHCP', 'Domain Name', 'Routing Type'])
-                table.add_row([display_name, gateway_address, dhcp_range, domain_name, routing_type])
-                return table
-            else :
-                print("There was an error. Try again.")
-                return
+        json_data.update({'advanced_config':{"connectivity":"ON"}})
+    if dhcp_range == "":
+        del (json_data["subnets"][0]['dhcp_ranges'])
+    new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data)
+    print("The following network has been created:")
+    table = PrettyTable(['Name', 'Gateway', 'DHCP', 'Domain Name', 'Routing Type'])
+    table.add_row([display_name, gateway_address, dhcp_range, domain_name, routing_type])
+    return table
 
 
 def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l2vpn_path):
     """ Creates a new stretched/extended Network. """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + display_name)
-    print(myURL)
     json_data = {
                 "type":"EXTENDED",
                 "display_name":display_name,
@@ -2447,31 +2377,17 @@ def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l
                 "tunnel_id": tunnel_id}
     }
     print(json_data)
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    if json_response_status_code == 200 :
-        print("The following network has been created:")
-        table = PrettyTable(['Name', 'Tunnel ID', 'Routing Type'])
-        table.add_row([display_name, tunnel_id, "extended"])
-        return table
-    else :
-        print("There was an error. Try again.")
-        return
+    new_sddc_stretched_networks_json(proxy_url, sessiontoken, display_name, json_data)
+    print("The following network has been created:")
+    table = PrettyTable(['Name', 'Tunnel ID', 'Routing Type'])
+    table.add_row([display_name, tunnel_id, "extended"])
+    return table
 
 
 def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     """ Remove an SDDC Network """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + network_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.status_code
-    # print(json_response)
-    # Unfortunately, the response status code is always 200 whether or not we delete an existing or non-existing network segment.
-    if json_response == 200 :
-        print("The network " + network_id + " has been deleted")
-    else :
-        print("There was an error. Try again.")
-    return
+    remove_sddc_networks_json(proxy_url, sessiontoken, network_id)
+    print(f'The network {network_id} has been deleted.')
 
 
 def getSDDCnetworks(proxy_url, sessiontoken):
@@ -2789,7 +2705,8 @@ def getHelp():
     print("\t   show-t0-bgp-neighbors: show T0 BGP neighbors")
     print("\t   show-t0-bgp-routes: show all learned and advertised routes through BGP")
     print("\t   show-t0-prefix-lists: show T0 prefix lists")
-    print("\t   show-t0-routes: show routes at the T0 router\n")
+    print("\t   show-t0-routes: show routes at the T0 router")
+    print("\t   show-t0-static-routes: show static routes at the T0 router\n")
     print("\tDNS ")
     print("\t   show-dns-services: show DNS services")
     print("\t   show-dns-zones: show DNS zones\n")
@@ -3239,25 +3156,16 @@ elif intent_name == "detach-t0-prefix-lists":
 elif intent_name == "new-t0-prefix-list":
     newBGPprefixlist(proxy, session_token)
 elif intent_name == "remove-t0-prefix-list":
+    prefixlists = getSDDCT0PrefixLists(proxy, session_token)
     prefix_list_id = sys.argv[2]
-    json_response = remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
-    if json_response == 200 :
-        print("The BGP prefix list " + prefix_list_id + " has been deleted")
-    else :
-        print("Error " + json_response + ". Please try again.")
+    remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
+    print("The BGP prefix list " + prefix_list_id + " has been deleted")
 elif intent_name == "set-sddc-bgp-as":
     if len(sys.argv) != 3:
         print("Incorrect syntax.")
     else:
         asn = sys.argv[2]
-        setasn = setSDDCBGPAS(proxy,session_token,asn)
-        print(setasn)
-        if setasn == 200:
-            print("The BGP AS has been updated:")
-            print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
-        else:
-            print("There was an error. Check the syntax.")
-            print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
+        setSDDCBGPAS(proxy,session_token,asn)
 elif intent_name == "set-mtu":
     if len(sys.argv) != 3:
         print("Incorrect syntax.")
@@ -3265,12 +3173,7 @@ elif intent_name == "set-mtu":
     if int(mtu) < 1500 or int(mtu) > 8900:
         print("Incorrect syntax. The MTU should be between 1500 and 8900 bytes.")
     else:
-        setMTU = setSDDCMTU(proxy,session_token,mtu)
-        if setMTU == 200:
-            print("The MTU has been updated:")
-            print("\nThe MTU over the Direct Connect is now set to " + str(getSDDCMTU(proxy,session_token)) + " Bytes.")
-        else:
-            print("There was an error. Check the syntax.")
+        setSDDCMTU(proxy,session_token,mtu)
 elif intent_name == "show-egress-interface-counters":
     edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
     edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
@@ -3280,9 +3183,9 @@ elif intent_name == "show-egress-interface-counters":
     total_stat = stat_0 + stat_1
     print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
 elif intent_name == "show-mtu":
-    print("The MTU over the Direct Connect is " + str(getSDDCMTU(proxy,session_token)) + " Bytes.")
+    getSDDCMTU(proxy,session_token)
 elif intent_name == "show-sddc-bgp-as":
-    print("The SDDC BGP Autonomous System is ASN " + getSDDCBGPAS(proxy,session_token) + ".")
+    getSDDCBGPAS(proxy,session_token)
 elif intent_name == "show-sddc-bgp-vpn":
     print(getSDDCBGPVPN(proxy,session_token))
 elif intent_name == "show-t0-bgp-neighbors":
@@ -3293,6 +3196,8 @@ elif intent_name == "show-t0-prefix-lists":
     getSDDCT0PrefixLists(proxy, session_token)
 elif intent_name == "show-t0-routes":
     getSDDCT0routes(proxy,session_token)
+elif intent_name == "show-t0-static-routes":
+    getSDDCT0staticroutes(proxy,session_token)
 
 
 # ============================
@@ -3880,8 +3785,6 @@ elif intent_name == "new-network":
         gateway_address = sys.argv[4]
         dhcp_range = sys.argv[5]
         domain_name = sys.argv[6]
-        newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
-        print(newSDDC)
     elif sys.argv[3].lower() == "disconnected" :
         # Disconnected Network
         display_name = sys.argv[2]
@@ -3889,17 +3792,13 @@ elif intent_name == "new-network":
         gateway_address = sys.argv[4]
         dhcp_range = ""
         domain_name = ""
-        newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
-        print(newSDDC)
     elif sys.argv[3].lower() == "routed" and len(sys.argv) == 5:
         # Static Network
         display_name = sys.argv[2]
         gateway_address = sys.argv[4]
-        dhcp_range = "none"
+        dhcp_range = ""
         domain_name = ""
         routing_type = "ROUTED"
-        newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
-        print(newSDDC)
     elif sys.argv[3].lower() == "extended":
         display_name = sys.argv[2]
         tunnel_id = sys.argv[4]
@@ -3907,9 +3806,11 @@ elif intent_name == "new-network":
         print(newSDDCStretchednetworks(proxy,session_token,display_name,tunnel_id, l2vpn_path))
     else:
         print("Incorrect syntax. Try again or check the help.")
+    newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
+    print(newSDDC)
 elif intent_name == "remove-network":
     network_id = sys.argv[2]
-    print(removeSDDCNetworks(proxy, session_token,network_id))
+    removeSDDCNetworks(proxy, session_token,network_id)
 elif intent_name == "show-network":
     getSDDCnetworks(proxy, session_token)
 elif intent_name == "create-lots-networks":
