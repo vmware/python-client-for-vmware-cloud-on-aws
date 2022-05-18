@@ -3,6 +3,24 @@ import requests
 
 
 # ============================
+# Services
+# ============================
+def get_csp_groups_json(strCSProdURL, org_id, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    return json_response
+
+def get_services_json(strCSPProdURL, ORG_ID, session_token):
+    """Gets services and URI for associated access token and Org ID"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{strCSPProdURL}/csp/gateway/slc/api/v2/ui/definitions/?orgId={ORG_ID}'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    return json_response
+
+# ============================
 # User and Group Management
 # ============================
 
