@@ -1,6 +1,7 @@
 [vmcConfig]
 strProdURL      = https://vmc.vmware.com
 strCSPProdURL   = https://console.cloud.vmware.com
+strVCDRProdURL =  https://vcdr-xxx-xxx-xxx-xxx.app.vcdr.vmware.com/
 
 refresh_Token   = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 org_id          = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx

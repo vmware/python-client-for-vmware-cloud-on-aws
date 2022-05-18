@@ -47,6 +47,7 @@ from requests.auth import HTTPBasicAuth
 from pyvmc_csp import *
 from pyvmc_nsx import *
 from pyvmc_vmc import *
+from pyvmc_vcdr import *
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
@@ -90,6 +91,32 @@ class data():
     sddc_hosts      = 0
     sddc_type       = ""
 
+# ============================
+# CSP - Service Definitions
+# ============================
+
+def getServiceDefinitions(strCSPProdURL, orgID, sessiontoken):
+    """Gets services and URI for associated access token and Org ID"""
+    json_response = get_services_json(strCSPProdURL, orgID, sessiontoken)
+    services= json_response['servicesList']
+    table = PrettyTable(['Service Name', 'Access type', 'Service URL'])
+    for i in services:
+        table.add_row([i['displayName'], i['serviceAccessType'], i['serviceUrls']['serviceHome']])
+    print(table)
+
+def getVCDRURL(strCSPProdURL, orgID, sessiontoken):
+    """Gets URL for VCDR"""
+    json_response = get_services_json(strCSPProdURL, orgID, sessiontoken)
+    services= json_response['servicesList']
+    for i in services:
+        if i['displayName'] =="VMware Cloud DR":
+            strVCDRProdURL = i['serviceUrls']['serviceHome']
+    if strVCDRProdURL == "https://vcdr.vmware.com" or strVCDRProdURL == "":
+        print("Customer is either not entitled to VCDR, or is entitled to multiple regions.  Defaulting to value in config.ini")
+        strVCDRProdURL = config.get("vmcConfig", "strVCDRProdURL")
+    else:
+        strVCDRProdURL = strVCDRProdURL[:-4]
+    return strVCDRProdURL
 
 # ============================
 # CSP - User and Group Management
@@ -2624,10 +2651,157 @@ def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
     return table
 
 
+# ============================
+# VCDR - Cloud File System
+# ============================
+def getVCDRCloudFS(strVCDRProdURL, session_token):
+    """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
+    json_response = get_vcdr_cloud_fs_json(strVCDRProdURL, session_token)
+    # print(json.dumps(json_response, indent = 2))
+    cloud_fs = json_response["cloud_file_systems"]
+    table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
+    for i in cloud_fs:
+        table.add_row([i['name'], i['id']])
+    print(table)
+
+def getVCDRCloudFSDetails(strVCDRProdURL, cloud_fs_id, session_token):
+    """Get details for an individual cloud file system."""
+    json_response = get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, session_token)
+    print(" ")
+    print(f"Cloud FS Name: {json_response['name']}")
+    print(f"Capacity GiB: {json_response['capacity_gib']:,.2f}")
+    print(f"Used GiB: {json_response['used_gib']:,.2f}")
+    print(f"Recovery SDDC: {json_response['recovery_sddc_id']}")
+    print(" ")
+
+
+# ============================
+# VCDR - Protected Sites
+# ============================
+def getVCDRSites(strVCDRProdURL, cloud_fs_id, session_token):
+    """Get a list of all protected sites associated with an individual cloud file system."""
+    json_response = get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, session_token)
+    sites = json_response["protected_sites"]
+    table = PrettyTable(['Site Name', 'Site ID'])
+    for i in sites:
+        table.add_row([i['name'], i['id']])
+    print(table)
+
+def getVCDRSiteDetails(strVCDRProdURL, cloud_fs_id, site_id, session_token):
+    """Get details about an individual protected site."""
+    json_response = get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, session_token)
+    print(" ")
+    print(f"Site Name: {json_response['name']}")
+    print(f"Site Type: {json_response['type']}")
+    print(" ")
+
+
+# ============================
+# VCDR - Protected VM
+# ============================
+def getVCDRVM(strVCDRProdURL, cloud_fs_id, session_token):
+    """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
+    json_response = get_vcdr_vm_json(strVCDRProdURL, cloud_fs_id, session_token)
+    vms = json_response["vms"]
+    table = PrettyTable(['VM Name', 'VCDR VM ID', 'VM Size'])
+    for i in vms:
+        table.add_row([i['name'], i['vcdr_vm_id'], i['size']])
+    print(table)
+
+
+# ============================
+# VCDR - Protection Groups
+# ============================
+def getVCDRPG(strVCDRProdURL, cloud_fs_id, session_token):
+    """Get a list of all protection groups associated with an individual cloud file system."""
+    json_response = get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, session_token)
+    pgs = json_response["protection_groups"]
+    table = PrettyTable(['Protection Group Name', 'Protection Group ID'])
+    for i in pgs:
+        table.add_row([i['name'], i['id']])
+    print(table)
+
+def getVCDRPGDetails(strVCDRProdURL, cloud_fs_id, pg_id, session_token):
+    """Get details for the requested protection group."""
+    json_response = get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+    print(json.dumps(json_response, indent = 2))
+    print(" ")
+    print(f"Protection Group Name: {json_response['name']}")
+    print(f"Protection Group Health: {json_response['health']}")
+    print(f"Protected Site ID: {json_response['protected_site_id']}")
+    print(f"Snapshot Schedule Active?: {json_response['snapshot_schedule_active']}")
+    print(f"Snapshot Frequency Type?: {json_response['snapshot_frequency_type']}")
+    # print(f"Used GiB: {json_response['used_gib']:,.2f}")
+    criteria = json_response["members_specs"]
+    print(f"Protected vCenter: {criteria[0]['vcenter_id']}")
+    if "vcenter_vm_name_patterns" in criteria[0]:
+        print(f"VM Naming Patterns: {criteria[0]['vcenter_vm_name_patterns']}")
+    if "vcenter_tags" in criteria[0]:
+        print(f"VM Tags: {criteria[0]['vcenter_tags']}")
+    if "vcenter_folder_paths" in criteria[0]:
+        print(f"VM Folders: {criteria[0]['vcenter_folder_paths']}")
+    print(f"Snapshot Schedule Specifications:  {json_response['schedule_specs']}")
+    print(" ")
+
+# ============================
+# VCDR - Protection Group Snapshots
+# ============================
+def getVCDRPGSnaps(strVCDRProdURL, cloud_fs_id, pg_id, session_token):
+    """Get a list of all snapshots in a specific protection group."""
+    json_response = get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+    snaps = json_response["snapshots"]
+    table = PrettyTable(['Snapshot Name', 'Snaphot ID'])
+    for i in snaps:
+        table.add_row([i['name'], i['id']])
+    print(table)
+
+def getVCDRSnapDetails(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token):
+    """Get a list of all snapshots in a specific protection group."""
+    json_response = get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token)
+    create_stamp_int = int(json_response['creation_timestamp'])
+    create_stamp = datetime.utcfromtimestamp(create_stamp_int/1e9)
+    expire_stamp_int = int(json_response['expiration_timestamp'])
+    expire_stamp = datetime.utcfromtimestamp(expire_stamp_int/1e9)
+    print(" ")
+    print(f"Snapshot Name: {json_response['name']}")
+    # print(f"Snapshot Creation: {json_response['creation_timestamp']}")
+    print(f"Snapshot Creation: {create_stamp}")
+    print(f"Snapshot Expiration: {expire_stamp}")
+    print(f"Snapshot Trigger: {json_response['trigger_type']}")
+    print(f"Number of VM: {json_response['vm_count']}")
+    print(" ")
+
+# ============================
+# VCDR - Recovery SDDC
+# ============================
+def getVCDRSDDCs(strVCDRProdURL, session_token):
+    """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
+    json_response = get_vcdr_sddcs_json(strVCDRProdURL, session_token)
+    sddcs = json_response["data"]
+    table = PrettyTable(['Recovery SDDC Name', 'Recovery SDDC ID'])
+    for i in sddcs:
+        table.add_row([i['name'], i['id']])
+    print(table)
+
+def getVCDRSDDCDetails(strVCDRProdURL, sddc_id, session_token):
+    """Get details of a specific Recovery SDDC."""
+    json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, session_token)
+    print(" ")
+    print(f"Recovery SDDC Name: {json_response['name']}")
+    print(f"Recovery SDDC Region: {json_response['region']}")
+    print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
+    print(" ")
+
+# ============================
+# Help
+# ============================
 def getHelp():
     print("\nWelcome to PyVMC !")
     print("\nHere are the currently supported commands: ")
     print("\nCSP")
+    print("\tServices")
+    print("\t   show-csp-services: Show entitled services")
+    print("\t   show-vcdr-url:  Display the production URL for VCDR service.")
     print("\tUser and Group management")
     print("\t   add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group")
     print("\t   show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints out a user-by-user diff")
@@ -2765,6 +2939,18 @@ def getHelp():
     print("\t   show-vpn-internet-ip: show the public IP used for VPN services")
     print("\t   show-vpn-ipsec-tunnel-profile: show the VPN tunnel profile")
     print("\t   show-vpn-ipsec-endpoints: show the VPN IPSec endpoints")
+    print("\nVMware Cloud Disaster Recovery")
+    print("\t   show-vcdr-fs: show VCDR Cloud File Systems")
+    print("\t   show-vcdr-fs-details [CLOUD_FS_ID]: Get details for an individual cloud file system.")
+    print("\t   show-vcdr-sites [CLOUD_FS_ID]: Get a list of all protected sites associated with an individual cloud file system.")
+    print("\t   show-vcdr-site-details [CLOUD_FS_ID] [PROTECTED_SITE_ID]: Get details about an individual protected site.")
+    print("\t   show-vcdr-vm [CLOUD_FS_ID]: Get a list of all protected VMs currently being replicated to the specified cloud file system.")
+    print("\t   show-vcdr-pgs [CLOUD_FS_ID]: Get a list of all protection groups associated with an individual cloud file system.")
+    print("\t   show-vcdr-pg-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get details for the requested protection group.")
+    print("\t   show-vcdr-pg-snaps [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get a list of all snapshots in a specific protection group.")
+    print("\t   show-vcdr-pg-snap-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID] [PG_SNAPSHOT_ID]: Get detailed information for a protection group snapshot.")
+    print("\t   show-vcdr-sddcs: List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs).")
+    print("\t   show-vcdr-sddc-details [RECOVEY_SDDC_ID]: Get Recovery SDDC Details - Get details of a specific Recovery SDDC. ")
     print("\n")
 
 
@@ -2779,13 +2965,22 @@ else:
 
 session_token = getAccessToken(Refresh_Token)
 proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
+strVCDRProdURL = getVCDRURL(strCSPProdURL, ORG_ID, session_token)
 
+# ============================
+# CSP - Services
+# ============================
+if intent_name == "show-csp-services":
+    getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
+elif intent_name == "show-vcdr-url":
+    getVCDRURL(strCSPProdURL, ORG_ID, session_token)
+    print(strVCDRProdURL)
 
 # ============================
 # CSP - User and Group Management
 # ============================
 
-if intent_name == "add-users-to-csp-group":
+elif intent_name == "add-users-to-csp-group":
     addUsersToCSPGroup(strCSPProdURL,session_token)
 elif intent_name == "show-csp-group-diff":
     getCSPGroupDiff(strCSPProdURL,session_token)
@@ -3895,6 +4090,86 @@ elif intent_name == "show-vpn-detailed":
 
 # elif intent_name == "new-service-entry":
 #    print("This is WIP")
+
+# ============================
+# VCDR - Cloud File System
+# ============================
+elif intent_name == "show-vcdr-fs":
+    """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
+    getVCDRCloudFS(strVCDRProdURL, session_token)
+
+elif intent_name == "show-vcdr-fs-details":
+    """Get details for an individual cloud file system."""
+    cloud_fs_id = sys.argv[2]
+    getVCDRCloudFSDetails(strVCDRProdURL, cloud_fs_id, session_token)
+
+# ============================
+# VCDR - Protected Sites
+# ============================
+elif intent_name == "show-vcdr-sites":
+    """Get a list of all protected sites associated with an individual cloud file system."""
+    cloud_fs_id = sys.argv[2]
+    getVCDRSites(strVCDRProdURL, cloud_fs_id, session_token)
+
+elif intent_name == "show-vcdr-site-details":
+    """Get details about an individual protected site."""
+    cloud_fs_id = sys.argv[2]
+    site_id = sys.argv[3]
+    getVCDRSiteDetails(strVCDRProdURL, cloud_fs_id, site_id, session_token)
+
+# ============================
+# VCDR - Protected VM
+# ============================
+elif intent_name == "show-vcdr-vm":
+    """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
+    cloud_fs_id = sys.argv[2]
+    getVCDRVM(strVCDRProdURL, cloud_fs_id, session_token)
+
+# ============================
+# VCDR - Protection Groups
+# ============================
+elif intent_name == "show-vcdr-pgs":
+    """Get a list of all protection groups associated with an individual cloud file system."""
+    cloud_fs_id = sys.argv[2]
+    getVCDRPG(strVCDRProdURL, cloud_fs_id, session_token)
+
+elif intent_name == "show-vcdr-pg-details":
+    """Get details for the requested protection group."""
+    cloud_fs_id = sys.argv[2]
+    pg_id = sys.argv[3]
+    getVCDRPGDetails(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+
+# ============================
+# VCDR - Protection Group Snapshots
+# ============================
+elif intent_name == "show-vcdr-pg-snaps":
+    """Get a list of all snapshots in a specific protection group."""
+    cloud_fs_id = sys.argv[2]
+    pg_id = sys.argv[3]
+    getVCDRPGSnaps(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+
+elif intent_name == "show-vcdr-pg-snap-details":
+    """Get a list of all snapshots in a specific protection group."""
+    cloud_fs_id = sys.argv[2]
+    pg_id = sys.argv[3]
+    snap_id = sys.argv[4]
+    getVCDRSnapDetails(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token)
+
+# ============================
+# VCDR - Recovery SDDC
+# ============================
+elif intent_name == "show-vcdr-sddcs":
+    """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
+    getVCDRSDDCs(strVCDRProdURL, session_token)
+
+elif intent_name == "show-vcdr-sddc-details":
+    """Get details of a specific Recovery SDDC."""
+    sddc_id = sys.argv[2]
+    getVCDRSDDCDetails(strVCDRProdURL, sddc_id, session_token)
+
+# ============================
+# Help
+# ============================
 elif intent_name == "help":
     getHelp()
 else:
