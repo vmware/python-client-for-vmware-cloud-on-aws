@@ -143,7 +143,11 @@ Here are the currently supported commands:
     - enable-tkg: Enable Tanzu Kubernetes Grid on an SDDC
     - disable-tkg: Disable Tanzu Kubernetes Grid on an SDDC
 
-- User and Group management
+- Cloud Service Portal - Cloud Services
+	- show-csp-services: Show entitled services
+	- show-vcdr-url:  Display the production URL for VCDR service.
+
+- Cloud Service Portal - User and Group management
     - add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group
     - show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints ou
     - show-csp-service-roles: show CSP service roles for the currently logged in user
@@ -196,6 +200,23 @@ Here are the currently supported commands:
     - TGW Operations
         - show-tgw-routes: Show the vTGW route table
             - show-tgw-routes [group name]: Show the vTGW route table for the specified group
+
+- VMware Cloud Disaster Recovery
+    - show-vcdr-fs: show VCDR Cloud File Systems
+    - show-vcdr-fs-details [CLOUD_FS_ID]: Get details for an individual cloud file system.
+    - show-vcdr-sites [CLOUD_FS_ID]: Get a list of all protected sites associated with an individual cloud file system.
+    - show-vcdr-site-details [CLOUD_FS_ID] [PROTECTED_SITE_ID]: Get details about an individual protected site.
+    - show-vcdr-vm [CLOUD_FS_ID]: Get a list of all protected VMs currently being replicated to the specified cloud file system.
+    - show-vcdr-pgs [CLOUD_FS_ID]: Get a list of all protection groups associated with an individual cloud file system.
+    - show-vcdr-pg-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get details for the requested protection group.
+    - show-vcdr-pg-snaps [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get a list of all snapshots in a specific protection group.
+    - show-vcdr-pg-snap-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID] [PG_SNAPSHOT_ID]: Get detailed information for a protection group snapshot.
+    - show-vcdr-sddcs: List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs).
+    - show-vcdr-sddc-details [RECOVEY_SDDC_ID]: Get Recovery SDDC Details - Get details of a specific Recovery SDDC. 
+
+## Known Issues:
+
+VMware Cloud Disaster Recovery - The Fling will automatically discover the Orchestrator URL for customers with only one region / orchestrator under management. If you are entitled to VCDR in multiple regions, you must manually set the path of the VCDR Orchestrator in the config.ini file.
 
 ## Contributing
 

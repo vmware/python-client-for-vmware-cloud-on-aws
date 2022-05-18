@@ -111,8 +111,11 @@ def getVCDRURL(strCSPProdURL, orgID, sessiontoken):
     for i in services:
         if i['displayName'] =="VMware Cloud DR":
             strVCDRProdURL = i['serviceUrls']['serviceHome']
-    # print(strVCDRProdURL)
-    strVCDRProdURL = strVCDRProdURL[:-4]
+    if strVCDRProdURL == "https://vcdr.vmware.com" or strVCDRProdURL == "":
+        print("Customer is either not entitled to VCDR, or is entitled to multiple regions.  Defaulting to value in config.ini")
+        strVCDRProdURL = config.get("vmcConfig", "strVCDRProdURL")
+    else:
+        strVCDRProdURL = strVCDRProdURL[:-4]
     return strVCDRProdURL
 
 # ============================
