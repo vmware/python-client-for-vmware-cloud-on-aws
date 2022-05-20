@@ -7,7 +7,7 @@
 # Python Client for VMware Cloud on AWS
 
 ################################################################################
-### Copyright (C) 2019-2021 VMware, Inc.  All rights reserved.
+### Copyright (C) 2019-2022 VMware, Inc.  All rights reserved.
 ### SPDX-License-Identifier: BSD-2-Clause
 ################################################################################
 
