@@ -17,57 +17,105 @@ from requests.auth import HTTPBasicAuth
 # Advanced Firewall
 # ============================
 
+
 def get_nsx_ids_cluster_enabled_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
 
 def enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{targetID}"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
-    return response, myURL
+    if response.status_code == 200:
+        return response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
+
 
 def disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{targetID}"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
-    return response, myURL
+    if response.status_code == 200:
+        return response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
+
 
 def enable_nsx_ids_auto_update_json(proxy, session_token, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
-    return response, myURL
+    if response.status_code == 200:
+        return response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
+
 
 def nsx_ids_update_signatures_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/signatures?action=update_signatures"
     response = requests.post(myURL, headers=myHeader)
-    return response, myURL
+    if response.status_code == 200:
+        return response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
+
 
 def get_ids_signature_versions_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions"
     response = requests.get(myURL, headers=myHeader)
-    sig_response = response.json()
-    return sig_response
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
 
 def get_ids_profiles_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles"
     response = requests.get(myURL, headers=myHeader)
-    prof_response = response.json()
-    return prof_response
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
 
 def get_ids_policies_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 # ============================
@@ -81,15 +129,27 @@ def get_conencted_vpc_json(proxy, session_token):
     myURL = f'{proxy}/cloud-service/api/v1/infra/linked-vpcs'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_connected_vpc_services_json(proxy, session_token, vpc_id):
     """Returns connected VPC services info via JSON"""
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy}/cloud-service/api/v1/infra/linked-vpcs/{vpc_id}/connected-services'
-    json_response = requests.get(my_url, headers=my_header)
-    return json_response
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
 
 
 def get_sddc_shadow_account_json(proxy_url, session_token):
@@ -98,7 +158,13 @@ def get_sddc_shadow_account_json(proxy_url, session_token):
     my_url = f'{proxy_url}/cloud-service/api/v1/infra/accounts'
     response = requests.get(my_url, headers=my_header)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
 
 
 def set_connected_vpc_services_json(proxy, session_token, vpc_id, json_data):
@@ -106,7 +172,12 @@ def set_connected_vpc_services_json(proxy, session_token, vpc_id, json_data):
     my_header = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
     my_url = f'{proxy}/cloud-service/api/v1/infra/linked-vpcs/{vpc_id}/connected-services/s3'
     response = requests.put(my_url, headers=my_header, json=json_data)
-    return response.status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(response['error_message'])
 
 
 # ============================
@@ -426,8 +497,12 @@ def get_sddc_nat_info_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    json_response_status_code = response.status_code
-    return json_response, json_response_status_code
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_nat_stats_json(proxy_url, sessiontoken, nat_id):
@@ -436,9 +511,37 @@ def get_nat_stats_json(proxy_url, sessiontoken, nat_id):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{nat_id}/statistics'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    json_response_status_code = response.status_code
-    return json_response, json_response_status_code
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
+
+def new_sddc_nat_json(proxy_url, session_token, display_name, json_data):
+    my_header = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{display_name}'
+    response = requests.put(my_url, headers=my_header, json=json_data)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def remove_sddc_nat_json(proxy_url, session_token, nat_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{nat_id}'
+    response = requests.delete(my_url, headers=my_header)
+    if response.status_code == 200:
+        return response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(response['error_message'])
 
 
 # ============================
@@ -457,7 +560,12 @@ def get_vms_json(proxy_url, session_token):
     my_url = f'{proxy_url}/policy/api/v1/infra/realized-state/enforcement-points/vmc-enforcementpoint/virtual-machines'
     response = requests.get(my_url, headers=my_header)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
 
 
 # ============================
@@ -527,7 +635,12 @@ def vpn_public_ip_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/cloud-service/api/v1/infra/sddc-user-config'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_sddc_vpn_info_json(proxy_url, sessiontoken):
@@ -536,8 +649,12 @@ def get_sddc_vpn_info_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    json_response_status_code = response.status_code
-    return json_response, json_response_status_code
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_vpn_ipsec_profile_json(proxy_url, sessiontoken):
@@ -546,7 +663,12 @@ def get_vpn_ipsec_profile_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_vpn_ike_profile_json(proxy_url, sessiontoken):
@@ -555,7 +677,12 @@ def get_vpn_ike_profile_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_l2vpn_service_json(proxy_url, sessiontoken):
@@ -564,7 +691,12 @@ def get_l2vpn_service_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_l2vpn_session_json(proxy_url, sessiontoken):
@@ -573,7 +705,12 @@ def get_l2vpn_session_json(proxy_url, sessiontoken):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_vpn_stats_json(proxy_url, session_token, tunnel_id):
@@ -582,7 +719,12 @@ def get_vpn_stats_json(proxy_url, session_token, tunnel_id):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{tunnel_id}/statistics'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_ipsec_vpn_services(proxy_url, session_token, vpn_id):
@@ -591,7 +733,12 @@ def get_ipsec_vpn_services(proxy_url, session_token, vpn_id):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_ipsec_vpn_endpoints(proxy_url, session_token):
@@ -600,7 +747,12 @@ def get_ipsec_vpn_endpoints(proxy_url, session_token):
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name):
@@ -608,8 +760,12 @@ def new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{display_name}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
 
 
 def new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data):
@@ -617,8 +773,12 @@ def new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{display_name}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
 
 
 def new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_data):
@@ -626,41 +786,71 @@ def new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{display_name}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
 
 
 def new_l2vpn_json (proxy_url, session_token, display_name, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{display_name}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(response['error_message'])
 
 
 def delete_ipsec_vpn_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
-    json_response = requests.delete(myURL, headers=myHeader)
-    return json_response
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def delete_l2vpn_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{vpn_id}'
-    json_response = requests.delete(myURL, headers=myHeader)
-    return json_response
+    response = requests.delete(myURL, headers=myHeader)
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
 
 def delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{vpn_id}'
-    json_response = requests.delete(myURL, headers=myHeader)
-    return json_response
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{id}'
-    json_response = requests.delete(myURL, headers=myHeader)
-    return json_response
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
