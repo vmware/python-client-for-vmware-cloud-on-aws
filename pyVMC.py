@@ -62,6 +62,7 @@ strCSPProdURL   = config.get("vmcConfig", "strCSPProdURL")
 Refresh_Token   = config.get("vmcConfig", "refresh_Token")
 ORG_ID          = config.get("vmcConfig", "org_id")
 SDDC_ID         = config.get("vmcConfig", "sddc_id")
+strVCDRProdURL  = config.get("vmcConfig", "strVCDRProdURL")
 
 if config.has_section("vtcConfig"):
     aws_acc         = config.get("vtcConfig", "MyAWS")
@@ -103,25 +104,6 @@ def getServiceDefinitions(strCSPProdURL, orgID, sessiontoken):
     for i in services:
         table.add_row([i['displayName'], i['serviceAccessType'], i['serviceUrls']['serviceHome']])
     print(table)
-
-def getVCDRURL(strCSPProdURL, orgID, sessiontoken):
-    """Gets URL for VCDR"""
-    json_response = get_services_json(strCSPProdURL, orgID, sessiontoken)
-    services= json_response['servicesList']
-    for i in services:
-        if i['displayName'] =="VMware Cloud DR":
-            strVCDRProdURL = i['serviceUrls']['serviceHome']
-    if strVCDRProdURL == "https://vcdr.vmware.com" or strVCDRProdURL == "":
-        print("Customer is either not entitled to VCDR, or is entitled to multiple regions.  Defaulting to value in config.ini")
-        strVCDRProdURL = config.get("vmcConfig", "strVCDRProdURL")
-    else:
-        strVCDRProdURL = strVCDRProdURL[:-4]
-    return strVCDRProdURL
-
-# ============================
-# CSP - User and Group Management
-# ============================
-
 
 def addUsersToCSPGroup(csp_url, session_token):
     if len(sys.argv) < 4:
@@ -2801,7 +2783,6 @@ def getHelp():
     print("\nCSP")
     print("\tServices")
     print("\t   show-csp-services: Show entitled services")
-    print("\t   show-vcdr-url:  Display the production URL for VCDR service.")
     print("\tUser and Group management")
     print("\t   add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group")
     print("\t   show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints out a user-by-user diff")
@@ -2965,16 +2946,12 @@ else:
 
 session_token = getAccessToken(Refresh_Token)
 proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
-strVCDRProdURL = getVCDRURL(strCSPProdURL, ORG_ID, session_token)
 
 # ============================
 # CSP - Services
 # ============================
 if intent_name == "show-csp-services":
     getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
-elif intent_name == "show-vcdr-url":
-    getVCDRURL(strCSPProdURL, ORG_ID, session_token)
-    print(strVCDRProdURL)
 
 # ============================
 # CSP - User and Group Management
