@@ -20,8 +20,13 @@ def get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAWSID, re
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/compatible-subnets"
     params = {'org': orgID, 'linkedAccountId': linkedAWSID,'region': region}
     response = requests.get(myURL, headers=myHeader, params=params)
-    jsonResponse = response.json()
-    return jsonResponse
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
@@ -29,8 +34,13 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/connected-accounts"
     response = requests.get(myURL, headers=myHeader)
-    jsonResponse = response.json()
-    return jsonResponse
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 # ============================
@@ -43,8 +53,13 @@ def get_sddcs_json(strProdURL, orgID, sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs"
     response = requests.get(myURL, headers=myHeader)
-    jsonResponse = response.json()
-    return jsonResponse
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
@@ -52,10 +67,13 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}"
     response = requests.get(myURL, headers=myHeader)
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    jsonresponse = response.json()
-    return jsonresponse
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 # ============================

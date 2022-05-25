@@ -95,6 +95,7 @@ class data():
 # CSP - Service Definitions
 # ============================
 
+
 def getServiceDefinitions(strCSPProdURL, orgID, sessiontoken):
     """Gets services and URI for associated access token and Org ID"""
     json_response = get_services_json(strCSPProdURL, orgID, sessiontoken)
@@ -104,19 +105,22 @@ def getServiceDefinitions(strCSPProdURL, orgID, sessiontoken):
         table.add_row([i['displayName'], i['serviceAccessType'], i['serviceUrls']['serviceHome']])
     print(table)
 
+
 def getVCDRURL(strCSPProdURL, orgID, sessiontoken):
     """Gets URL for VCDR"""
     json_response = get_services_json(strCSPProdURL, orgID, sessiontoken)
     services= json_response['servicesList']
+    strVCDRProdURL = ""
     for i in services:
-        if i['displayName'] =="VMware Cloud DR":
+        if i['displayName'] == "VMware Cloud DR":
             strVCDRProdURL = i['serviceUrls']['serviceHome']
     if strVCDRProdURL == "https://vcdr.vmware.com" or strVCDRProdURL == "":
-        print("Customer is either not entitled to VCDR, or is entitled to multiple regions.  Defaulting to value in config.ini")
-        strVCDRProdURL = config.get("vmcConfig", "strVCDRProdURL")
+       print("Customer is either not entitled to VCDR, or is entitled to multiple regions.  Defaulting to value in config.ini")
+       strVCDRProdURL = config.get("vmcConfig", "strVCDRProdURL")
     else:
-        strVCDRProdURL = strVCDRProdURL[:-4]
+       strVCDRProdURL = strVCDRProdURL[:-4]
     return strVCDRProdURL
+
 
 # ============================
 # CSP - User and Group Management
@@ -133,12 +137,9 @@ def addUsersToCSPGroup(csp_url, session_token):
             'notifyUsers': 'false',
             'usernamesToAdd': usernamesToAdd
     }
-    json_response, json_response_status_code, myURL = add_users_csp_group_json(csp_url, ORG_ID, session_token, groupId, params)
-    if json_response_status_code == 200:
-        print(f"Added: {json_response['succeeded']}" )
-        print(f"Failed: {json_response['failed']}" )
-    else:
-        print(f'Operation failed with status code {json_response_status_code}. URL: {myURL}. Body: {params}')
+    json_response = add_users_csp_group_json(csp_url, ORG_ID, session_token, groupId, params)
+    print(f"Added: {json_response['succeeded']}" )
+    print(f"Failed: {json_response['failed']}" )
 
 
 def findCSPUserByServiceRole(csp_url, session_token):
@@ -251,17 +252,14 @@ def getCSPOrgUsers(csp_url,session_token):
         params = {
             'userSearchTerm': searchTerm
         }
-        json_response, json_response_status_code, myURL = search_csp_users_json(csp_url, session_token, params, ORG_ID)
-        if json_response_status_code == 200:
-            users = json_response['results']
-            if len(users) >= 20:
-                print("Search API is limited to 20 results, refine your search term for accurate results.")
-            table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
-            for user in users:
-                table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
-            print(table)
-        else:
-            print(f'Search failed with status code {json_response_status_code}. URL: {myURL}. Body: {params}')
+        json_response = search_csp_users_json(csp_url, session_token, params, ORG_ID)
+        users = json_response['results']
+        if len(users) >= 20:
+            print("Search API is limited to 20 results, refine your search term for accurate results.")
+        table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
+        for user in users:
+            table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
+        print(table)
 
 
 def getCSPServiceRoles(csp_url, session_token):
@@ -326,12 +324,20 @@ def getConnectedAccounts(orgID, sessiontoken):
 
 
 def getSDDCConnectedVPC(proxy_url, session_token):
-    """Returns table with Connected VPC and Services information"""
+    """Returns table with Connected VPC and Services information - Compatible with M18+ SDDCs only"""
     json_response = get_conencted_vpc_json(proxy_url, session_token)
     sddc_connected_vpc = json_response['results'][0]
     sddc_connected_vpc_services = get_connected_vpc_services_json(proxy_url, session_token, sddc_connected_vpc['linked_vpc_id'])
+#   The API changed for connected VPCs from M16 to M18 when the connected VPC prefix lists were added to M18.
+#   This if-else block should allow this function to work with both M16 and earlier as well as M18 and newer SDDCs.
+    if 'active_eni' in sddc_connected_vpc:
+        eni = sddc_connected_vpc['active_eni']
+    elif 'traffic_group_eni_mappings' in sddc_connected_vpc:
+        eni = sddc_connected_vpc['traffic_group_eni_mappings'][0]['eni']
+    else:
+        eni = "Unknown"
     table = PrettyTable(['Customer-Owned Account', 'Connected VPC ID', 'Subnet', 'Availability Zone', 'ENI', 'Service Access'])
-    table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], sddc_connected_vpc['active_eni'],sddc_connected_vpc_services['results'][0]['enabled']])
+    table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], eni, sddc_connected_vpc_services['results'][0]['enabled']])
     return table
 
 
@@ -1284,11 +1290,9 @@ def enableNsxIdsCluster(proxy, session_token, targetID):
             "target_id": targetID
         }
     }
-    response, myURL = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
-    if response.status_code == 200:
-        print("IDS enabled on cluster {}".format(targetID))
-    else:
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+    response = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    if response.statuscode == 200:
+        print(f"IDS enabled on cluster {targetID}")
 
 
 def disableNsxIdsCluster(proxy, session_token, targetID):
@@ -1298,11 +1302,9 @@ def disableNsxIdsCluster(proxy, session_token, targetID):
             "target_id": targetID
         }
     }
-    response, myURL = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
-    if response.status_code == 200:
+    response = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    if response.statuscode == 200:
         print("IDS disabled on cluster {}".format(targetID))
-    else:
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
 
 def enableNsxIdsAll(proxy, session_token):
@@ -1318,11 +1320,9 @@ def enableNsxIdsAll(proxy, session_token):
                     "target_id": targetID
                 }
             }
-            response, myURL = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
+            response = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
             if response.status_code == 200:
                 clusterTable.add_row([targetID, "True"])
-            else:
-                print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         else:
             clusterTable.add_row([targetID, "True"])
     print(clusterTable)
@@ -1344,8 +1344,6 @@ def disableNsxIdsAll(proxy, session_token):
             response, myURL = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
             if response.status_code == 200:
                 clusterTable.add_row([targetID, "False"])
-            else:
-                print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         else:
             clusterTable.add_row([targetID, "False"])
     print(clusterTable)
@@ -1355,19 +1353,15 @@ def enableNsxIdsAutoUpdate(proxy, session_token):
     json_data = {
         "auto_update": True
     }
-    response, myURL = enable_nsx_ids_auto_update_json(proxy, session_token, json_data)
+    response = enable_nsx_ids_auto_update_json(proxy, session_token, json_data)
     if response.status_code == 202:
         print("IDS Signature auto-update enabled")
-    else:
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
 
 def NsxIdsUpdateSignatures(proxy, session_token):
     response, myURL = nsx_ids_update_signatures_json(proxy, session_token)
     if response.status_code == 202:
         print("Signature update started")
-    else:
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
 
 def getNsxIdsSigVersions(proxy, session_token):
@@ -2232,10 +2226,8 @@ def getVMExternalID(proxy_url,sessiontoken,vm_name):
 # ============================
 
 
-def newSDDCNAT(proxy_url, sessiontoken, display_name, action, translated_network, source_network, service, translated_port, logging, status):
+def newSDDCNAT(proxy_url, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status):
     """ Creates a new NAT rule """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + display_name)
     if action == "any" or action == "REFLEXIVE":
         json_data = {
         "action": "REFLEXIVE",
@@ -2247,9 +2239,10 @@ def newSDDCNAT(proxy_url, sessiontoken, display_name, action, translated_network
         "scope":["/infra/labels/cgw-public"],
         "firewall_match":"MATCH_INTERNAL_ADDRESS",
         "id": display_name}
-        response = requests.put(myURL, headers=myHeader, json=json_data)
-        json_response_status_code = response.status_code
-        return json_response_status_code
+        json_response_status_code = new_sddc_nat_json(proxy_url, session_token, display_name, json_data)
+        if json_response_status_code == 200:
+            print(f"NAT {display_name} created successfully")
+
     else:
         json_data = {
         "action": "DNAT",
@@ -2263,53 +2256,37 @@ def newSDDCNAT(proxy_url, sessiontoken, display_name, action, translated_network
         "scope":["/infra/labels/cgw-public"],
         "firewall_match":"MATCH_INTERNAL_ADDRESS",
         "id": display_name}
-        response = requests.put(myURL, headers=myHeader, json=json_data)
-        json_response_status_code = response.status_code
-        return json_response_status_code
-
-
-def removeSDDCNAT(proxy_url, sessiontoken, id):
-    """ Remove a NAT rule """
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + id)
-    response = requests.delete(myURL, headers=myHeader)
-    return response
+        json_response_status_code = new_sddc_nat_json(proxy_url, session_token, display_name, json_data)
+        if json_response_status_code == 200:
+            print(f"NAT {display_name} created successfully")
 
 
 def getSDDCNAT(proxy_url, sessiontoken):
     """Prints out all SDDC NAT rules"""
-    json_response, json_response_status_code = get_sddc_nat_info_json(proxy_url, sessiontoken)
-    if json_response_status_code == 200:
-        sddc_NAT = json_response['results']
-        table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
-        for i in sddc_NAT:
-            if 'destination_network' in i:
-                table.add_row([i['id'], i['display_name'], i['destination_network'], i['translated_ports'], i['translated_network'], i['enabled']])
-            else:
-                table.add_row([i['id'], i['display_name'], i['translated_network'], "any", i['source_network'], i['enabled']])
-        return table
-    else:
-        print("There was an issue. Try again.")
-        return
+    json_response = get_sddc_nat_info_json(proxy_url, sessiontoken)
+    sddc_NAT = json_response['results']
+    table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
+    for i in sddc_NAT:
+        if 'destination_network' in i:
+            table.add_row([i['id'], i['display_name'], i['destination_network'], i['translated_ports'], i['translated_network'], i['enabled']])
+        else:
+            table.add_row([i['id'], i['display_name'], i['translated_network'], "any", i['source_network'], i['enabled']])
+    return table
 
 
 def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
     """Prints NAT statistics for provided NAT rule ID"""
-    json_response, json_response_status_code = get_nat_stats_json(proxy_url, sessiontoken, nat_id)
-    if json_response_status_code == 200:
-        sddc_NAT_stats = json_response['results'][0]['rule_statistics']
-        table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
-        for i in sddc_NAT_stats:
-            #  For some reason, the API returns an entry with null values and one with actual data. So I am removing this entry.
-            if (i['active_sessions'] == 0) and (i['total_bytes'] == 0) and (i['total_packets'] == 0):
-                # What this code does is simply check if all entries are empty and skip (pass below) before writing the stats.
-                pass
-            else:
-                table.add_row([nat_id, i['active_sessions'], i['total_bytes'], i['total_packets']])
-        return table
-    else:
-        print("There was an issue.")
-        return
+    json_response = get_nat_stats_json(proxy_url, sessiontoken, nat_id)
+    sddc_NAT_stats = json_response['results'][0]['rule_statistics']
+    table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
+    for i in sddc_NAT_stats:
+        #  For some reason, the API returns an entry with null values and one with actual data. So I am removing this entry.
+        if (i['active_sessions'] == 0) and (i['total_bytes'] == 0) and (i['total_packets'] == 0):
+            # What this code does is simply check if all entries are empty and skip (pass below) before writing the stats.
+            pass
+        else:
+            table.add_row([nat_id, i['active_sessions'], i['total_bytes'], i['total_packets']])
+    return table
 
 
 # ============================
@@ -2474,30 +2451,6 @@ def newSDDCL2VPN(proxy_url, session_token, display_name):
     return json_response_status_code
 
 
-def removeSDDCL2VPN(proxy_url, session_token, l2vpn_id):
-    """ Remove a L2VPN """
-    json_response = delete_l2vpn_json(proxy_url, session_token, l2vpn_id)
-    return json_response
-
-
-def removeSDDCVPN(proxy_url, session_token, vpn_id):
-    """ Remove a VPN session rule """
-    json_response = delete_ipsec_vpn_json(proxy_url, session_token, vpn_id)
-    return json_response
-
-
-def removeSDDCIPSecVpnIkeProfile(proxy_url, session_token, vpn_id):
-    """ Remove a VPN session rule """
-    json_response = delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id)
-    return json_response
-
-
-def removeSDDCIPSecVpnTunnelProfile(proxy_url, sessiontoken, vpn_id):
-    """ Remove a VPN Tunnel Profile  rule """
-    json_response = delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id)
-    return json_response
-
-
 def getSDDCL2VPNSession(proxy_url, sessiontoken):
     """Prints out L2VPN sessions"""
     i = get_l2vpn_session_json(proxy_url, sessiontoken)
@@ -2518,16 +2471,12 @@ def getSDDCL2VPNServices(proxy_url, sessiontoken):
 
 def getSDDCVPN(proxy_url,sessiontoken):
     """Prints out SDDC VPN session information"""
-    json_response, json_response_status_code = get_sddc_vpn_info_json(proxy_url, sessiontoken)
-    if json_response_status_code == 200:
-        sddc_VPN = json_response['results']
-        table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
-        for i in sddc_VPN:
-            table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
-        return table
-    else:
-        print("There was an issue.")
-        return
+    json_response = get_sddc_vpn_info_json(proxy_url, sessiontoken)
+    sddc_VPN = json_response['results']
+    table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
+    for i in sddc_VPN:
+        table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
+    return table
 
 
 def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
@@ -3888,12 +3837,12 @@ elif intent_name == "new-nat-rule":
         if len(sys.argv) >= 7:
             logging = sys.argv[6]
         else:
-            logging = "false"
+            logging = False
         if len(sys.argv) >= 8:
             status = sys.argv[7]
         else:
-            status = "true"
-        print(newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status))
+            status = True
+        newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
     elif action == "DNAT":
         translated_network = sys.argv[4]
         source_network = sys.argv[5]
@@ -3907,13 +3856,13 @@ elif intent_name == "new-nat-rule":
             status = sys.argv[9]
         else:
             status = "true"
-        print(newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status))
-    else :
+        newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
+    else:
         print("There was an error. Make sure you follow the instructions.")
 elif intent_name == "remove-nat-rule":
     if len(sys.argv) == 3:
         id = sys.argv[2]
-        result = removeSDDCNAT(proxy, session_token, id)
+        result = remove_sddc_nat_json(proxy, session_token, id)
         print(result)
         print("\n")
         print(getSDDCNAT(proxy, session_token))
@@ -4036,7 +3985,9 @@ elif intent_name == "new-l2vpn":
     print(l2vpn)
 elif intent_name == "remove-l2vpn":
     id = sys.argv[2]
-    print(removeSDDCL2VPN(proxy, session_token,id))
+    status_code = delete_l2vpn_json(proxy, session_token, id)
+    if status_code == 200:
+        print(f'L2 VPN with ID {id} has been deleted successfully')
 elif intent_name == "new-vpn":
     vpn_name = input("Enter the VPN Name: ")
     remote_private_ip = input('Enter the remote private IP:')
@@ -4046,13 +3997,19 @@ elif intent_name == "new-vpn":
     print(vpn_name + remote_private_ip + remote_public_ip)
 elif intent_name == "remove-vpn":
     id = sys.argv[2]
-    print(removeSDDCVPN(proxy, session_token,id))
+    status_code = delete_ipsec_vpn_json(proxy, session_token, id)
+    if status_code == 200:
+        print(f'IPSEC VPN with ID {id} has been deleted successfully')
 elif intent_name == "remove-vpn-ike-profile":
     id = sys.argv[2]
-    print(removeSDDCIPSecVpnIkeProfile(proxy, session_token,id))
+    status_code = delete_ipsec_vpn_ike_profile_json(proxy, session_token, id)
+    if status_code == 200:
+        print(f'VPN IKE Profile {id} has been deleted successfully')
 elif intent_name == "remove-vpn-ipsec-tunnel-profile":
     id = sys.argv[2]
-    print(removeSDDCIPSecVpnTunnelProfile(proxy, session_token,id))
+    status_code = delete_ipsec_vpn_profile_json(proxy, session_token, id)
+    if status_code == 200:
+        print(f'IPSEC VPN Profile {id} has been removed successufully')
 elif intent_name == "show-l2vpn":
     l2vpn = getSDDCL2VPNSession(proxy, session_token)
     print(l2vpn)
