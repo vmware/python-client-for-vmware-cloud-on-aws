@@ -476,6 +476,84 @@ def get_sddc_dns_zones_json(proxy_url,sessiontoken):
 # ============================
 
 
+def put_sddc_dfw_rule_json(proxy_url, session_token, section, display_name, json_data):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/{section}/rules/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def put_sddc_dfw_section_json(proxy_url, session_token, display_name, json_data):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def delete_sddc_dfw_rule_json(proxy_url, session_token, section, rule_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/{section}/rules/{rule_id}'
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def delete_sddc_dfw_section_json(proxy_url, session_token, section_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/{section_id}'
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_dfw_rule_json(proxy_url, session_token, section):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/{section}/rules'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_dfw_section_json(proxy_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/cgw/security-policies/'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
 # ============================
 # Firewall Service
 # ============================
@@ -547,6 +625,46 @@ def remove_sddc_nat_json(proxy_url, session_token, nat_id):
 # ============================
 # Public IP Addressing
 # ============================
+
+
+def put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data):
+    myHeader = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
+    # proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
+    myURL = f'{proxy_url}/cloud-service/api/v1/infra/public-ips/{ip_id}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def delete_sddc_public_ip_json(proxy_url, session_token, ip_id):
+    myHeader = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/cloud-service/api/v1/infra/public-ips/{ip_id}'
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_public_ip_json(proxy_url, session_token):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/cloud-service/api/v1/infra/public-ips'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 
 # ============================
