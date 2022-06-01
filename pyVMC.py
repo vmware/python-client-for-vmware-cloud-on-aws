@@ -92,6 +92,7 @@ class data():
     sddc_hosts      = 0
     sddc_type       = ""
 
+
 # ============================
 # CSP - Service Definitions
 # ============================
@@ -1897,8 +1898,6 @@ def getSDDCMGWRule(proxy_url, sessiontoken):
 
 
 def newSDDCDFWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, section, sequence_number):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules/" + display_name)
     json_data = {
     "action": action,
     "destination_groups": destination_groups,
@@ -1914,73 +1913,43 @@ def newSDDCDFWRule(proxy_url, sessiontoken, display_name, source_groups, destina
     "source_groups": source_groups,
     "sequence_number": sequence_number
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_dfw_rule_json(proxy_url, sessiontoken, section, display_name, json_data)
     return json_response_status_code
 
 
 def newSDDCDFWSection(proxy_url, sessiontoken, display_name, category):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + display_name)
     json_data = {
     "resource_type":"SecurityPolicy",
     "display_name": display_name,
     "id": display_name,
     "category": category,
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
-
-
-def removeSDDCDFWRule(proxy_url, sessiontoken, section, rule_id):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules/" + rule_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    return json_response_status_code
-
-
-def removeSDDCDFWSection(proxy_url, sessiontoken, section_id):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_dfw_section_json(proxy_url, sessiontoken, display_name, json_data)
     return json_response_status_code
 
 
 def getSDDCDFWRule(proxy_url, sessiontoken, section):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + section + "/rules")
-    response = requests.get(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    if json_response_status_code != 200:
-        print("No section found.")
-    else:
-        json_response = response.json()
-        sddc_DFWrules = json_response['results']
-        table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
-        for i in sddc_DFWrules:
-            # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
-            a = i['source_groups']
-            a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
-            a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
-            b= i['destination_groups']
-            b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
-            b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
-            c = i['services']
-            c = [z.replace('/infra/services/','') for z in c]
-            table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
-        return table
+    json_response = get_sddc_dfw_rule_json(proxy_url, sessiontoken, section)
+    sddc_DFWrules = json_response['results']
+    table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
+    for i in sddc_DFWrules:
+        # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
+        a = i['source_groups']
+        a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
+        a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
+        b= i['destination_groups']
+        b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
+        b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
+        c = i['services']
+        c = [z.replace('/infra/services/','') for z in c]
+        table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
+    return table
 
 
 def getSDDCDFWSection(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_sddc_dfw_section_json(proxy_url, sessiontoken)
     sddc_DFWsection = json_response['results']
-    table = PrettyTable(['id', 'Name','Category', 'Sequence Number'])
+    table = PrettyTable(['id', 'Name', 'Category', 'Sequence Number'])
     for i in sddc_DFWsection:
         table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
     return table
@@ -2273,45 +2242,26 @@ def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
 # ============================
 
 
-def newSDDCPublicIP(proxy_url, sessiontoken, notes):
+def newSDDCPublicIP(proxy_url, session_token, ip_id):
     """ Gets a new public IP for compute workloads. Requires a description to be added to the public IP."""
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    myURL = (proxy_url_short + "cloud-service/api/v1/infra/public-ips/" + notes)
     json_data = {
-    "display_name" : notes
+    "display_name" : ip_id
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data)
     return json_response_status_code
 
 
-def removeSDDCPublicIP(proxy_url, sessiontoken, ip_id):
-    """ Removes a public IP. """
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/public-ips/" + ip_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    return json_response_status_code
-
-
-def setSDDCPublicIP(proxy_url, sessiontoken, notes, ip_id):
+def setSDDCPublicIP(proxy_url, session_token, notes, ip_id):
     """ Update the description of an existing  public IP for compute workloads."""
-    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/public-ips/" + ip_id)
     json_data = {
     "display_name" : notes
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data)
     return json_response_status_code
 
 
 def getSDDCPublicIP(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/cloud-service/api/v1/infra/public-ips")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+    json_response = get_sddc_public_ip_json(proxy_url, sessiontoken)
     sddc_public_ips = json_response['results']
     table = PrettyTable(['IP', 'id', 'Notes'])
     for i in sddc_public_ips:
@@ -2322,6 +2272,7 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
 # ============================
 # NSX-T - Segments
 # ============================
+
 
 def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
     """ Creates a new SDDC Network. L2 VPN networks are not currently supported. """
@@ -3552,7 +3503,7 @@ elif intent_name == "remove-dfw-rule":
     else:
         section_id = sys.argv[2]
         rule_id = sys.argv[3]
-        if removeSDDCDFWRule(proxy, session_token, section_id, rule_id) == 200:
+        if delete_sddc_dfw_rule_json(proxy, session_token, section_id, rule_id) == 200:
             print("The rule " + rule_id + " has been deleted")
             print(getSDDCDFWRule(proxy,session_token, section_id))
         else :
@@ -3562,7 +3513,7 @@ elif intent_name == "remove-dfw-section":
         print("Incorrect syntax. ")
     else:
         section_id = sys.argv[2]
-        if removeSDDCDFWSection(proxy, session_token, section_id) == 200:
+        if delete_sddc_dfw_section_json(proxy, session_token, section_id) == 200:
             print("The section " + section_id + " has been deleted.")
             print(getSDDCDFWSection(proxy,session_token))
         else :
@@ -3872,7 +3823,7 @@ elif intent_name == "remove-sddc-public-ip":
         print("Incorrect syntax. ")
     else:
         public_ip = sys.argv[2]
-        if removeSDDCPublicIP(proxy, session_token, public_ip) == 200:
+        if delete_sddc_public_ip_json(proxy, session_token, public_ip) == 200:
             print(getSDDCPublicIP(proxy,session_token))
         else :
             print("Issues deleting the Public IP. Check the syntax.")
