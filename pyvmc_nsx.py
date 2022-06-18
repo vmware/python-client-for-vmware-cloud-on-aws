@@ -12,6 +12,21 @@ import requests
 from requests.sessions import session
 from requests.auth import HTTPBasicAuth
 
+# ============================
+# Search
+# ============================
+def search_nsx_json(proxy, session_token, object_type):
+    """Leverages NSX Search API to return inventory via either NSX or policy API"""
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f"{proxy}/policy/api/v1/search?query=resource_type:{object_type}"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
 
 # ============================
 # Advanced Firewall

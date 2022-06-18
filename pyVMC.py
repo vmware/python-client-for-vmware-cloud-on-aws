@@ -92,6 +92,12 @@ class data():
     sddc_hosts      = 0
     sddc_type       = ""
 
+def generate_table(results):
+    keyslist = list(results[0].keys())
+    table = PrettyTable(keyslist)
+    for dct in results:
+        table.add_row([dct.get(c, "") for c in keyslist])
+    return table
 
 # ============================
 # CSP - Service Definitions
@@ -1231,6 +1237,130 @@ def add_vpc_prefixes(routes, att_id, resource_id, org_id, account, session_token
     task_id = json_response ['id']
     return task_id
 
+# ============================
+# NSX-T - all
+# ============================
+
+def search_nsx(proxy_url, session_token, object_type):
+    """Prints out all Compute Gateways segements in the SDDC"""
+    json_response = search_nsx_json(proxy_url, session_token, object_type)
+    # Print total result count - used for debugging purposes.  Comment out when unused.
+    # print(f'Total results: {json_response["result_count"]}')
+    results = json_response['results']
+    # Print total total JSON payload - used for debugging purposes.  Comment out when unused.
+    # print(json.dumps(json_response, indent = 2))
+    print("")
+    if object_type == "BgpNeighborConfig":
+        if len(results) !=0:
+            table = generate_table(results)
+            print(table.get_string(fields=["resource_type", "display_name",  "id", "neighbor_address", "remote_as_num"]))
+        else:
+            print("None found.")
+    elif object_type == "BgpRoutingConfig":
+        if len(results) !=0:
+            table = generate_table(results)
+            print(table.get_string(fields=["resource_type", "display_name", "id", "enabled", "ecmp",  "route_aggregations"]))
+        else:
+            print("None found.")
+    elif object_type == "Group":
+        for item in results:
+            if len(item['expression']) > 0:
+                if 'ip_addresses' in item['expression'][0]:
+                    item['ip_addresses'] = item['expression'][0]['ip_addresses']
+                else:
+                    item['ip_addresses'] = "--"
+        if len(results) !=0:
+            table = generate_table(results)
+            table._max_width = {"display_name" : 35, "description" : 50, "ip_addresses" : 20}
+            print(table.get_string(fields=["display_name", "description", "ip_addresses"]))
+        else:
+            print("None found.")
+    elif object_type == "IdsSignature":
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["display_name", "cves", "attack_target", "cvss"]))
+    elif object_type == "PrefixList":
+        for item in results:
+            if not item.get("prefixes"):
+                item.clear()
+        results = list(filter(None, results))
+        if len(results) !=0:
+            table = generate_table(results)
+            table._max_width = {"prefixes" : 50}
+            print(table.get_string(fields=["resource_type", "id", "description", "prefixes"]))
+        else:
+            print("None found.")
+    elif object_type == "RouteBasedIPSecVpnSession":
+        for item in results:
+            item['bgp ip_addresses'] = item['tunnel_interfaces'][0]['ip_subnets'][0]['ip_addresses']
+            item['bgp prefix length'] = item['tunnel_interfaces'][0]['ip_subnets'][0]['prefix_length']
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=[ "display_name", "resource_type", "peer_id",  "peer_address", "bgp ip_addresses", "bgp prefix length"]))
+    elif object_type == "Segment":
+        for item in results:
+            if 'subnets' in item:
+                if 'network' in item['subnets'][0]:
+                    item['network'] = item['subnets'][0]['network']
+                else:
+                    item['network'] = "--"
+                if 'gateway_address' in item ['subnets'][0]:
+                    item['gateway_address'] = item['subnets'][0]['gateway_address']
+                else:
+                    item['gateway_address'] = "--"
+                if 'dhcp_ranges' in item['subnets'][0]:
+                    item['dhcp_ranges'] = item['subnets'][0]['dhcp_ranges']
+                else:
+                    item['dhcp_ranges'] = "--"
+            else:
+                item['network'] = "--"
+                item['gateway_address'] = "--"
+                item['dhcp_ranges'] = "--"
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "display_name", "id", "type", "network", "gateway_address", "dhcp_ranges"]))
+    elif object_type == "Service":
+        for item in results:
+            if 'source_ports' in item['service_entries'][0]:
+                item['source_ports'] = item['service_entries'][0]['source_ports']
+            else:
+                item['source_ports'] = "--"
+            if 'destination_ports' in item['service_entries'][0]:
+                item['destination_ports'] = item['service_entries'][0]['destination_ports']
+            else:
+                item['destination_ports'] = "--"
+        if len(results) !=0:
+            table = generate_table(results)
+        table._max_width = {"resource_type" : 15, "display_name" : 40, "id" : 40 , "source_ports": 20, "destination_ports" : 20}
+        print(table.get_string(fields=["resource_type", "display_name", "id", "source_ports", "destination_ports"]))
+    elif object_type == "StaticRoutes":
+        for item in results:
+            item['next_hops'] = item['next_hops'][0]['ip_address']
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "display_name", "id", "network", "next_hops"]))
+    elif object_type == "Tier0":
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "display_name", "id"]))
+    elif object_type == "Tier1":
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "display_name", "id", "type"]))
+    elif object_type == "VirtualMachine":
+        for item in results:
+            item['computer_name'] = item['guest_info']['computer_name']
+            item['os_name'] = item['guest_info']['os_name']
+            item['target_display_name'] = item['source']['target_display_name']
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "computer_name", "os_name", "target_display_name", "display_name"]))
+    elif object_type == "VirtualNetworkInterface":
+        for item in results:
+            item['ip_addresses'] = item['ip_address_info'][0]['ip_addresses']
+        if len(results) !=0:
+            table = generate_table(results)
+        print(table.get_string(fields=["resource_type", "display_name", "owner_vm_type", "owner_vm_id", "mac_address", "ip_addresses"]))
 
 # ============================
 # NSX-T - Advanced Firewall
@@ -2704,7 +2834,7 @@ def getHelp():
     print("\tTKG")
     print("\t   enable-tkg: Enable Tanzu Kubernetes Grid on an SDDC")
     print("\t   disable-tkg: Disable Tanzu Kubernetes Grid on an SDDC\n")
-    print("\tVMware Transit Connect")
+    print("\nVMware Transit Connect")
     print("\tAWS Operations:")
     print("\t    connect-aws: Connect an vTGW to an AWS account")
     print("\t    disconnect-aws: Disconnect a vTGW from an AWS account\n")
@@ -2727,6 +2857,8 @@ def getHelp():
     print("\t    detach-vpc Detach VPC from a vTGW")
     print("\t    vpc-prefixes: Add or remove vTGW static routes\n")
     print("\nNSX-T")
+    print("\tSearch")
+    print("\t    search-nsx [OBJECT_TYPE]: lists a table of specified objects returned from NSX")
     print("\tNSX-T Advanced Firewall Add-on - Add-on must be activated via GUI in the Cloud Services Portal")
     print("\t   show-nsxaf-status: Display the status of the NSX Advanced Firewall Add-on\n")
     print("\tDistributed IDS Operations")
@@ -3166,6 +3298,31 @@ elif intent_name == "vpc-prefixes":
         task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
         get_task_status(task_id, ORG_ID, session_token)
 
+# ============================
+# NSX-T - Search
+# ============================
+elif intent_name == "search-nsx":
+    if len(sys.argv) != 3:
+        print("Invalid syntax.  Please provide one object type to search by as an argument.")
+        print("Currently supported object types are as follows:")
+        print("    BgpNeighborConfig")
+        print("    BgpRoutingConfig")
+        print("    Group")
+        print("    IdsSignature")
+        print("    PrefixList")
+        print("    RouteBasedIPSecVPNSession")
+        print("    Segment")
+        print("    Service")
+        print("    StaticRoute")
+        print("    Tier0")
+        print("    Tier1")
+        print("    VirtualMachine")
+        print("    VirtualNetworkInterface")
+        print("")
+        print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
+    else:
+        object_type = sys.argv[2]
+        search_nsx (proxy, session_token, object_type)
 
 # ============================
 # NSX-T - Advanced Firewall
