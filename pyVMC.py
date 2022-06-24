@@ -1589,9 +1589,9 @@ def listIdsPolicies(proxy, session_token):
 # NSX-T - BGP and Routing
 # ============================
 
-def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
+def attachT0BGPprefixlist(proxy, session_token, neighbor_id):
     """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
-    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
     for key in list(neighbor_json.keys()):
         if key.startswith('_'):
             del neighbor_json[key]
@@ -1631,8 +1631,8 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
                 del neighbor_json["out_route_filters"]
             neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
         elif test == "5":
-            attach_bgp_prefix_list_json(csp_url, session_token, neighbor_id, neighbor_json)
-            print("Complete - route filter entry:")
+            status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+            print(f'Status {status_code}. Complete - route filter entry:')
             print()
             pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
             print(pretty_json)
@@ -1643,15 +1643,16 @@ def attachT0BGPprefixlist(csp_url, session_token, neighbor_id):
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
 
-def detachT0BGPprefixlists(csp_url, session_token, neighbor_id):
+def detachT0BGPprefixlists(proxy, session_token, neighbor_id):
     """Detaches all prefix lists from specified T0 BGP neighbor - applicable for route-based VPN"""
-    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(csp_url, session_token, neighbor_id)
+    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
+    print(json.dumps(neighbor_json, indent=2))
     for key in list(neighbor_json.keys()):
         if key.startswith('_'):
             del neighbor_json[key]
     neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-    detach_sddc_t0_prefix_lists_json(csp_url, session_token, neighbor_id, neighbor_json)
-    print(f'Prefix lists detached from {neighbor_id}')
+    status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+    print(f'Status {status_code}. Prefix lists detached from {neighbor_id}')
 
 
 def newBGPprefixlist(csp_url, session_token):

@@ -205,11 +205,13 @@ def attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
     response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
-    json_response = response.json()
+    # json_response = response.json()
     if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+    else:
+        return response.status_code
 
 
 def get_sddc_bgp_as_json(proxy_url,sessiontoken):
@@ -304,18 +306,6 @@ def get_sddc_t0_bgp_neighbors_json(proxy, session_token):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-
-
-def detach_sddc_t0_prefix_lists_json(proxy, session_token, neighbor_id, neighbor_json):
-    """Detaches BGP prefix lists from SDDC T0 - applicable to route-based VPN"""
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
-    response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
-    json_response = response.json()
-    if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
