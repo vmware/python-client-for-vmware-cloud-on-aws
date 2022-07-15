@@ -34,6 +34,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 
 import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
+import argparse
 import operator
 import time
 import json
@@ -1578,7 +1579,7 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
             print(json.dumps(neighbors,indent=2))
 
 
-def getSDDCT0BGPRoutes(csp_url, session_token):
+def getSDDCT0BGPRoutes(proxy, session_token):
     """Prints BGP routes for T0 edge gateway"""
     bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
     learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
@@ -2189,18 +2190,147 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
 # NSX-T - Segments
 # ============================
 
-def configure_t1(proxy, session_token, t1_id, connection_type):
+def configure_t1(**kwargs):
     """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it does not exist already."""
-    json_data = {"type": connection_type}
-    configure_t1_json(proxy, session_token, t1_id, json_data)
-    print(f'Tier1 gateway {t1_id} has been configured as {connection_type}')
+    if kwargs['objectname'] is None or kwargs['t1type'] is None:
+        print("Please use -n to specify the name of the T1 router to be configured, and -t1t or --t1type to specify the type (ROUTED/NATTED/ISOLATED).  Consult the help for additional options.")
+        sys.exit()
+    t1_id = kwargs["objectname"]
+    json_data = {"type": kwargs["t1type"]}
+    status = configure_t1_json(proxy, session_token, t1_id, json_data)
+    if status == 200:
+        print(f'Tier1 gateway {t1_id} has been configured as {kwargs["t1type"]}')
+    else:
+        print("T1 was not created.  Please check your syntax and try again.")
 
-def delete_t1(proxy, session_token, t1_id):
+def remove_t1(**kwargs):
     """ Deletes a Tier1 router as"""
-    delete_t1_json(proxy, session_token, t1_id)
-    print(f'Tier1 gateway {t1_id} has been deleted.')
+    t1_id = kwargs["objectname"]
+    if t1_id =="cgw" or t1_id =="mgw":
+        print(" ")
+        print("Seriously?")
+        print(" ")
+        print("That's a terrible idea!")
+        print("Are you trying to break the environment?")
+        print("Do not try to delete the default CGW of MGW.")
+        print(" ")
+        sys.exit()
+    status = delete_t1_json(proxy, session_token, t1_id)
+    if status ==200:
+        print(f'Tier1 gateway {t1_id} has been deleted.')
+    else: 
+        print("T1 was not removed.  Please check your syntax and try again.")
 
+def new_segment(**kwargs):
+    """
+    Creates a new network segment - requires options to configure correctly.
+    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    """
+    if kwargs['objectname'] is None or kwargs['gateway'] is None:
+        print("Please specify a name for the segment, and the gateway/network.")
+        sys.exit()
+    if kwargs['tier1_id'] is None and kwargs['segment_type'] is None:
+        print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
+        sys.exit()
+    segment_name = kwargs["objectname"]
+    segment=search_nsx_json(proxy, session_token, "Segment", segment_name)
+    if len(segment['results']) > 0:
+        print("The segment already appears to exist.")
+        sys.exit()
+    segment_type = kwargs['segment_type']
+    json_data = {
+        "display_name":f'{segment_name}',
+        "id":f'{segment_name}',
+        "advanced_config":{"connectivity":"ON"},
+        "type": "ROUTED",
+        "subnets":[
+            {
+                "gateway_address": f'{kwargs["gateway"]}'
+            }
+        ]
+        }
+    if kwargs['dhcp_range'] is not None:
+        json_data["subnets"][0]["dhcp_ranges"] = [f'{kwargs["dhcp_range"]}']
+    if kwargs['domain_name'] is not None:
+        json_data["domain_name"] = f'[{kwargs["domain_name"]}]'
+    if kwargs['connectivity'] == "ON":
+        json_data["advanced_config"]["connectivity"] = "ON"
+    if kwargs['routing_type'] is not None:
+        json_data["type"] = f'{kwargs["routing_type"]}'
+    if kwargs['tier1_id'] is not None:
+        if segment_type == "fixed":
+            json_data["connectivity_path"] = "/infra/tier-1s/cgw"
+        else:
+            json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
+    status = new_segment_json(proxy, session_token, segment_name, segment_type, json_data)
+    if status == 200:
+        print(f'The following network has been created: {segment_name}')
+        search_nsx(proxy, session_token, "Segment", segment_name)
+    else:
+        print("The segment was not created. Please check your syntax and try again.")
+      
+def configure_segment(**kwargs):
+    """
+    Reconfigures an existing network segment - requires options to configure correctly.
+    If segment does not exist, prompts user to create using 'new-segment'
+    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    """
+    if kwargs['objectname'] is None:
+        print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
+        sys.exit()
+    segment_name = kwargs["objectname"]
+    # Quick search to see if the segment exists of not.
+    segment=search_nsx_json(proxy, session_token, "Segment", segment_name)
+    # If the segment exists, capture the path for the API call, and the existing configuration in JSON.
+    if len(segment['results']) > 0:
+        json_init=segment['results'][0]
+        segment_path = segment['results'][0]['path']
+    else:
+        print("The segment does not exist.  Please create a segment using 'new-segment'.")
+        sys.exit()
+    # Establish a list of keys to keep - these represent the values we are willing/able to update.
+    keep_list = ['display_name', 'connectivity_path','advanced_config','type']
+    # Construct a new JSON using just the keys we want to keep
+    json_data = dict([(key, val) for key, val in 
+           json_init.items() if key in keep_list])
+    # Update the json_data with the configuration specified by the user.
+    if kwargs['connectivity'] is not None:
+        json_data["advanced_config"]["connectivity"] = f'{kwargs["connectivity"]}'
+    if kwargs['routing_type'] is not None:
+        json_data["type"] = f'{kwargs["routing_type"]}'
+    if kwargs['tier1_id'] is not None:
+        if segment_path == "/infra/tier-1s/cgw":
+            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'moveable' segment.")
+        else:
+            json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
+    # make the call to the API
+    status = configure_segment_json(proxy, session_token, segment_path, json_data)
+    # present results.
+    if status ==200:
+        print(f'The following network has been modified: {segment_name}')
+        search_nsx(proxy, session_token, "Segment", segment_name)
+    else: 
+        print("The segment was not modified.  Please check your syntax and try again.")
 
+def remove_segment(**kwargs):
+    """
+    Removes a network segment - requires options to configure correctly.
+    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    """
+    if kwargs['objectname'] is None:
+        print("Please use -n to specify a name for the segment to be removed.  Consult the help for additional options.")
+    segment_name = kwargs["objectname"]
+    segment=search_nsx_json(proxy, session_token, "Segment", segment_name)
+    if len(segment['results']) > 0:
+        segment_path = segment['results'][0]['path']
+        status = remove_segment_json(proxy, session_token, segment_path)
+        if status == 200:
+            print(f'The following network has been removed: {segment_name}')
+        else:
+            print("The segment was not removed.  Please check your syntax and try again.")
+    else:
+        print("The segment does not exist.")
+    
 def connect_segment(proxy_url, sessiontoken, network_id, gateway_address, dhcp_range, domain_name):
     """ Connects an existing SDDC Network to the default CGW. L2 VPN networks are not currently supported. """
     segment = search_nsx_json(proxy, session_token, "Segment", network_id)
@@ -2264,7 +2394,6 @@ def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp
     table.add_row([display_name, gateway_address, dhcp_range, domain_name, routing_type])
     return table
 
-
 def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l2vpn_path):
     """ Creates a new stretched/extended Network. """
     json_data = {
@@ -2285,12 +2414,10 @@ def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l
     table.add_row([display_name, tunnel_id, "extended"])
     return table
 
-
 def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
     """ Remove an SDDC Network """
     remove_sddc_networks_json(proxy_url, sessiontoken, network_id)
     print(f'The network {network_id} has been deleted.')
-
 
 def getSDDCnetworks(proxy_url, sessiontoken):
     """Prints out all Compute Gateway segemtns in all the SDDCs in the Org"""
@@ -2309,7 +2436,6 @@ def getSDDCnetworks(proxy_url, sessiontoken):
     print(table)
     print("Extended Networks:")
     print(table_extended)
-
 
 def createLotsNetworks(proxy_url, sessiontoken,network_number):
     """ Creates lots of networks! """
@@ -2767,8 +2893,11 @@ def getHelp():
     print("\t   set-sddc-public-ip: update the description of an existing public IP")
     print("\t   show-sddc-public-ip: show the public IPs\n")
     print("\tVirtual Machine Networking")
-    print("\t   configure-t1 [T1 GATEWAY ID] [ROUTED or ISOLATED or NATTED]: show a list of tier-1 compute gateways")
-    print("\t   delete-t1 [T1 GATEWAY ID]: Deletes a T1 gateway") 
+    print("\t   configure-t1 (-n NAME --t1type ROUTED/NATTED/ISOLATED): Create or configure a new or existing tier-1 compute gateways - compatible with VMC on AWS SDDC 1.18 and onwards")
+    print("\t   remove-t1 (-n NAME): Deletes a T1 gateway - compatible with VMC on AWS SDDC 1.18 and onwards;") 
+    print("\t   new-segment (try pyVMC.py -h for options): Creates a new 'fixed' or 'moveable' segment- compatible with VMC on AWS SDDC 1.18 and onwards; defaults to 'moveable.") 
+    print("\t   configure-segment (try pyVMC.py -h for options): Modifies the configuration of an existing 'fixed' or 'moveable' segment- compatible with VMC on AWS SDDC 1.18 and onwards; does not support changing from fixed/moveable.") 
+    print("\t   remove-segment (options: -n SEGMENT NAME): Removes a 'fixed' or 'moveable' segment- compatible with VMC on AWS SDDC 1.18 and onwards") 
     print("\t   connect-segment [NETWORK ID] [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network: changes an existing, disconnected segement to connected and 'routed'")
     print("\t   connect-segment [NETWORK ID] [GATEWAY_ADDRESS] for a static network: changes an existing, disconnected segement to connected and routed")
     print("\t   disconnect-segment [NETWORK ID]: Disconnect an existing routed segment and change to disconnected")
@@ -2818,6 +2947,24 @@ else:
 
 session_token = getAccessToken(Refresh_Token)
 proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
+
+# this is the top level parser
+ap = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+# ap.add_argument("-c", "--command", required=True)
+ap.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
+
+vmnetgrp = ap.add_argument_group('Virtual Machine Networking', "Options only used with 'new-segment' and 'configure-segment'")
+vmnetgrp.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment - by default this is 'OFF'")
+vmnetgrp.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
+vmnetgrp.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
+vmnetgrp.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
+vmnetgrp.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
+vmnetgrp.add_argument("-st","--segment-type", choices=["fixed","moveable"], default="moveable", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'MOVEABLE'")
+vmnetgrp.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
+vmnetgrp.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")
+# vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
+args, unknown = ap.parse_known_args()
+
 
 # ============================
 # CSP - Services
@@ -3856,28 +4003,15 @@ elif intent_name == "show-sddc-public-ip":
 # ============================
 
 elif intent_name == "configure-t1":
-    if len(sys.argv) == 4:
-        t1_id = sys.argv[2]
-        connection_type = sys.argv[3].upper()
-        configure_t1(proxy, session_token, t1_id, connection_type)
-    else:
-        print("Incorrect syntax.  Please provide only the T1 ID and the connectivity type - 'ROUTED' 'ISOLATED' or 'NATTED'.")
-elif intent_name == "delete-t1":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax.  Please provide only the T1 ID.")
-    else:
-        t1_id = sys.argv[2]
-        if t1_id =="cgw" or t1_id =="mgw":
-            print(" ")
-            print("Seriously?")
-            print(" ")
-            print("That's a terrible idea!")
-            print("Are you trying to break the environment?")
-            print("Do not try to delete the default CGW of MGW.")
-            print(" ")
-        else:
-            delete_t1(proxy, session_token, t1_id)
-
+    configure_t1(**vars(args))
+elif intent_name == "remove-t1":
+    remove_t1(**vars(args))
+elif intent_name == "new-segment":
+    new_segment(**vars(args))
+elif intent_name == "configure-segment":
+    configure_segment(**vars(args))
+elif intent_name == "remove-segment":
+    remove_segment(**vars(args))
 elif intent_name == "new-network":
     if sys.argv[3].lower() == "routed" and len(sys.argv) == 7:
         # DHCP-Enabled Network
