@@ -1098,6 +1098,8 @@ def search_nsx(proxy_url, session_token, object_type, object_id):
                 item['network'] = "--"
                 item['gateway_address'] = "--"
                 item['dhcp_ranges'] = "--"
+            if 'connectivity_path' not in item:
+                item['connectivity_path'] ="--"
         if len(results) !=0:
             table = generate_table(results)
         print(table.get_string(fields=["resource_type", "display_name", "id", "type", "network", "gateway_address", "dhcp_ranges", "connectivity_path"]))
@@ -2229,7 +2231,7 @@ def new_segment(**kwargs):
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
         print("Please specify a name for the segment, and the gateway/network.")
         sys.exit()
-    if kwargs['tier1_id'] is None and kwargs['segment_type'] is None:
+    if kwargs['segment_type'] == "moveable" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
         sys.exit()
     segment_name = kwargs["objectname"]
