@@ -730,125 +730,6 @@ def check_empty_group(group_id, org_id, session_token):
     return True
 
 
-def getSDDCGroups(proxy_url, sessiontoken, gw):
-    """ Gets the SDDC Groups. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups"
-    # print(myURL)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    # print(json_response)
-    sddc_group = json_response['results']
-    table = PrettyTable(['ID', 'Name'])
-    for i in sddc_group:
-        table.add_row([i['id'], i['display_name']])
-    # print(table)
-    return table
-
-
-def getSDDCGroup(proxy_url, sessiontoken, gw, group_id):
-    """ Gets a single SDDC Group. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    # Checking for groups with defined criteria with the following command.
-    if 'expression' in json_response:
-        group_criteria = json_response['expression'][0]
-        if group_criteria["resource_type"] == "IPAddressExpression":
-            group_IP_list = group_criteria['ip_addresses']
-            print("The group " + group_id + " is based on the IP addresses criteria:")
-            # print(group_IP_list,sep='\n') would work best with Python3.
-            print(group_IP_list)
-        elif group_criteria["resource_type"] == "ExternalIDExpression":
-            group = json_response['expression']
-            if group[0]['member_type'] == "VirtualMachine":
-                myNewURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id + "/members/virtual-machines"
-                new_response = requests.get(myNewURL, headers=myHeader)
-                new_second_response = new_response.json()
-                new_second_extra = new_second_response['results']
-                new_table = PrettyTable(['Name'])
-                for i in new_second_extra:
-                    new_table.add_row([i['display_name']])
-                print("\n The following Virtual Machines are part of the Group.")
-                print(new_table)
-        elif group_criteria["resource_type"] == "Condition":
-            group = json_response['expression']
-            print("The group " + group_id + " is based on these criteria:")
-            table = PrettyTable(['Member Type', 'Key', 'Operator', 'Value'])
-            for i in group:
-                table.add_row([i['member_type'], i['key'], i['operator'], i['value']])
-            print(table)
-            if group[0]['member_type'] == "VirtualMachine":
-                myNewURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id + "/members/virtual-machines"
-                new_response = requests.get(myNewURL, headers=myHeader)
-                new_second_response = new_response.json()
-                new_second_extra = new_second_response['results']
-                new_table = PrettyTable(['Name'])
-                for i in new_second_extra:
-                    new_table.add_row([i['display_name']])
-                print("\n The following Virtual Machines are part of the Group.")
-                print(new_table)
-            else:
-                myNewURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id + "/members/ip-addressesa"
-                new_response = requests.get(myNewURL, headers=myHeader)
-                new_second_response = new_response.json()
-                new_second_extra = new_second_response['results']
-                new_table = PrettyTable(['Name'])
-                for i in new_second_extra:
-                    new_table.add_row([i['display_name']])
-                print("\n The following IP addresses are part of the Group.")
-                print(new_table)
-        else:
-            print("Incorrect syntax. Try again.")
-    else:
-        print("This group has no criteria defined.")
-    return
-
-
-def getSDDCGroupAssociation(proxy_url, sessiontoken, gw, group_id):
-    """ Find where a SDDC Group is being used. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/group-service-associations?intent_path=/infra/domains/" + gw + "/groups/" + group_id
-    response = requests.get(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    json_response = response.json()
-    # print(json_response)
-    if response.status_code != 200:
-        print(f'API Call Status {response.status_code}, text:{response.text}')
-    else:
-        sddc_group = json_response['results']
-        if len(sddc_group) == 0:
-            print("No object is associated with this group.")
-        else:
-            table = PrettyTable(['ID', 'Name'])
-            for i in sddc_group:
-                table.add_row([i['target_id'], i['target_display_name']])
-            print(table)
-
-
-def removeSDDCGroup(proxy_url, sessiontoken, gw, group_id):
-    """ Remove an SDDC Group """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.status_code
-    print(json_response)
-    if json_response == 200:
-        print("The group " + group_id + " has been deleted")
-    else:
-        print("There was an error. Try again.")
-    return json_response
-
-
 # ============================
 # VTC - TGW Operations
 # ============================
@@ -1014,9 +895,11 @@ def add_vpc_prefixes(routes, att_id, resource_id, org_id, account, session_token
     task_id = add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id)
     return task_id
 
+
 # ============================
 # NSX-T - all
 # ============================
+
 
 def search_nsx(proxy_url, session_token, object_type, object_id):
     """Prints out all Compute Gateways segements in the SDDC"""
@@ -1149,6 +1032,7 @@ def search_nsx(proxy_url, session_token, object_type, object_id):
         if len(results) !=0:
             table = generate_table(results)
         print(table.get_string(fields=["resource_type", "display_name", "owner_vm_type", "owner_vm_id", "mac_address", "ip_addresses"]))
+
 
 # ============================
 # NSX-T - Advanced Firewall
@@ -1376,6 +1260,7 @@ def listIdsPolicies(proxy, session_token):
 # ============================
 # NSX-T - BGP and Routing
 # ============================
+
 
 def attachT0BGPprefixlist(proxy, session_token, neighbor_id):
     """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
@@ -1682,6 +1567,7 @@ def getSDDCT0staticroutes(proxy_url,session_token):
 # NSX-T - DNS
 # ============================
 
+
 def getSDDCDNS_Services(proxy_url,sessiontoken,gw):
     """Retreives the DNS zone services."""
     sddc_dns_service = get_sddc_dns_services_json(proxy_url,sessiontoken,gw)
@@ -1967,10 +1853,6 @@ def getSDDCService(proxy_url,sessiontoken,service_id):
 
 def newSDDCGroupIPaddress(proxy_url,sessiontoken,gw,group_id,ip_addresses):
     """ Creates a single SDDC Group based on IP addresses. Use 'mgw' or 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
     json_data = {
     "expression" : [ {
       "ip_addresses" : ip_addresses,
@@ -1979,17 +1861,12 @@ def newSDDCGroupIPaddress(proxy_url,sessiontoken,gw,group_id,ip_addresses):
     "id" : group_id,
     "display_name" : group_id,
     "resource_type" : "Group"}
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_inventory_group_json_response(proxy_url, sessiontoken, json_data, gw, group_id)
     return json_response_status_code
 
 
-def newSDDCGroupCriteria(proxy_url,sessiontoken,gw,group_id,member_type,key,operator,value):
+def newSDDCGroupCriteria(proxy_url, sessiontoken, gw, group_id, member_type, key, operator, value):
     """ Creates a single SDDC Group based on a criteria. Use 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
     json_data = {
     "expression" : [ {
       "member_type" : member_type,
@@ -2001,29 +1878,12 @@ def newSDDCGroupCriteria(proxy_url,sessiontoken,gw,group_id,member_type,key,oper
     "id" : group_id,
     "display_name" : group_id,
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_inventory_group_json_response(proxy_url, sessiontoken, json_data, gw, group_id)
     return json_response_status_code
 
 
-def newSDDCGroupGr(proxy_url,sessiontoken,gw,group_id,member_of_group):
+def newSDDCGroupGr(proxy_url, sessiontoken, gw, group_id, member_of_group):
     """ Creates a single SDDC group and adds 'member_of_group' to the group membership"""
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
-    # Example JSON data
-    #json_data = {
-    #"expression" : [ {
-    #    "paths": [ "/infra/domains/cgw/groups/Group1", "/infra/domains/cgw/groups/Group2"],
-    #    "resource_type": "PathExpression",
-    #    "parent_path": "/infra/domains/cgw/groups/" + group_id
-    #} ],
-    #"extended_expression": [],
-    #"id" : group_id,
-    #"resource_type" : "Group",
-    #"display_name" : group_id,
-    #}
 
     # Split the group members into a list
     group_list = member_of_group.split(',')
@@ -2049,18 +1909,13 @@ def newSDDCGroupGr(proxy_url,sessiontoken,gw,group_id,member_of_group):
     json_data["resource_type"] = "Group"
     json_data["display_name"] = group_id
 
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_inventory_group_json_response(proxy_url, sessiontoken, json_data, gw, group_id)
     #print(response.text)
     return json_response_status_code
 
 
 def newSDDCGroupVM(proxy_url,sessiontoken,gw,group_id,vm_list):
     """ Creates a single SDDC Group based on a list of VM external_id. Use 'cgw' as the parameter """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/domains/" + gw + "/groups/" + group_id
     json_data = {
     "expression" : [ {
         "member_type" : "VirtualMachine",
@@ -2070,22 +1925,170 @@ def newSDDCGroupVM(proxy_url,sessiontoken,gw,group_id,vm_list):
     "id" : group_id,
     "display_name" : group_id,
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
+    json_response_status_code = put_sddc_inventory_group_json_response(proxy_url, sessiontoken, json_data, gw, group_id)
     return json_response_status_code
 
 
+def removeSDDCGroup(proxy_url, sessiontoken, gw, group_id):
+    """ Remove an SDDC Group """
+    json_response_status_code = delete_sddc_inventory_group_json_response(proxy_url, sessiontoken, gw, group_id)
+    if json_response_status_code == 200:
+        print("The group " + group_id + " has been deleted")
+    else:
+        return
+
+
 def getVMExternalID(proxy_url,sessiontoken,vm_name):
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    VMlist_url = (proxy_url_short + "policy/api/v1/infra/realized-state/enforcement-points/vmc-enforcementpoint/virtual-machines")
-    response = requests.get(VMlist_url, headers=myHeader)
-    response_dictionary = response.json()
+    response_dictionary = get_vms_json(proxy_url, sessiontoken)
     extracted_dictionary = response_dictionary['results']
-    # Below, we're extracting the Python dictionary for the specific VM and then we extract the external_ID/ Instance UUID from the dictionary.
+#   Below, we're extracting the Python dictionary for the specific VM and then we extract the external_ID/ Instance UUID from the dictionary.
     extracted_VM = next(item for item in extracted_dictionary if item["display_name"] == vm_name)
     extracted_VM_external_id = extracted_VM['external_id']
     return extracted_VM_external_id
+
+
+def getSDDCGroups(proxy_url, session_token, gw):
+    """ Gets the SDDC Groups. Use 'mgw' or 'cgw' as the parameter """
+    json_response = get_sddc_inventory_groups_json(proxy_url, session_token, gw)
+    sddc_group = json_response['results']
+    table = PrettyTable(['ID', 'Name'])
+    for i in sddc_group:
+        table.add_row([i['id'], i['display_name']])
+    return table
+
+
+def getSDDCGroup(proxy_url, session_token, gw, group_id):
+    """ Gets a single SDDC Group. Use 'mgw' or 'cgw' as the parameter.  Displays effective membership and criteria for group"""
+    json_response = get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id)
+
+#   Define tables
+    table = PrettyTable(['Member Type', 'Key', 'Operator', 'Value', 'Conjunction Operator'])
+    vm_table = PrettyTable(['VM Name'])
+    segment_table = PrettyTable(['Segment Name', 'Path'])
+    segment_port_table = PrettyTable(['Segment Port Name'])
+    ip_address_table = PrettyTable(['IP Address'])
+    vif_table = PrettyTable(['VIFs'])
+    group_table = PrettyTable(['Group Path'])
+    mac_table = PrettyTable(['MAC Addresses'])
+    ad_group_table = PrettyTable(['AD Groups'])
+
+    # pretty_data = json.dumps(json_response, indent=4)
+    # print(pretty_data)
+
+    # Checking for groups with defined criteria with the following command.
+    if json_response['expression'] == []:
+        print("This group has no criteria defined.")
+    elif 'expression' in json_response:
+        group_criteria = json_response['expression']
+        for g in group_criteria:
+            if g["resource_type"] == "Condition":
+                group = json_response['expression']
+                print("The group " + group_id + " has these criteria defined:")
+                for i in group:
+                    if 'member_type' in i.keys():
+                        table.add_row([i['member_type'], i['key'], i['operator'], i['value'], "-"])
+                    elif 'conjunction_operator' in i.keys():
+                        table.add_row(["", "", "", "", i['conjunction_operator']])
+                    else:
+                        print("There has been an error")
+                print(table)
+                print("Based on the above criteria, the effective group membership is:")
+                for i in group:
+                    if i['resource_type'] == 'ConjunctionOperator':
+                        continue
+                    elif i['member_type'] == 'VirtualMachine':
+                        group_vm_membership_json = get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id)
+                        group_vm_membership = group_vm_membership_json['results']
+                        for x in group_vm_membership:
+                            vm_table.add_row([x['display_name']])
+                        print("Here is the list of VMs included in this group")
+                        print(vm_table)
+                    elif i['member_type'] == 'Segment':
+                        group_segment_membership_json = get_sddc_group_segment_json(proxy_url, session_token, gw, group_id)
+                        group_segment_membership = group_segment_membership_json['results']
+                        for y in group_segment_membership:
+                            segment_table.add_row([y['display_name']])
+                        print("Here is the list of Segments included in this group")
+                        print(segment_table)
+                    elif i['member_type'] == 'SegmentPort':
+                        group_segment_port_membership_json = get_sddc_group_segment_port_json(proxy_url, session_token, gw,
+                                                                                              group_id)
+                        group_segment_port_membership = group_segment_port_membership_json['results']
+                        for z in group_segment_port_membership:
+                            segment_port_table.add_row([z['display_name']])
+                        print("Here is the list of Segment Ports included in this group")
+                        print(segment_port_table)
+                    elif i['member_type'] == 'IPSet':
+                        group_ip_address_membership_json = get_sddc_group_ip_address_json(proxy_url, session_token, gw,
+                                                                                          group_id)
+                        group_id_address_membership = group_ip_address_membership_json['results']
+                        for a in group_id_address_membership:
+                            ip_address_table.add_row([a['displan_name']])
+                        print("Here is the list of IP Addresses included in this group")
+                        print(ip_address_table)
+                    else:
+                        print("No effective group member")
+
+            elif g["resource_type"] == "IPAddressExpression":
+                ip_addr = get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id)
+                ips = ip_addr['results']
+                for i in ips:
+                    ip_address_table.add_row([i])
+                print("The group " + group_id + " is based on the IP addresses criteria:")
+                print(ip_address_table)
+            elif g["resource_type"] == "ExternalIDExpression" and g['member_type'] == 'VirtualMachine':
+                group_vm = get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id)
+                vms = group_vm['results']
+                for v in vms:
+                    vm_table.add_row([v['display_name']])
+                print(f"The VMs in group {group_id} are:")
+                print(vm_table)
+            elif g["resource_type"] == "ExternalIDExpression" and g['member_type'] == 'VirtualNetworkInterface':
+                group_vif = get_sddc_group_vif_json(proxy_url, session_token, gw, group_id)
+                vifs = group_vif['results']
+                for v in vifs:
+                    vif_table.add_row([v['display_name']])
+                print(f'The VIFs included in the group {group_id} are:')
+                print(vif_table)
+            elif g['resource_type'] == "PathExpression":
+                paths = g['paths']
+                for p in paths:
+                    if '/infra/domains/cgw/groups/' in p:
+                        group_table.add_row([p])
+                    elif '/infra/tier-1s/' in p:
+                        group_segments = get_sddc_group_segment_json(proxy_url, session_token, gw, group_id)
+                        segments = group_segments['results']
+                        for s in segments:
+                            segment_table.add_row([s['display_name'], s['path']])
+                print(f"The group {group_id} contain these groups/segments")
+                print(group_table)
+                print(segment_table)
+            elif g['resource_type'] == 'MACAddressExpression':
+                mac_addrs = g['mac_addresses']
+                for m in mac_addrs:
+                    mac_table.add_row([m])
+                print(f'The group {group_id} contains these MAC Addresses')
+                print(mac_table)
+            elif g['resource_type'] == 'ConjunctionOperator':
+                continue
+            else:
+                print("We currently do not support displaying groups of this configuration")
+    else:
+        print("whoops")
+    return
+
+
+def getSDDCGroupAssociation(proxy_url, session_token, gw, group_id):
+    """ Find where a SDDC Group is being used. Use 'mgw' or 'cgw' as the parameter """
+    json_response = get_sddc_group_association_json(proxy_url, session_token, gw, group_id)
+    sddc_group = json_response['results']
+    if len(sddc_group) == 0:
+        print("No object is associated with this group.")
+    else:
+        table = PrettyTable(['ID', 'Name'])
+        for i in sddc_group:
+            table.add_row([i['target_id'], i['target_display_name']])
+        print(table)
 
 
 # ============================

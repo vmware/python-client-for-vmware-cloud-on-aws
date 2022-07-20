@@ -571,6 +571,136 @@ def get_sddc_dfw_section_json(proxy_url, session_token):
 # ============================
 
 
+def put_sddc_inventory_group_json_response(proxy_url, session_token, json_data, gw, group_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response = response.json()
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/virtual-machines'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/ip-addresses'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/segments'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/segment-ports'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/vifs'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/group-service-associations?intent_path=/infra/domains/{gw}/groups/{group_id}'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        print(json_response['error_message'])
+
+
+def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, group_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}'
+    response = requests.delete(myURL, headers=myHeader)
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+
+
 # ============================
 # NAT
 # ============================
