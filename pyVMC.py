@@ -21,7 +21,7 @@ CSP API documentation is available at https://console.cloud.vmware.com/csp/gatew
 vCenter API documentation is available at https://code.vmware.com/apis/366/vsphere-automation
 
 
-You can install python 3.8 from https://www.python.org/downloads/windows/ (Windows) or https://www.python.org/downloads/mac-osx/ (MacOs).
+You can install python 3.9 from https://www.python.org/downloads/windows/ (Windows) or https://www.python.org/downloads/mac-osx/ (MacOs).
 
 You can install the dependent python packages locally (handy for Lambda) with:
 pip3 install requests or pip3 install requests -t . --upgrade
@@ -31,6 +31,7 @@ pip3 install PTable or pip3 install PTable -t . --upgrade
 With git BASH on Windows, you might need to use 'python -m pip install' instead of pip3 install
 
 """
+import re
 
 import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
@@ -39,12 +40,14 @@ import operator
 import time
 import json
 import sys
+import pandas as pd
 from deepdiff import DeepDiff
 from os.path import exists
 from prettytable import PrettyTable
 from requests.sessions import session
 from datetime import datetime
 from requests.auth import HTTPBasicAuth
+from re import search
 from pyvmc_csp import *
 from pyvmc_nsx import *
 from pyvmc_vmc import *
@@ -1185,64 +1188,30 @@ def getIdsProfiles(proxy, session_token):
     print(profileTable)
 
 
-# def searchIdsSignatures(orgid, sddcid, session_token):
-#     myHeader = {'csp-auth-token': session_token}
-#     sddcURL = f'{strProdURL}/vmc/api/orgs/{orgid}/sddcs/{sddcid}'
-#     print("Please Wait...Signatures Loading")
-#     sddcResponse = requests.get(sddcURL, headers=myHeader)
-#     json_response = sddcResponse.json()
-#     sddcInfo = json_response['resource_config']
-#     localNSX = sddcInfo['nsx_mgr_url']
-#     localNSXUsername = sddcInfo['nsx_cloud_admin']
-#     localNSXPassword = sddcInfo['nsx_cloud_admin_password']
-#     headers = {"Authorization": f"Bearer {session_token}"}
-#     sigVerURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions"
-#     response = requests.get(sigVerURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
-#     response = response.json()
-#     sigVersion = response['results']
-#     for i in range(len(sigVersion)):
-#         if 'state' in sigVersion[i] and sigVersion[i]['state'] == "ACTIVE":
-#             sigActiveID = sigVersion[i]['id']
-#         else:
-#             pass
-#     myURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions/{sigActiveID}/signatures"
-#     response = requests.get(myURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
-#     json_response = response.json()
-#     idsSigs = json_response['results']
-#     result_count = json_response['result_count']
-#     while 'cursor' in json_response:
-#         myURL = f"{localNSX}policy/api/v1/infra/settings/firewall/security/intrusion-services/signature-versions/{sigActiveID}/signatures?cursor=" + \
-#                 json_response['cursor']
-#         response = requests.get(myURL, auth=HTTPBasicAuth(localNSXUsername, localNSXPassword))
-#         if response is None or response.status_code != 200:
-#             print(f'API Call Status {response.status_code}, text:{response.text}')
-#             return False
-#         json_response = response.json()
-#         idsSigs.extend(json_response['results'])
-#     search = ''
-#     idsTable = PrettyTable(
-#         ['Signature ID', 'IDS Details', 'Product Affected', 'Attack Target', 'Attack Type', 'CVSS', 'CVE'])
-#     while search != "5":
-#         print("\nPlease select the category for which you would like a list of signatures:")
-#         print("\t1 - CVE Number")
-#         print("\t2 - CVSS")
-#         print("\t3 - Product Affected")
-#         print("\n")
-#         search = input('What would you like to search for? ')
-#         if search == "1":
-#             cveNum = input('Enter the CVE number exactly ')
-#             for i in range(len(idsSigs)):
-#                 if idsSigs[i]['cves'][0] == cveNum:
-#                     idsName = idsSigs[i]['name']
-#                     idsID = idsSigs[i]['signature_id']
-#                     idsProd = idsSigs[i]['product_affected']
-#                     idsAttTar = idsSigs[i]['attack_target']
-#                     idsAttType = idsSigs[i]['class_type']
-#                     idsCVSS = idsSigs[i]['cvssv3']
-#                     idsTable.add_row([idsID, idsName, idsProd, idsAttTar, idsAttType, idsCVSS, cveNum])
-#             print(idsTable)
-#         else:
-#             print("Please choose 1, 2, or 3 - Try again or check the help.")
+def search_ids_signatures_product_affected(proxy_url, session_token):
+    """Returns a table consisting of the IDS Signature Product Affected based on the search term for assistance
+    in building the IDS Profile"""
+    json_response = search_nsx_json(proxy_url, session_token, "IdsSignature", "NULL")
+    idsSigs = json_response['results']
+    print("Loading Signatures....")
+    while 'cursor' in json_response:
+        json_response = search_nsx_json_cursor(proxy, session_token, "IdsSignature", "NULL", json_response['cursor'])
+        idsSigs2 = json_response['results']
+        idsSigs.extend(idsSigs2)
+    df = pd.DataFrame(idsSigs)
+    sigs = df.drop(columns=['_last_modified_user', '_protection', '_last_modified_time', 'marked_for_delete',
+                            '_revision', '_system_owned', '_create_user', '_create_time', 'overridden',
+                            'path', 'urls', 'class_type', 'parent_path', 'categories', 'id', 'flow', 'resource_type',
+                            'signature_revision', 'relative_path', 'display_name'])
+    ids_table = PrettyTable(['Product Affected'])
+    ids_prod_affected = sigs['product_affected']
+    ids_prod_affected = ids_prod_affected.drop_duplicates()
+    user_input = input("Please input your search term: ")
+    ids_prod_affected = ids_prod_affected.tolist()
+    for i in ids_prod_affected:
+        if search(user_input, i, re.IGNORECASE):
+            ids_table.add_row([i])
+    print(ids_table)
 
 
 def listIdsPolicies(proxy, session_token):
@@ -1255,6 +1224,91 @@ def listIdsPolicies(proxy, session_token):
         policyLocked = policyResponse[i]['locked']
         policyTable.add_row([policyName, policyState, policyLocked])
     print(policyTable)
+
+
+def create_ids_profile(**kwargs):
+    """Create an IDS Profile"""
+    if kwargs['objectname'] is None:
+        print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
+        sys.exit()
+    display_name = kwargs['objectname']
+    cvss = None
+    pa = None
+    if kwargs['cvss'] is not None:
+        cvss = kwargs['cvss']
+    if kwargs['product_affected'] is not None:
+        pa = kwargs['product_affected']
+    if pa is not None and cvss is not None:
+        json_data = {
+            "profile_severity": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+            ],
+            "criteria": [
+                {
+                    "filter_name": "CVSS",
+                    "filter_value": cvss,
+                    "resource_type": "IdsProfileFilterCriteria"
+                },
+                {
+                    "operator": "AND",
+                    "resource_type": "IdsProfileConjunctionOperator"
+                },
+                {
+                    "filter_name": "PRODUCT_AFFECTED",
+                    "filter_value": pa,
+                    "resource_type": "IdsProfileFilterCriteria"
+                }
+            ],
+            "resource_type": "IdsProfile",
+            "display_name": display_name,
+            "id": display_name
+        }
+    elif pa is not None:
+        json_data = {
+            "profile_severity": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+            ],
+            "criteria": [
+                {
+                    "filter_name": "PRODUCT_AFFECTED",
+                    "filter_value": pa,
+                    "resource_type": "IdsProfileFilterCriteria"
+                }
+            ],
+            "resource_type": "IdsProfile",
+            "display_name": display_name,
+            "id": display_name
+        }
+    elif cvss is not None:
+        json_data = {
+            "profile_severity": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+            ],
+            "criteria": [
+                {
+                    "filter_name": "CVSS",
+                    "filter_value": cvss,
+                    "resource_type": "IdsProfileFilterCriteria"
+                },
+            ],
+            "resource_type": "IdsProfile",
+            "display_name": display_name,
+            "id": display_name
+        }
+    response_code = patch_ips_profile_json(proxy, session_token, json_data, display_name)
+    if response_code == 200:
+        print(f'The IDS Profile {display_name} has been created successfully')
+    else:
+        sys.exit(f'There was an error, please check your syntax')
 
 
 # ============================
@@ -2968,6 +3022,17 @@ vmnetgrp.add_argument("-st","--segment-type", choices=["fixed","moveable"], defa
 vmnetgrp.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
 vmnetgrp.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")
 # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
+
+idsprofilegrp = ap.add_argument_group('IDS Profile', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
+idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
+idsprofilegrp.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+idsprofilegrp.add_argument("-co",
+                           "--conjunction",
+                           choices=['AND', 'OR'],
+                           default='AND',
+                           required=False,
+                           help='If you have multiple arguments, you must define a conjunction operator, '
+                                'either AND or OR.  Default is AND')
 args, unknown = ap.parse_known_args()
 
 
@@ -3366,11 +3431,14 @@ elif intent_name == "show-ids-signature-versions":
 elif intent_name == "show-ids-profiles":
     getIdsProfiles (proxy, session_token)
 
-elif intent_name == "search-ids-signatures":
-    searchIdsSignatures (ORG_ID, SDDC_ID, session_token)
+elif intent_name == "search-product-affected":
+    search_ids_signatures_product_affected(proxy, session_token)
 
 elif intent_name == "show-ids-policies":
     listIdsPolicies (proxy, session_token)
+
+elif intent_name == "create-ids-profile":
+    create_ids_profile(**vars(args))
 
 
 # ============================
