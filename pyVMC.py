@@ -1311,6 +1311,109 @@ def create_ids_profile(**kwargs):
         sys.exit(f'There was an error, please check your syntax')
 
 
+def create_ids_policy(**kwargs):
+    if kwargs['objectname'] is None:
+        print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
+        sys.exit()
+    display_name = kwargs['objectname']
+    json_data = {
+        "resource_type": "IdsSecurityPolicy",
+        "display_name": display_name,
+        "id": display_name
+    }
+    response_code = put_ids_policy_json(proxy, session_token, json_data, display_name)
+    if response_code == 200:
+        print(f'The IDS policy {display_name} has been created successfully')
+    else:
+        sys.exit('There was an error, please check your syntax')
+
+
+def get_ids_rules():
+    ids_policies_json = get_ids_policies_json(proxy, session_token)
+    ids_policies_json = ids_policies_json['results']
+    for i in ids_policies_json:
+        ids_policy_name = i['display_name']
+        ids_table = PrettyTable()
+        ids_table.title = f'IDS Rules for IDS Policy {ids_policy_name}'
+        ids_table.field_names = ['Display Name', 'Source Group', 'Destination Group', 'IDS Profile', 'Services', 'Scope', 'Action', 'Logged']
+        ids_rule_json = get_ids_rule_json(proxy, session_token, ids_policy_name)
+        ids_rule_json = ids_rule_json['results']
+        for r in ids_rule_json:
+            ids_table.add_row([r['display_name'], r['source_groups'], r['destination_groups'], r['ids_profiles'], r['services'], r['scope'], r['action'], r['logged']])
+        print(ids_table)
+
+
+def create_ids_rule(**kwargs):
+    if kwargs['objectname'] is None:
+        print("Please use -n to specify the name of the IDS Rule to be configured.  Consult the help for additional options.")
+        sys.exit()
+
+#   Load variables from kwargs
+    display_name = kwargs['objectname']
+    act = kwargs['action']
+    srcgrp = kwargs['source_group']
+    destgrp = kwargs['dest_group']
+    idspol = kwargs['ids_policy'][0]
+    scp = kwargs['scope']
+    srvc = kwargs['services']
+    idspro = kwargs['ids_profile'][0]
+
+#   Build variables and lists to use in JSON payload
+    idsprolst = [f'/infra/settings/firewall/security/intrusion-services/profiles/{idspro}']
+    idspolstr = f'/infra/domains/cgw/intrusion-service-policies/{idspol}'
+    srcgrplst = []
+    destgrplst = []
+    srvclst = []
+    scplst = []
+    if srcgrp == 'ANY':
+        srcgrplst = ['ANY']
+    else:
+        for i in srcgrp:
+            srcgrpitem = f'/infra/domains/cgw/groups/{i}'
+            srcgrplst.append(srcgrpitem)
+    if destgrp == 'ANY':
+        destgrplst = ['ANY']
+    else:
+        for i in destgrp:
+            dstgrpitem = f'/infra/domains/cgw/groups/{i}'
+            destgrplst.append(dstgrpitem)
+    if srvc == 'ANY':
+        srvclst = ['ANY']
+    else:
+        for i in srvc:
+            srvcitem = f'/infra/services/{i}'
+            srvclst.append(srvcitem)
+    if scp == 'ANY':
+        scplst = ['ANY']
+    else:
+        for i in scp:
+            scpitem = f'/infra/domains/cgw/groups/{i}'
+            scplst.append(scpitem)
+
+#   Build the JSON payload
+    json_data = {
+        "action": act,
+        "ids_profiles": idsprolst,
+        "resource_type": "IdsRule",
+        "id": display_name,
+        "display_name": display_name,
+        "parent_path": idspolstr,
+        "source_groups": srcgrplst,
+        "destination_groups": destgrplst,
+        "services": srvclst,
+        "scope": scplst,
+        "direction": "IN_OUT",
+        "ip_protocol": "IPV4_IPV6",
+        "logged": False
+    }
+
+    json_response_code = put_ids_rule_json(proxy, session_token, display_name, idspol, json_data)
+    if json_response_code == 200:
+        print(f'IDS Rule {display_name} was successfully created under IDS Policy {idspol}')
+    else:
+        print(f'There was an error, please check your syntax')
+
+
 # ============================
 # NSX-T - BGP and Routing
 # ============================
@@ -2894,10 +2997,12 @@ def getHelp():
     print("\t   ids-update-signatures: Force update of IDS signatures")
     print("\t   show-ids-signature-versions: Show downloaded signature versions")
     print("\t   show-ids-profiles: Show all IDS profiles")
-    #print("\t   search-ids-signatures: Search through the active IDS signature for signature ID and description")
+    print("\t   search-product-affected: Search through the active IDS signature for specific product affected.  Useful when building an IDS Profile")
+    print("\t   create-ids-profile: Create an IDS profile with either Product Affected, CVSS or both.")
     print("\t   show-ids-policies: List all IDS policies")
-    print("\t   show-ids-rules [POLICY_NAME]: SHow all IDS rules under POLICY_NAME")
-    print("\t   show-ids-rules-all: List all IDS rules\n")
+    print("\t   create-ids-policy: Create an IDS policy ")
+    print("\t   show-ids-rules: List all IDS rules")
+    print("\t   create-ids-rule: Create an IDS rule using previously created IDS profile and inventory groups\n")
     print("\tBGP and Routing")
     print("\t   attach-t0-prefix-list [BGP NEIGHBOR ID]: attach a BGP Prefix List to a T0 BGP neighbor")
     print("\t   detach-t0-prefix-lists [BGP NEIGHBOR ID]: detach all prefix lists from specified neighbor")
@@ -3023,22 +3128,28 @@ vmnetgrp.add_argument("-t1id","--tier1-id", required=False, help= "If applicable
 vmnetgrp.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")
 # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
 
-idsprofilegrp = ap.add_argument_group('IDS Profile', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
+idsprofilegrp = ap.add_argument_group('IDS Profile Creation', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
 idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
 idsprofilegrp.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
-idsprofilegrp.add_argument("-co",
-                           "--conjunction",
-                           choices=['AND', 'OR'],
-                           default='AND',
-                           required=False,
-                           help='If you have multiple arguments, you must define a conjunction operator, '
-                                'either AND or OR.  Default is AND')
+
+idsrulegrp = ap.add_argument_group('IDS Rule Creation', 'Options to build an IDS Rule.  Source and desitination inventory groups as well as IDS Policy are required for this function')
+idsrulegrp.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
+idsrulegrp.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
+idsrulegrp.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
+idsrulegrp.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
+idsrulegrp.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
+idsrulegrp.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
+idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
+
+
 args, unknown = ap.parse_known_args()
 
 
 # ============================
 # CSP - Services
 # ============================
+
+
 if intent_name == "show-csp-services":
     getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
 
@@ -3366,6 +3477,8 @@ elif intent_name == "vpc-prefixes":
 # ============================
 # NSX-T - Search
 # ============================
+
+
 elif intent_name == "search-nsx":
     if len(sys.argv) == 4:
         object_type = sys.argv[2]
@@ -3439,6 +3552,15 @@ elif intent_name == "show-ids-policies":
 
 elif intent_name == "create-ids-profile":
     create_ids_profile(**vars(args))
+
+elif intent_name == "create-ids-policy":
+    create_ids_policy(**vars(args))
+
+elif intent_name == "show-ids-rules":
+    get_ids_rules()
+
+elif intent_name == "create-ids-rule":
+    create_ids_rule(**vars(args))
 
 
 # ============================
