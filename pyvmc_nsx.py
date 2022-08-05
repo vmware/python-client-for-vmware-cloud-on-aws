@@ -15,6 +15,8 @@ from requests.auth import HTTPBasicAuth
 # ============================
 # Search
 # ============================
+
+
 def search_nsx_json(proxy, session_token, object_type, object_id):
     """Leverages NSX Search API to return inventory via either NSX or policy API"""
     myHeader = {'csp-auth-token': session_token}
@@ -30,6 +32,23 @@ def search_nsx_json(proxy, session_token, object_type, object_id):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+
+
+def search_nsx_json_cursor(proxy, session_token, object_type, object_id, cursor):
+    """Leverages NSX Search API to return inventory via either NSX or policy API"""
+    my_header = {'csp-auth-token': session_token}
+    if object_id == "NULL":
+        my_url = f"{proxy}/policy/api/v1/search?query=resource_type:{object_type}&cursor={cursor}"
+    else:
+        my_url = f"{proxy}/policy/api/v1/search?query=resource_type:{object_type} AND display_name:{object_id}&cursor={cursor}"
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
 
 
 # ============================
@@ -135,6 +154,70 @@ def get_ids_policies_json(proxy, session_token):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+
+
+def patch_ips_profile_json(proxy, session_token, json_data, display_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles/{display_name}'
+    response = requests.patch(my_url, headers=my_header, json=json_data)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
+
+def put_ids_policy_json(proxy, session_token, json_data, display_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/domains/default/intrusion-service-policies/{display_name}'
+    response = requests.put(my_url, headers=my_header, json=json_data)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
+
+def get_ids_rule_json(proxy, session_token, ids_policy_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{ids_policy_name}/rules'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
+
+def put_ids_rule_json(proxy, session_token, display_name, ids_policy_name, json_data):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{ids_policy_name}/rules/{display_name}'
+    response = requests.put(my_url, headers=my_header, json=json_data)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
 
 
 # ============================
@@ -581,7 +664,7 @@ def put_sddc_inventory_group_json_response(proxy_url, session_token, json_data, 
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
@@ -594,7 +677,7 @@ def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
@@ -607,7 +690,7 @@ def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
@@ -620,7 +703,7 @@ def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
@@ -633,7 +716,7 @@ def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
@@ -646,7 +729,7 @@ def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
@@ -659,7 +742,7 @@ def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
@@ -672,7 +755,7 @@ def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
@@ -685,7 +768,7 @@ def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        sys.exit()
 
 
 def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, group_id):
@@ -698,7 +781,7 @@ def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, grou
         json_response = response.json()
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        sys.exit(json_response['error_message'])
 
 
 # ============================
