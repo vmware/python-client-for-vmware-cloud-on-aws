@@ -1414,6 +1414,33 @@ def create_ids_rule(**kwargs):
         print(f'There was an error, please check your syntax')
 
 
+def delete_ids_policy(**kwargs):
+    if kwargs['objectname'] is None:
+        print(
+            "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
+        sys.exit()
+    ids_policy_name = kwargs['objectname']
+    json_response_code = delete_ids_policy_json(proxy, session_token, ids_policy_name)
+    if json_response_code == 200:
+        print(f'IDS Policy {ids_policy_name} has been deleted')
+    else:
+        print(f'There was an error, please check your syntax')
+
+
+def delete_ids_rule(**kwargs):
+    if kwargs['objectname'] is None:
+        print(
+            "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
+        sys.exit()
+    ids_rule_name = kwargs['objectname']
+    ids_policy_name = kwargs['ids_policy'][0]
+    json_response_code = delete_ids_rule_json(proxy, session_token, ids_rule_name, ids_policy_name)
+    if json_response_code == 200:
+        print(f'IDS Rule {ids_rule_name} part of IDS Policy {ids_policy_name} has been deleted')
+    else:
+        print(f'There was an error, please check your syntax')
+
+
 # ============================
 # NSX-T - BGP and Routing
 # ============================
@@ -3562,6 +3589,12 @@ elif intent_name == "show-ids-rules":
 elif intent_name == "create-ids-rule":
     create_ids_rule(**vars(args))
 
+elif intent_name == "delete-ids-policy":
+    delete_ids_policy(**vars(args))
+
+elif intent_name == "delete-ids-rule":
+    delete_ids_rule(**vars(args))
+    
 
 # ============================
 # NSX-T - BGP and Routing

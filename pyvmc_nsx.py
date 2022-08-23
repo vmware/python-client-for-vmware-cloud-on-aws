@@ -220,6 +220,38 @@ def put_ids_rule_json(proxy, session_token, display_name, ids_policy_name, json_
         sys.exit(json_response['error_message'])
 
 
+def delete_ids_rule_json(proxy, session_token, display_name, ids_policy_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{ids_policy_name}/rules/{display_name}'
+    response = requests.delete(my_url, headers=my_header)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 404:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
+
+def delete_ids_policy_json(proxy, session_token, ids_policy_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{ids_policy_name}'
+    response = requests.delete(my_url, headers=my_header)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
+
 # ============================
 # AWS Account and VPC
 # ============================
