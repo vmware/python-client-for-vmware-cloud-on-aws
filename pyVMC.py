@@ -3589,15 +3589,12 @@ elif intent_name == "show-ids-rules":
 elif intent_name == "create-ids-rule":
     create_ids_rule(**vars(args))
 
-<<<<<<< HEAD
 elif intent_name == "delete-ids-policy":
     delete_ids_policy(**vars(args))
 
 elif intent_name == "delete-ids-rule":
     delete_ids_rule(**vars(args))
-
-=======
->>>>>>> upstream/development
+    
 
 # ============================
 # NSX-T - BGP and Routing
