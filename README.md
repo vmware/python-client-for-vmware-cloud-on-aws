@@ -151,6 +151,7 @@ Here are the currently supported commands:
     - add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group
     - show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints ou
     - show-csp-service-roles: show CSP service roles for the currently logged in user
+    - show-csp-groups [GROUP_SEARCH_TERM]: search all groups whose name contains GROUP_SEARCH_TERM
     - find-csp-user-by-service-role [service role name]: search for CSP users with a specific service role
     - show-org-users: show the list of organization users
 
