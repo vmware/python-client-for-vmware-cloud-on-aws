@@ -50,17 +50,31 @@ def get_csp_users_json(strCSPProdURL, orgID, session_token):
         print(json_response['error_message'])
 
 
-def get_csp_groups_json(strCSProdURL, org_id, session_token):
+def get_csp_groups_json(strCSProdURL, org_id, session_token,searchTerm):
+    """make the call to the API looking for groups that CONTAIN the search term - br"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups'
+
+    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups-search?groupSearchTerm=' + searchTerm
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
+    #
+    # For error handling, print out some text, but use the reason/message that comes from the API.
+    #
     if response.status_code == 200:
         return json_response
+    elif response.status_code in (401,403):
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['message'])
+        return None
+    elif response.status_code == 400:
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print("Error Message: " + json_response['message'])
+        return None
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 
 def get_csp_group_info_json(strCSProdURL, org_id, session_token, group_id):
