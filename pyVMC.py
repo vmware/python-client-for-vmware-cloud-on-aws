@@ -227,12 +227,24 @@ def getCSPGroupMembers(csp_url, session_token):
 
 
 def getCSPGroups(csp_url, session_token):
-    json_response = get_csp_groups_json(csp_url, ORG_ID, session_token)
-    groups = json_response['results']
-    table = PrettyTable(['ID','Name', 'Group Type','User Count'])
-    for grp in groups:
-        table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-    print(table)
+    """Get List of CSP groups from your Organization -- br"""
+
+    if len(sys.argv) < 3:
+        print('Usage: show-csp-groups [GROUP_SEARCH_TERM]. You must include a search term with characters contained in the group name. No globbing allowed.')
+    else:
+        searchTerm = sys.argv[2] 
+        json_response = get_csp_groups_json(csp_url, ORG_ID, session_token,searchTerm)
+        if json_response != None:
+            groups = json_response['results']
+            numGroups = len(groups)
+            if(numGroups == 0):
+                print("No results returned.")
+            else:
+                print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
+                table = PrettyTable(['ID','Name', 'Group Type','User Count'])
+                for grp in groups:
+                    table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
+                print(table)
 
 
 def getCSPOrgUsers(csp_url,session_token):
@@ -2967,7 +2979,7 @@ def getHelp():
     print("\t   add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group")
     print("\t   show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints out a user-by-user diff")
     print("\t   show-csp-group-members [GROUP_ID]: show CSP group members")
-    print("\t   show-csp-groups: To show CSP groups")
+    print("\t   show-csp-groups [GROUP_SEARCH_TERM]: To show CSP groups which contain GROUP_SEARCH_TERM string")
     print("\t   show-csp-org-users [email]: show a CSP user")
     print("\t   show-csp-service-roles: show CSP service roles for the currently logged in user")
     print("\t   find-csp-user-by-service-role [service role name]: search for CSP users with a specific service role")
@@ -3168,7 +3180,6 @@ idsrulegrp.add_argument('-scp', '--scope', required=False, default='ANY', nargs=
 idsrulegrp.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
 idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
 
-
 args, unknown = ap.parse_known_args()
 
 
@@ -3191,7 +3202,7 @@ elif intent_name == "show-csp-group-diff":
 elif intent_name == "show-csp-groups":
     getCSPGroups(strCSPProdURL,session_token)
 elif intent_name == "show-csp-group-members":
-        getCSPGroupMembers(strCSPProdURL,session_token)
+    getCSPGroupMembers(strCSPProdURL,session_token)
 elif intent_name == "show-csp-org-users":
     getCSPOrgUsers(strCSPProdURL,session_token)
 elif intent_name == "show-csp-service-roles":
