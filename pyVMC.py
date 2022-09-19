@@ -302,6 +302,8 @@ def setSDDCConnectedServices(proxy_url, sessiontoken, value):
 def getCompatibleSubnets(orgID, sessiontoken, linkedAccountId,region):
     """Lists all of the compatible subnets by Account ID and AWS Region"""
     jsonResponse = get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAccountId, region)
+    if jsonResponse == None:
+        return
     vpc_map = jsonResponse['vpc_map']
     table = PrettyTable(['vpc','description'])
     subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
@@ -3139,1344 +3141,1352 @@ def getHelp():
     print("\n")
 
 
+
+#
+# main
+#
+def main():
 # --------------------------------------------
 # ---------------- Main ----------------------
 # --------------------------------------------
 
-if len(sys.argv) > 1:
-    intent_name = sys.argv[1].lower()
-else:
-    intent_name = ""
-
-session_token = getAccessToken(Refresh_Token)
-proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
-
-# this is the top level parser
-ap = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-# ap.add_argument("-c", "--command", required=True)
-ap.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
-
-vmnetgrp = ap.add_argument_group('Virtual Machine Networking', "Options only used with 'new-segment' and 'configure-segment'")
-vmnetgrp.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment - by default this is 'OFF'")
-vmnetgrp.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
-vmnetgrp.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
-vmnetgrp.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
-vmnetgrp.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
-vmnetgrp.add_argument("-st","--segment-type", choices=["fixed","moveable"], default="moveable", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'MOVEABLE'")
-vmnetgrp.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
-vmnetgrp.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")
-# vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
-
-idsprofilegrp = ap.add_argument_group('IDS Profile Creation', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
-idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
-idsprofilegrp.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
-
-idsrulegrp = ap.add_argument_group('IDS Rule Creation', 'Options to build an IDS Rule.  Source and desitination inventory groups as well as IDS Policy are required for this function')
-idsrulegrp.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
-idsrulegrp.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
-idsrulegrp.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
-idsrulegrp.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
-idsrulegrp.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
-idsrulegrp.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
-idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
-
-args, unknown = ap.parse_known_args()
-
-
-# ============================
-# CSP - Services
-# ============================
-
-
-if intent_name == "show-csp-services":
-    getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
-
-# ============================
-# CSP - User and Group Management
-# ============================
-
-elif intent_name == "add-users-to-csp-group":
-    addUsersToCSPGroup(strCSPProdURL,session_token)
-elif intent_name == "show-csp-group-diff":
-    getCSPGroupDiff(strCSPProdURL,session_token)
-elif intent_name == "show-csp-groups":
-    getCSPGroups(strCSPProdURL,session_token)
-elif intent_name == "show-csp-group-members":
-    getCSPGroupMembers(strCSPProdURL,session_token)
-elif intent_name == "show-csp-org-users":
-    getCSPOrgUsers(strCSPProdURL,session_token)
-elif intent_name == "show-csp-service-roles":
-    getCSPServiceRoles(strCSPProdURL,session_token)
-elif intent_name == "find-csp-user-by-service-role":
-    findCSPUserByServiceRole(strCSPProdURL,session_token)
-elif intent_name == "show-org-users":
-    showORGusers(ORG_ID, session_token)
-
-
-# ============================
-# SDDC - AWS Account and VPC
-# ============================
-
-
-elif intent_name == "set-sddc-connected-services":
-    value = sys.argv[2]
-    if setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'true':
-        print("S3 access from the SDDC is over the ENI.")
-    elif setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'false':
-        print("S3 access from the SDDC is over the Internet.")
+    if len(sys.argv) > 1:
+        intent_name = sys.argv[1].lower()
     else:
-        print("Make sure you use a 'true' or 'false' parameter")
-elif intent_name == "show-compatible-subnets":
-    n = (len(sys.argv))
-    if ( n < 4):
-        print("Usage: show-compatible-subnets linkedAccountId region")
-    else:
-        getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3])
-elif intent_name == "show-connected-accounts":
-    getConnectedAccounts(ORG_ID,session_token)
-elif intent_name == "show-sddc-connected-vpc":
-    print(getSDDCConnectedVPC(proxy,session_token))
-elif intent_name == "show-shadow-account":
-    print("The SDDC is deployed in the " + str(getSDDCShadowAccount(proxy,session_token)) + " AWS Shadow Account.")
-elif intent_name == "get-access-token":
-    print(session_token)
+        intent_name = ""
+
+    session_token = getAccessToken(Refresh_Token)
+    proxy = getNSXTproxy(ORG_ID, SDDC_ID, session_token)
+
+    # this is the top level parser
+    ap = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+    # ap.add_argument("-c", "--command", required=True)
+    ap.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
+
+    vmnetgrp = ap.add_argument_group('Virtual Machine Networking', "Options only used with 'new-segment' and 'configure-segment'")
+    vmnetgrp.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment - by default this is 'OFF'")
+    vmnetgrp.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
+    vmnetgrp.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
+    vmnetgrp.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
+    vmnetgrp.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
+    vmnetgrp.add_argument("-st","--segment-type", choices=["fixed","moveable"], default="moveable", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'MOVEABLE'")
+    vmnetgrp.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
+    vmnetgrp.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")
+    # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
+
+    idsprofilegrp = ap.add_argument_group('IDS Profile Creation', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
+    idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
+    idsprofilegrp.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+
+    idsrulegrp = ap.add_argument_group('IDS Rule Creation', 'Options to build an IDS Rule.  Source and desitination inventory groups as well as IDS Policy are required for this function')
+    idsrulegrp.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
+    idsrulegrp.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
+    idsrulegrp.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
+    idsrulegrp.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
+    idsrulegrp.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
+    idsrulegrp.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
+    idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
+
+    args, unknown = ap.parse_known_args()
 
 
-# ============================
-# SDDC - SDDC
-# ============================
+    # ============================
+    # CSP - Services
+    # ============================
 
 
-elif intent_name == "show-sddc-state":
-    getSDDCState(ORG_ID, SDDC_ID, session_token)
-elif intent_name == "show-sddcs":
-    getSDDCS(ORG_ID, session_token)
-elif intent_name == "show-vms":
-    print(getVMs(proxy,session_token))
-elif intent_name == "show-sddc-hosts":
-    getSDDChosts(SDDC_ID, ORG_ID, session_token)
+    if intent_name == "show-csp-services":
+        getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
+
+    # ============================
+    # CSP - User and Group Management
+    # ============================
+
+    elif intent_name == "add-users-to-csp-group":
+        addUsersToCSPGroup(strCSPProdURL,session_token)
+    elif intent_name == "show-csp-group-diff":
+        getCSPGroupDiff(strCSPProdURL,session_token)
+    elif intent_name == "show-csp-groups":
+        getCSPGroups(strCSPProdURL,session_token)
+    elif intent_name == "show-csp-group-members":
+        getCSPGroupMembers(strCSPProdURL,session_token)
+    elif intent_name == "show-csp-org-users":
+        getCSPOrgUsers(strCSPProdURL,session_token)
+    elif intent_name == "show-csp-service-roles":
+        getCSPServiceRoles(strCSPProdURL,session_token)
+    elif intent_name == "find-csp-user-by-service-role":
+        findCSPUserByServiceRole(strCSPProdURL,session_token)
+    elif intent_name == "show-org-users":
+        showORGusers(ORG_ID, session_token)
 
 
-# ============================
-# SDDC - TKG
-# ============================
+    # ============================
+    # SDDC - AWS Account and VPC
+    # ============================
 
 
-elif intent_name == "enable-tkg":
-    cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-    print("    Validating Cluster: " + cluster_id)
-    task_id = validate_cluster(ORG_ID, SDDC_ID, cluster_id, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-    print("    Validating Network:")
-    print("        Egress CIDR:    " + egress_CIDR)
-    print("        Ingress CIDR:   " + ingress_CIDR)
-    print("        Namespace CIDR: " + namespace_CIDR)
-    print("        Service CIDR:   " + service_CIDR)
-    task_id = validate_network(ORG_ID, SDDC_ID, cluster_id, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-    print("    Enabling TKG:")
-    task_id = enable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "disable-tkg":
-    cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-    print("    Disabling TKG:")
-    task_id = disable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "get-tkg-info":
-    # The API for this command is broken, waiting for a fix to enable it
-    print("    TKG info:")
-    cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-    get_tkg_info(ORG_ID, cluster_id, session_token)
+    elif intent_name == "set-sddc-connected-services":
+        value = sys.argv[2]
+        if setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'true':
+            print("S3 access from the SDDC is over the ENI.")
+        elif setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'false':
+            print("S3 access from the SDDC is over the Internet.")
+        else:
+            print("Make sure you use a 'true' or 'false' parameter")
+    elif intent_name == "show-compatible-subnets":
+        n = (len(sys.argv))
+        if ( n < 4):
+            print("Usage: show-compatible-subnets linkedAccountId region")
+        else:
+            getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3])
+    elif intent_name == "show-connected-accounts":
+        getConnectedAccounts(ORG_ID,session_token)
+    elif intent_name == "show-sddc-connected-vpc":
+        print(getSDDCConnectedVPC(proxy,session_token))
+    elif intent_name == "show-shadow-account":
+        print("The SDDC is deployed in the " + str(getSDDCShadowAccount(proxy,session_token)) + " AWS Shadow Account.")
+    elif intent_name == "get-access-token":
+        print(session_token)
 
 
-# ============================
-# VTC - AWS Operations
-# ============================
+    # ============================
+    # SDDC - SDDC
+    # ============================
 
 
-elif intent_name == "connect-aws":
-    print("=====Connecting AWS account=========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    task_id = connect_aws_account(aws_acc, region, resource_id, ORG_ID, session_token)
-    if task_id:
+    elif intent_name == "show-sddc-state":
+        getSDDCState(ORG_ID, SDDC_ID, session_token)
+    elif intent_name == "show-sddcs":
+        getSDDCS(ORG_ID, session_token)
+    elif intent_name == "show-vms":
+        print(getVMs(proxy,session_token))
+    elif intent_name == "show-sddc-hosts":
+        getSDDChosts(SDDC_ID, ORG_ID, session_token)
+
+
+    # ============================
+    # SDDC - TKG
+    # ============================
+
+
+    elif intent_name == "enable-tkg":
+        cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
+        print("    Validating Cluster: " + cluster_id)
+        task_id = validate_cluster(ORG_ID, SDDC_ID, cluster_id, session_token)
+        get_task_status(task_id, ORG_ID, session_token)
+        print("    Validating Network:")
+        print("        Egress CIDR:    " + egress_CIDR)
+        print("        Ingress CIDR:   " + ingress_CIDR)
+        print("        Namespace CIDR: " + namespace_CIDR)
+        print("        Service CIDR:   " + service_CIDR)
+        task_id = validate_network(ORG_ID, SDDC_ID, cluster_id, session_token)
+        get_task_status(task_id, ORG_ID, session_token)
+        print("    Enabling TKG:")
+        task_id = enable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
         get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "disconnect-aws":
-    print("===== Disconnecting AWS account =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    task_id = disconnect_aws_account(aws_acc, resource_id, ORG_ID, session_token)
-    if task_id:
+    elif intent_name == "disable-tkg":
+        cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
+        print("    Disabling TKG:")
+        task_id = disable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
         get_task_status(task_id, ORG_ID, session_token)
 
-
-# ============================
-# VTC - DXGW Operations
-# ============================
-
-
-elif intent_name == "attach-dxgw":
-    print("===== Add DXGW Association =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    routes = input ('   Enter route(s) to add (space separated): ')
-    user_list = routes.split()
-    task_id = attach_dxgw(user_list, resource_id, ORG_ID, dxgw_owner, dxgw_id, region, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "detach-dxgw":
-    print("===== Remove DXGW Association =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    task_id = detach_dxgw(resource_id, ORG_ID, dxgw_id, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
+    elif intent_name == "get-tkg-info":
+        # The API for this command is broken, waiting for a fix to enable it
+        print("    TKG info:")
+        cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
+        get_tkg_info(ORG_ID, cluster_id, session_token)
 
 
-# ============================
-# VTC - SDDC Operations
-# ============================
+    # ============================
+    # VTC - AWS Operations
+    # ============================
 
 
-elif intent_name == "attach-sddc":
-    print("===== Connecting SDDC =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    get_deployments(ORG_ID, session_token)
-    sddc = input('   Select one SDDC to attach: ')
-    deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    task_id = attach_sddc(deployment_id, resource_id, ORG_ID, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "detach-sddc":
-    print("===== Removing SDDC =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    get_deployments(ORG_ID, session_token)
-    sddc = input('   Select one SDDC to detach: ')
-    deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    task_id = remove_sddc(deployment_id, resource_id, ORG_ID, session_token)
-    get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "get-nsx-info":
-    print("===== get deployments =========")
-    get_deployments(ORG_ID, session_token)
-    sddc = input('   Select SDDC: ')
-    deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
-    get_nsx_info( ORG_ID, deployment_id, session_token)
-
-elif intent_name == "get-sddc-info":
-    print("===== SDDC Info =========")
-    get_deployments(ORG_ID, session_token)
-
-
-# ============================
-# VTC - SDDC-Group Operations
-# ============================
-
-
-elif intent_name == "create-sddc-group":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. Please provide the name of the new SDDC.")
-    else:
-        print("\n=====Creating SDDC Group=========")
-        group_name = sys.argv[2]
-        get_deployments(ORG_ID, session_token)
-        sddc = input('   Select one SDDC to attach: ')
-        deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
-        task_id = create_sddc_group(group_name, deployment_id, ORG_ID, session_token)
-        get_task_status(task_id, ORG_ID, session_token)
-
-elif intent_name == "delete-sddc-group":
-    print("===== SDDC Group info =========")
-    group_exists = get_sddc_groups( ORG_ID, session_token)
-    print("=====Deleting SDDC Group=========")
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    if (check_empty_group(group_id, ORG_ID, session_token)):
-        resource_id = get_resource_id(group_id, ORG_ID, session_token)
-        task_id = delete_sddc_group(resource_id, ORG_ID, session_token)
-        get_task_status(task_id, ORG_ID, session_token)
-    else:
-        print("SDDC Group not empty: detach all members")
-
-elif intent_name == "get-group-info":
-    print("===== SDDC Group info =========")
-    group_exists = get_sddc_groups( ORG_ID, session_token)
-    if group_exists:
+    elif intent_name == "connect-aws":
+        print("=====Connecting AWS account=========")
+        get_sddc_groups( ORG_ID, session_token)
         group = input('   Select SDDC Group: ')
         group_id = get_group_id(group, ORG_ID, session_token)
         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-        get_group_info(group_id, resource_id, ORG_ID, session_token)
+        task_id = connect_aws_account(aws_acc, region, resource_id, ORG_ID, session_token)
+        if task_id:
+            get_task_status(task_id, ORG_ID, session_token)
 
-
-# ============================
-# VTC - TGW Operations
-# ============================
-
-
-elif intent_name == "show-tgw-routes":
-    print("===== Show TGW route tables =========")
-    #get_sddc_groups( ORG_ID, session_token)
-    sddc_groups = get_sddc_groups( ORG_ID, session_token)
-    group_id = None
-    if DEBUG_MODE:
-        print(f'DEBUG: sddc_groups = {sddc_groups}')
-    if len(sys.argv) > 2:
-        search_name = sys.argv[2]
-        for grp in sddc_groups:
-            if grp['name'] == search_name:
-                group_id = grp['id']
-                group_name = search_name
-                if DEBUG_MODE:
-                    print(f'DEBUG: Found {search_name} with group ID {group_id}')
-                break
-    else:
+    elif intent_name == "disconnect-aws":
+        print("===== Disconnecting AWS account =========")
+        get_sddc_groups( ORG_ID, session_token)
         group = input('   Select SDDC Group: ')
-        group_id = sddc_groups[int(group) -1]['id']
-        group_name = sddc_groups[int(group) -1]['name']
-        if DEBUG_MODE:
-            print(f'DEBUG: User input group = {group}')
-            print(f'DEBUG: group_id from sddc_groups = {group_id}')
-    #group_id = get_group_id(group, ORG_ID, session_token)
-    if group_id is None:
-        print('Could not retrieve group ID')
-    else:
+        group_id = get_group_id(group, ORG_ID, session_token)
         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-        print(f'Route table for {group_name} ({group_id})')
-        get_route_tables(resource_id, ORG_ID, session_token)
-
-
-# ============================
-# VTC - VPC Operations
-# ============================
-
-
-elif intent_name == "attach-vpc":
-    print("=====Attaching VPCs=========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    vpc_list = get_pending_att(resource_id, ORG_ID, session_token)
-    if vpc_list == []:
-        print('   No VPC to attach')
-    else:
-        n = input('   Select VPC to attach: ')
-        task_id = attach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
+        task_id = disconnect_aws_account(aws_acc, resource_id, ORG_ID, session_token)
         if task_id:
             get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "detach-vpc":
-    print("=====Detaching VPCs=========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    vpc_list = get_available_att(resource_id, ORG_ID, session_token)
-    if vpc_list == []:
-        print('   No VPC to detach')
-    else:
-        n = input('  Select VPC to detach: ')
-        task_id = detach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
-        if task_id:
-            get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "vpc-prefixes":
-    print("===== Adding/Removing VPC Static Routes =========")
-    get_sddc_groups( ORG_ID, session_token)
-    group = input('   Select SDDC Group: ')
-    group_id = get_group_id(group, ORG_ID, session_token)
-    resource_id = get_resource_id(group_id, ORG_ID, session_token)
-    vpc_list = get_available_att(resource_id, ORG_ID, session_token)
-    if vpc_list == []:
-        print('   No VPC attached')
-    else:
-        n = input('   Select VPC: ')
-        routes = input ('   Enter route(s) to add (space separated), or press Enter to remove all: ')
+    # ============================
+    # VTC - DXGW Operations
+    # ============================
+
+
+    elif intent_name == "attach-dxgw":
+        print("===== Add DXGW Association =========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        routes = input ('   Enter route(s) to add (space separated): ')
         user_list = routes.split()
-        task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
+        task_id = attach_dxgw(user_list, resource_id, ORG_ID, dxgw_owner, dxgw_id, region, session_token)
         get_task_status(task_id, ORG_ID, session_token)
 
-# ============================
-# NSX-T - Search
-# ============================
+    elif intent_name == "detach-dxgw":
+        print("===== Remove DXGW Association =========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        task_id = detach_dxgw(resource_id, ORG_ID, dxgw_id, session_token)
+        get_task_status(task_id, ORG_ID, session_token)
 
 
-elif intent_name == "search-nsx":
-    if len(sys.argv) == 4:
-        object_type = sys.argv[2]
-        object_id = sys.argv[3]
-        search_nsx(proxy, session_token, object_type, object_id)
-    elif len(sys.argv) == 3:
-        object_type = sys.argv[2]
-        object_id = "NULL"
-        search_nsx(proxy, session_token, object_type, object_id)
-    else:
-        print("Invalid syntax.  Please provide object type to search by as an argument; optionally provide the object id / display name.")
-        print("Currently supported object types are as follows:")
-        print("    BgpNeighborConfig")
-        print("    BgpRoutingConfig")
-        print("    Group")
-        print("    IdsSignature")
-        print("    PrefixList")
-        print("    RouteBasedIPSecVPNSession")
-        print("    Segment")
-        print("    Service")
-        print("    StaticRoute")
-        print("    Tier0")
-        print("    Tier1")
-        print("    VirtualMachine")
-        print("    VirtualNetworkInterface")
-        print("")
-        print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
-
-# ============================
-# NSX-T - Advanced Firewall
-# ============================
+    # ============================
+    # VTC - SDDC Operations
+    # ============================
 
 
-elif intent_name == "show-nsxaf-status":
-    getNSXAFAddOn(ORG_ID, SDDC_ID, session_token)
+    elif intent_name == "attach-sddc":
+        print("===== Connecting SDDC =========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        get_deployments(ORG_ID, session_token)
+        sddc = input('   Select one SDDC to attach: ')
+        deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        task_id = attach_sddc(deployment_id, resource_id, ORG_ID, session_token)
+        get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "show-ids-cluster-status":
-    getNsxIdsEnabledClusters(proxy, session_token)
+    elif intent_name == "detach-sddc":
+        print("===== Removing SDDC =========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        get_deployments(ORG_ID, session_token)
+        sddc = input('   Select one SDDC to detach: ')
+        deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        task_id = remove_sddc(deployment_id, resource_id, ORG_ID, session_token)
+        get_task_status(task_id, ORG_ID, session_token)
 
-elif intent_name == "enable-cluster-ids":
-    cluster_id = sys.argv[2]
-    enableNsxIdsCluster (proxy, session_token, cluster_id)
+    elif intent_name == "get-nsx-info":
+        print("===== get deployments =========")
+        get_deployments(ORG_ID, session_token)
+        sddc = input('   Select SDDC: ')
+        deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
+        get_nsx_info( ORG_ID, deployment_id, session_token)
 
-elif intent_name == "disable-cluster-ids":
-    cluster_id = sys.argv[2]
-    disableNsxIdsCluster (proxy, session_token, cluster_id)
-
-elif intent_name == "enable-all-cluster-ids":
-    enableNsxIdsAll (proxy, session_token)
-
-elif intent_name == "disable-all-cluster-ids":
-    disableNsxIdsAll (proxy, session_token)
-
-elif intent_name == "enable-ids-auto-update":
-    enableNsxIdsAutoUpdate (proxy, session_token)
-
-elif intent_name == "ids-update-signatures":
-    NsxIdsUpdateSignatures (proxy, session_token)
-
-elif intent_name == "show-ids-signature-versions":
-    getNsxIdsSigVersions (proxy, session_token)
-
-elif intent_name == "show-ids-profiles":
-    getIdsProfiles (proxy, session_token)
-
-elif intent_name == "search-product-affected":
-    search_ids_signatures_product_affected(proxy, session_token)
-
-elif intent_name == "show-ids-policies":
-    listIdsPolicies (proxy, session_token)
-
-elif intent_name == "create-ids-profile":
-    create_ids_profile(**vars(args))
-
-elif intent_name == "create-ids-policy":
-    create_ids_policy(**vars(args))
-
-elif intent_name == "show-ids-rules":
-    get_ids_rules()
-
-elif intent_name == "create-ids-rule":
-    create_ids_rule(**vars(args))
-
-elif intent_name == "delete-ids-policy":
-    delete_ids_policy(**vars(args))
-
-elif intent_name == "delete-ids-rule":
-    delete_ids_rule(**vars(args))
-    
-
-# ============================
-# NSX-T - BGP and Routing
-# ============================
+    elif intent_name == "get-sddc-info":
+        print("===== SDDC Info =========")
+        get_deployments(ORG_ID, session_token)
 
 
-elif intent_name == "attach-t0-prefix-list":
-    neighbor_id = sys.argv[2]
-    attachT0BGPprefixlist(proxy, session_token, neighbor_id)
-elif intent_name == "detach-t0-prefix-lists":
-    neighbor_id = sys.argv[2]
-    detachT0BGPprefixlists(proxy, session_token, neighbor_id)
-elif intent_name == "new-t0-prefix-list":
-    newBGPprefixlist(proxy, session_token)
-elif intent_name == "remove-t0-prefix-list":
-    prefixlists = getSDDCT0PrefixLists(proxy, session_token)
-    prefix_list_id = sys.argv[2]
-    remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
-    print("The BGP prefix list " + prefix_list_id + " has been deleted")
-elif intent_name == "set-sddc-bgp-as":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax.")
-    else:
-        asn = sys.argv[2]
-        setSDDCBGPAS(proxy,session_token,asn)
-elif intent_name == "set-mtu":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax.")
-    mtu = sys.argv[2]
-    if int(mtu) < 1500 or int(mtu) > 8900:
-        print("Incorrect syntax. The MTU should be between 1500 and 8900 bytes.")
-    else:
-        setSDDCMTU(proxy,session_token,mtu)
-elif intent_name == "show-egress-interface-counters":
-    edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
-    edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
-    edge_path_1 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 1)
-    stat_0 = getSDDCInternetStats(proxy,session_token, edge_path_0)
-    stat_1 = getSDDCInternetStats(proxy,session_token, edge_path_1)
-    total_stat = stat_0 + stat_1
-    print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
-elif intent_name == "show-mtu":
-    getSDDCMTU(proxy,session_token)
-elif intent_name == "show-sddc-bgp-as":
-    getSDDCBGPAS(proxy,session_token)
-elif intent_name == "show-sddc-bgp-vpn":
-    print(getSDDCBGPVPN(proxy,session_token))
-elif intent_name == "show-t0-bgp-neighbors":
-    getSDDCT0BGPneighbors(proxy, session_token)
-elif intent_name == "show-t0-bgp-routes":
-    getSDDCT0BGPRoutes(proxy, session_token)
-elif intent_name == "show-t0-prefix-lists":
-    getSDDCT0PrefixLists(proxy, session_token)
-elif intent_name == "show-t0-routes":
-    getSDDCT0routes(proxy,session_token)
-elif intent_name == "show-t0-static-routes":
-    getSDDCT0staticroutes(proxy,session_token)
+    # ============================
+    # VTC - SDDC-Group Operations
+    # ============================
 
 
-# ============================
-# NSX-T - DNS
-# ============================
+    elif intent_name == "create-sddc-group":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. Please provide the name of the new SDDC.")
+        else:
+            print("\n=====Creating SDDC Group=========")
+            group_name = sys.argv[2]
+            get_deployments(ORG_ID, session_token)
+            sddc = input('   Select one SDDC to attach: ')
+            deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
+            task_id = create_sddc_group(group_name, deployment_id, ORG_ID, session_token)
+            get_task_status(task_id, ORG_ID, session_token)
+
+    elif intent_name == "delete-sddc-group":
+        print("===== SDDC Group info =========")
+        group_exists = get_sddc_groups( ORG_ID, session_token)
+        print("=====Deleting SDDC Group=========")
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        if (check_empty_group(group_id, ORG_ID, session_token)):
+            resource_id = get_resource_id(group_id, ORG_ID, session_token)
+            task_id = delete_sddc_group(resource_id, ORG_ID, session_token)
+            get_task_status(task_id, ORG_ID, session_token)
+        else:
+            print("SDDC Group not empty: detach all members")
+
+    elif intent_name == "get-group-info":
+        print("===== SDDC Group info =========")
+        group_exists = get_sddc_groups( ORG_ID, session_token)
+        if group_exists:
+            group = input('   Select SDDC Group: ')
+            group_id = get_group_id(group, ORG_ID, session_token)
+            resource_id = get_resource_id(group_id, ORG_ID, session_token)
+            get_group_info(group_id, resource_id, ORG_ID, session_token)
 
 
-elif intent_name == "show-dns-services":
-    if len(sys.argv) == 2:
-        mgw_dns_services = getSDDCDNS_Services(proxy, session_token, "mgw")
-        print("\nHere are the Management DNS Services:")
-        print(mgw_dns_services)
-        cgw_dns_services = getSDDCDNS_Services(proxy, session_token, "cgw")
-        print("\nHere are the Compute DNS Services:")
-        print(cgw_dns_services)
-    elif len(sys.argv) == 3:
-        gw = sys.argv[2].lower()
-        sddc_dns_services = getSDDCDNS_Services(proxy, session_token, gw)
-        print(sddc_dns_services)
-    else:
-        print("Incorrect syntax. Try again or check the help.")
-elif intent_name == "show-dns-zones":
-    print(getSDDCDNS_Zones(proxy,session_token))
+    # ============================
+    # VTC - TGW Operations
+    # ============================
 
 
-# ============================
-# NSX-T - Firewall - Gateway
-# ============================
+    elif intent_name == "show-tgw-routes":
+        print("===== Show TGW route tables =========")
+        #get_sddc_groups( ORG_ID, session_token)
+        sddc_groups = get_sddc_groups( ORG_ID, session_token)
+        group_id = None
+        if DEBUG_MODE:
+            print(f'DEBUG: sddc_groups = {sddc_groups}')
+        if len(sys.argv) > 2:
+            search_name = sys.argv[2]
+            for grp in sddc_groups:
+                if grp['name'] == search_name:
+                    group_id = grp['id']
+                    group_name = search_name
+                    if DEBUG_MODE:
+                        print(f'DEBUG: Found {search_name} with group ID {group_id}')
+                    break
+        else:
+            group = input('   Select SDDC Group: ')
+            group_id = sddc_groups[int(group) -1]['id']
+            group_name = sddc_groups[int(group) -1]['name']
+            if DEBUG_MODE:
+                print(f'DEBUG: User input group = {group}')
+                print(f'DEBUG: group_id from sddc_groups = {group_id}')
+        #group_id = get_group_id(group, ORG_ID, session_token)
+        if group_id is None:
+            print('Could not retrieve group ID')
+        else:
+            resource_id = get_resource_id(group_id, ORG_ID, session_token)
+            print(f'Route table for {group_name} ({group_id})')
+            get_route_tables(resource_id, ORG_ID, session_token)
 
 
-elif intent_name == "new-cgw-rule":
-    sequence_number = 0
-    display_name = sys.argv[2]
-    sg_string = sys.argv[3]
-    dg_string = sys.argv[4]
-    group_index = '/infra/domains/cgw/groups/'
-    scope_index = '/infra/labels/cgw-'
-    list_index = '/infra/services/'
-    if sg_string.lower() == "connected_vpc":
-        source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-    elif sg_string.lower() == "directconnect_prefixes":
-        source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-    elif sg_string.lower() == "s3_prefixes":
-        source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-    elif sg_string.lower() == "any":
-        source_groups = ["ANY"]
-    else:
-        sg_list = sg_string.split(",")
-        source_groups = [group_index + x for x in sg_list]
-    if dg_string.lower() == "connected_vpc":
-        destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-    elif dg_string.lower() == "directconnect_prefixes":
-        destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-    elif dg_string.lower() == "s3_prefixes":
-        destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-    elif dg_string.lower() == "any":
-        destination_groups = ["ANY"]
-    else:
-        dg_list = dg_string.split(",")
-        destination_groups= [group_index + x for x in dg_list]
-    services_string = sys.argv[5]
-    if services_string.lower() == "any":
-        services = ["ANY"]
-    else:
-        services_list = services_string.split(",")
-        services = [list_index + x for x in services_list]
-    action = sys.argv[6].upper()
-    scope_string = sys.argv[7].lower()
-    scope_list = scope_string.split(",")
-    scope = [scope_index + x for x in scope_list]
-    if len(sys.argv) == 9:
-        sequence_number = sys.argv[8]
-        new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
-    else:
-        new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
-    if new_rule == 200:
-        print("\n The rule has been created.")
-        print(getSDDCCGWRule(proxy,session_token))
-    else:
-        print("Incorrect syntax. Try again.")
-elif intent_name == "new-mgw-rule":
-    sequence_number = 0
-    display_name = sys.argv[2]
-    # String and List Manipulation:
-    sg_string = sys.argv[3]
-    dg_string = sys.argv[4]
-    group_index = '/infra/domains/mgw/groups/'
-    list_index = '/infra/services/'
-    if sg_string.lower() == "any":
-        source_groups = ["ANY"]
-    else:
-        # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
-        # sg_string = sg_string.upper()
-        sg_list = sg_string.split(",")
-        source_groups = [group_index + x for x in sg_list]
+    # ============================
+    # VTC - VPC Operations
+    # ============================
 
-    # String and List Manipulation:
-    # We take the input argument (NSX-MANAGER or VCENTER or ESXI nodes)
 
-    if dg_string.lower() == "any":
-        destination_groups = ["ANY"]
-    else:
-        # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
-        # dg_string = dg_string.upper()
-        dg_list = dg_string.split(",")
-        destination_groups = [group_index + x for x in dg_list]
+    elif intent_name == "attach-vpc":
+        print("=====Attaching VPCs=========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        vpc_list = get_pending_att(resource_id, ORG_ID, session_token)
+        if vpc_list == []:
+            print('   No VPC to attach')
+        else:
+            n = input('   Select VPC to attach: ')
+            task_id = attach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
+            if task_id:
+                get_task_status(task_id, ORG_ID, session_token)
 
-    services_string = sys.argv[5]
-    if services_string.lower() == "any":
-        services = ["ANY"]
-    else:
-        services_list = services_string.split(",")
-        print(services_list)
-        services = [list_index + x for x in services_list]
-    action = sys.argv[6].upper()
-    if len(sys.argv) == 8:
-        sequence_number = sys.argv[7]
-        new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
-                                  action, sequence_number)
-        print(new_rule)
-    else:
-        new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
-                                  action, sequence_number)
-    if new_rule == 200:
-        print("\n The rule has been created.")
-        print(getSDDCMGWRule(proxy, session_token))
-        print(new_rule)
-    else:
-        print("Incorrect syntax. Try again.")
-elif intent_name == "remove-cgw-rule":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. ")
-    else:
-        rule_id = sys.argv[2]
-        if removeSDDCCGWRule(proxy, session_token, rule_id) == 200:
-            print("The rule " + rule_id + " has been deleted")
+    elif intent_name == "detach-vpc":
+        print("=====Detaching VPCs=========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        vpc_list = get_available_att(resource_id, ORG_ID, session_token)
+        if vpc_list == []:
+            print('   No VPC to detach')
+        else:
+            n = input('  Select VPC to detach: ')
+            task_id = detach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
+            if task_id:
+                get_task_status(task_id, ORG_ID, session_token)
+
+    elif intent_name == "vpc-prefixes":
+        print("===== Adding/Removing VPC Static Routes =========")
+        get_sddc_groups( ORG_ID, session_token)
+        group = input('   Select SDDC Group: ')
+        group_id = get_group_id(group, ORG_ID, session_token)
+        resource_id = get_resource_id(group_id, ORG_ID, session_token)
+        vpc_list = get_available_att(resource_id, ORG_ID, session_token)
+        if vpc_list == []:
+            print('   No VPC attached')
+        else:
+            n = input('   Select VPC: ')
+            routes = input ('   Enter route(s) to add (space separated), or press Enter to remove all: ')
+            user_list = routes.split()
+            task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
+            get_task_status(task_id, ORG_ID, session_token)
+
+    # ============================
+    # NSX-T - Search
+    # ============================
+
+
+    elif intent_name == "search-nsx":
+        if len(sys.argv) == 4:
+            object_type = sys.argv[2]
+            object_id = sys.argv[3]
+            search_nsx(proxy, session_token, object_type, object_id)
+        elif len(sys.argv) == 3:
+            object_type = sys.argv[2]
+            object_id = "NULL"
+            search_nsx(proxy, session_token, object_type, object_id)
+        else:
+            print("Invalid syntax.  Please provide object type to search by as an argument; optionally provide the object id / display name.")
+            print("Currently supported object types are as follows:")
+            print("    BgpNeighborConfig")
+            print("    BgpRoutingConfig")
+            print("    Group")
+            print("    IdsSignature")
+            print("    PrefixList")
+            print("    RouteBasedIPSecVPNSession")
+            print("    Segment")
+            print("    Service")
+            print("    StaticRoute")
+            print("    Tier0")
+            print("    Tier1")
+            print("    VirtualMachine")
+            print("    VirtualNetworkInterface")
+            print("")
+            print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
+
+    # ============================
+    # NSX-T - Advanced Firewall
+    # ============================
+
+
+    elif intent_name == "show-nsxaf-status":
+        getNSXAFAddOn(ORG_ID, SDDC_ID, session_token)
+
+    elif intent_name == "show-ids-cluster-status":
+        getNsxIdsEnabledClusters(proxy, session_token)
+
+    elif intent_name == "enable-cluster-ids":
+        cluster_id = sys.argv[2]
+        enableNsxIdsCluster (proxy, session_token, cluster_id)
+
+    elif intent_name == "disable-cluster-ids":
+        cluster_id = sys.argv[2]
+        disableNsxIdsCluster (proxy, session_token, cluster_id)
+
+    elif intent_name == "enable-all-cluster-ids":
+        enableNsxIdsAll (proxy, session_token)
+
+    elif intent_name == "disable-all-cluster-ids":
+        disableNsxIdsAll (proxy, session_token)
+
+    elif intent_name == "enable-ids-auto-update":
+        enableNsxIdsAutoUpdate (proxy, session_token)
+
+    elif intent_name == "ids-update-signatures":
+        NsxIdsUpdateSignatures (proxy, session_token)
+
+    elif intent_name == "show-ids-signature-versions":
+        getNsxIdsSigVersions (proxy, session_token)
+
+    elif intent_name == "show-ids-profiles":
+        getIdsProfiles (proxy, session_token)
+
+    elif intent_name == "search-product-affected":
+        search_ids_signatures_product_affected(proxy, session_token)
+
+    elif intent_name == "show-ids-policies":
+        listIdsPolicies (proxy, session_token)
+
+    elif intent_name == "create-ids-profile":
+        create_ids_profile(**vars(args))
+
+    elif intent_name == "create-ids-policy":
+        create_ids_policy(**vars(args))
+
+    elif intent_name == "show-ids-rules":
+        get_ids_rules()
+
+    elif intent_name == "create-ids-rule":
+        create_ids_rule(**vars(args))
+
+    elif intent_name == "delete-ids-policy":
+        delete_ids_policy(**vars(args))
+
+    elif intent_name == "delete-ids-rule":
+        delete_ids_rule(**vars(args))
+        
+
+    # ============================
+    # NSX-T - BGP and Routing
+    # ============================
+
+
+    elif intent_name == "attach-t0-prefix-list":
+        neighbor_id = sys.argv[2]
+        attachT0BGPprefixlist(proxy, session_token, neighbor_id)
+    elif intent_name == "detach-t0-prefix-lists":
+        neighbor_id = sys.argv[2]
+        detachT0BGPprefixlists(proxy, session_token, neighbor_id)
+    elif intent_name == "new-t0-prefix-list":
+        newBGPprefixlist(proxy, session_token)
+    elif intent_name == "remove-t0-prefix-list":
+        prefixlists = getSDDCT0PrefixLists(proxy, session_token)
+        prefix_list_id = sys.argv[2]
+        remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
+        print("The BGP prefix list " + prefix_list_id + " has been deleted")
+    elif intent_name == "set-sddc-bgp-as":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax.")
+        else:
+            asn = sys.argv[2]
+            setSDDCBGPAS(proxy,session_token,asn)
+    elif intent_name == "set-mtu":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax.")
+        mtu = sys.argv[2]
+        if int(mtu) < 1500 or int(mtu) > 8900:
+            print("Incorrect syntax. The MTU should be between 1500 and 8900 bytes.")
+        else:
+            setSDDCMTU(proxy,session_token,mtu)
+    elif intent_name == "show-egress-interface-counters":
+        edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
+        edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
+        edge_path_1 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 1)
+        stat_0 = getSDDCInternetStats(proxy,session_token, edge_path_0)
+        stat_1 = getSDDCInternetStats(proxy,session_token, edge_path_1)
+        total_stat = stat_0 + stat_1
+        print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
+    elif intent_name == "show-mtu":
+        getSDDCMTU(proxy,session_token)
+    elif intent_name == "show-sddc-bgp-as":
+        getSDDCBGPAS(proxy,session_token)
+    elif intent_name == "show-sddc-bgp-vpn":
+        print(getSDDCBGPVPN(proxy,session_token))
+    elif intent_name == "show-t0-bgp-neighbors":
+        getSDDCT0BGPneighbors(proxy, session_token)
+    elif intent_name == "show-t0-bgp-routes":
+        getSDDCT0BGPRoutes(proxy, session_token)
+    elif intent_name == "show-t0-prefix-lists":
+        getSDDCT0PrefixLists(proxy, session_token)
+    elif intent_name == "show-t0-routes":
+        getSDDCT0routes(proxy,session_token)
+    elif intent_name == "show-t0-static-routes":
+        getSDDCT0staticroutes(proxy,session_token)
+
+
+    # ============================
+    # NSX-T - DNS
+    # ============================
+
+
+    elif intent_name == "show-dns-services":
+        if len(sys.argv) == 2:
+            mgw_dns_services = getSDDCDNS_Services(proxy, session_token, "mgw")
+            print("\nHere are the Management DNS Services:")
+            print(mgw_dns_services)
+            cgw_dns_services = getSDDCDNS_Services(proxy, session_token, "cgw")
+            print("\nHere are the Compute DNS Services:")
+            print(cgw_dns_services)
+        elif len(sys.argv) == 3:
+            gw = sys.argv[2].lower()
+            sddc_dns_services = getSDDCDNS_Services(proxy, session_token, gw)
+            print(sddc_dns_services)
+        else:
+            print("Incorrect syntax. Try again or check the help.")
+    elif intent_name == "show-dns-zones":
+        print(getSDDCDNS_Zones(proxy,session_token))
+
+
+    # ============================
+    # NSX-T - Firewall - Gateway
+    # ============================
+
+
+    elif intent_name == "new-cgw-rule":
+        sequence_number = 0
+        display_name = sys.argv[2]
+        sg_string = sys.argv[3]
+        dg_string = sys.argv[4]
+        group_index = '/infra/domains/cgw/groups/'
+        scope_index = '/infra/labels/cgw-'
+        list_index = '/infra/services/'
+        if sg_string.lower() == "connected_vpc":
+            source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        elif sg_string.lower() == "directconnect_prefixes":
+            source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        elif sg_string.lower() == "s3_prefixes":
+            source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        elif sg_string.lower() == "any":
+            source_groups = ["ANY"]
+        else:
+            sg_list = sg_string.split(",")
+            source_groups = [group_index + x for x in sg_list]
+        if dg_string.lower() == "connected_vpc":
+            destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        elif dg_string.lower() == "directconnect_prefixes":
+            destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        elif dg_string.lower() == "s3_prefixes":
+            destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        elif dg_string.lower() == "any":
+            destination_groups = ["ANY"]
+        else:
+            dg_list = dg_string.split(",")
+            destination_groups= [group_index + x for x in dg_list]
+        services_string = sys.argv[5]
+        if services_string.lower() == "any":
+            services = ["ANY"]
+        else:
+            services_list = services_string.split(",")
+            services = [list_index + x for x in services_list]
+        action = sys.argv[6].upper()
+        scope_string = sys.argv[7].lower()
+        scope_list = scope_string.split(",")
+        scope = [scope_index + x for x in scope_list]
+        if len(sys.argv) == 9:
+            sequence_number = sys.argv[8]
+            new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
+        else:
+            new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
+        if new_rule == 200:
+            print("\n The rule has been created.")
             print(getSDDCCGWRule(proxy,session_token))
-        else :
-            print("Issues deleting the security rule. Check the syntax.")
-elif intent_name == "remove-mgw-rule":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. ")
-    else:
-        rule_id = sys.argv[2]
-        if removeSDDCMGWRule(proxy, session_token, rule_id) == 200:
-            print(getSDDCMGWRule(proxy,session_token))
-        else :
-            print("Issues deleting the security rule. Check the syntax.")
-elif intent_name == "show-cgw-rule":
-    print(getSDDCCGWRule(proxy, session_token))
-elif intent_name == "show-mgw-rule":
-    print(getSDDCMGWRule(proxy, session_token))
-
-
-# ============================
-# NSX-T - Firewall - Distributed
-# ============================
-
-
-elif intent_name == "new-dfw-rule":
-    sequence_number = 0
-    display_name = sys.argv[2]
-    sg_string = sys.argv[3]
-    dg_string = sys.argv[4]
-    group_index = '/infra/domains/cgw/groups/'
-    scope_index = '/infra/labels/cgw-'
-    list_index = '/infra/services/'
-    if sg_string.lower() == "connected_vpc":
-        source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-    elif sg_string.lower() == "directconnect_prefixes":
-        source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-    elif sg_string.lower() == "s3_prefixes":
-        source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-    elif sg_string.lower() == "any":
-        source_groups = ["ANY"]
-    else:
-        sg_list = sg_string.split(",")
-        source_groups= [group_index + x for x in sg_list]
-    if dg_string.lower() == "connected_vpc":
-        destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-    elif dg_string.lower() == "directconnect_prefixes":
-        destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-    elif dg_string.lower() == "s3_prefixes":
-        destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-    elif dg_string.lower() == "any":
-        destination_groups = ["ANY"]
-    else:
-        dg_list = dg_string.split(",")
-        destination_groups = [group_index + x for x in dg_list]
-    services_string = sys.argv[5]
-    if services_string.lower() == "any":
-        services = ["ANY"]
-    else:
-        services_list = services_string.split(",")
-        services = [list_index + x for x in services_list]
-    action = sys.argv[6].upper()
-    section = sys.argv[7]
-    if len(sys.argv) == 9:
-        sequence_number = sys.argv[8]
-        new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
-    else:
-        new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
-    if new_rule == 200:
-        print("\n The rule has been created.")
-        print(getSDDCDFWRule(proxy,session_token, section))
-    else:
-        print("Incorrect syntax. Try again.")
-elif intent_name == "new-dfw-section":
-    if len(sys.argv) >= 5:
-        print("Wrong syntax, try again.")
-    if len(sys.argv) == 3:
-        name = sys.argv[2]
-        category = "Application"
-        status_code = newSDDCDFWSection(proxy, session_token, name, category)
-        if status_code == 200:
-            print("Success:")
-            print("\nThe section " + name + " has been created in the " + category + " category.")
-            print(getSDDCDFWSection(proxy, session_token))
         else:
-            print("There was an error. Check the syntax.")
-    if len(sys.argv) == 4:
-        name = sys.argv[2]
-        category = sys.argv[3]
-        status_code = newSDDCDFWSection(proxy, session_token, name, category)
-        if status_code == 200:
-            print("Success:")
-            print("\nThe section " + name + " has been created in the " + category + " category.")
-            print(getSDDCDFWSection(proxy, session_token))
+            print("Incorrect syntax. Try again.")
+    elif intent_name == "new-mgw-rule":
+        sequence_number = 0
+        display_name = sys.argv[2]
+        # String and List Manipulation:
+        sg_string = sys.argv[3]
+        dg_string = sys.argv[4]
+        group_index = '/infra/domains/mgw/groups/'
+        list_index = '/infra/services/'
+        if sg_string.lower() == "any":
+            source_groups = ["ANY"]
         else:
-            print("There was an error. Check the syntax.")
-elif intent_name == "remove-dfw-rule":
-    if len(sys.argv) != 4:
-        print("Incorrect syntax. ")
-    else:
-        section_id = sys.argv[2]
-        rule_id = sys.argv[3]
-        if delete_sddc_dfw_rule_json(proxy, session_token, section_id, rule_id) == 200:
-            print("The rule " + rule_id + " has been deleted")
-            print(getSDDCDFWRule(proxy,session_token, section_id))
-        else :
-            print("Issues deleting the security rule. Check the syntax.")
-elif intent_name == "remove-dfw-section":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. ")
-    else:
-        section_id = sys.argv[2]
-        if delete_sddc_dfw_section_json(proxy, session_token, section_id) == 200:
-            print("The section " + section_id + " has been deleted.")
-            print(getSDDCDFWSection(proxy,session_token))
-        else :
-            print("Issues deleting the DFW section. Check the syntax.")
-elif intent_name == "show-dfw-section":
-    print(getSDDCDFWSection(proxy, session_token))
-elif intent_name == "show-dfw-section-rules":
-    if len(sys.argv) == 2:
-        print("Incorrect syntax. Specify the section name.")
-    if len(sys.argv) == 3:
-        section = sys.argv[2]
-        print(getSDDCDFWRule(proxy, session_token,section))
+            # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
+            # sg_string = sg_string.upper()
+            sg_list = sg_string.split(",")
+            source_groups = [group_index + x for x in sg_list]
+
+        # String and List Manipulation:
+        # We take the input argument (NSX-MANAGER or VCENTER or ESXI nodes)
+
+        if dg_string.lower() == "any":
+            destination_groups = ["ANY"]
+        else:
+            # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
+            # dg_string = dg_string.upper()
+            dg_list = dg_string.split(",")
+            destination_groups = [group_index + x for x in dg_list]
+
+        services_string = sys.argv[5]
+        if services_string.lower() == "any":
+            services = ["ANY"]
+        else:
+            services_list = services_string.split(",")
+            print(services_list)
+            services = [list_index + x for x in services_list]
+        action = sys.argv[6].upper()
+        if len(sys.argv) == 8:
+            sequence_number = sys.argv[7]
+            new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
+                                    action, sequence_number)
+            print(new_rule)
+        else:
+            new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
+                                    action, sequence_number)
+        if new_rule == 200:
+            print("\n The rule has been created.")
+            print(getSDDCMGWRule(proxy, session_token))
+            print(new_rule)
+        else:
+            print("Incorrect syntax. Try again.")
+    elif intent_name == "remove-cgw-rule":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. ")
+        else:
+            rule_id = sys.argv[2]
+            if removeSDDCCGWRule(proxy, session_token, rule_id) == 200:
+                print("The rule " + rule_id + " has been deleted")
+                print(getSDDCCGWRule(proxy,session_token))
+            else :
+                print("Issues deleting the security rule. Check the syntax.")
+    elif intent_name == "remove-mgw-rule":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. ")
+        else:
+            rule_id = sys.argv[2]
+            if removeSDDCMGWRule(proxy, session_token, rule_id) == 200:
+                print(getSDDCMGWRule(proxy,session_token))
+            else :
+                print("Issues deleting the security rule. Check the syntax.")
+    elif intent_name == "show-cgw-rule":
+        print(getSDDCCGWRule(proxy, session_token))
+    elif intent_name == "show-mgw-rule":
+        print(getSDDCMGWRule(proxy, session_token))
 
 
-# ============================
-# NSX-T - Firewall Services
-# ============================
+    # ============================
+    # NSX-T - Firewall - Distributed
+    # ============================
 
 
-elif intent_name == "new-service":
-    if len(sys.argv) == 2:
-        service_id = input("Please input the name of the service:")
-        service_entry_list = []
-            # Start a loop that will run until the user enters 'quit'.
-            # Ask the user for a name.
-        destination_port = ""
-        while destination_port != 'done':
-            destination_port_list = []
-            source_port_list = []
-            service_entry_id = input("Please enter the Service Entry ID:")
-            l4_protocol = input("Please enter the L4 Protocol:")
-            source_port = ""
+    elif intent_name == "new-dfw-rule":
+        sequence_number = 0
+        display_name = sys.argv[2]
+        sg_string = sys.argv[3]
+        dg_string = sys.argv[4]
+        group_index = '/infra/domains/cgw/groups/'
+        scope_index = '/infra/labels/cgw-'
+        list_index = '/infra/services/'
+        if sg_string.lower() == "connected_vpc":
+            source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        elif sg_string.lower() == "directconnect_prefixes":
+            source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        elif sg_string.lower() == "s3_prefixes":
+            source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        elif sg_string.lower() == "any":
+            source_groups = ["ANY"]
+        else:
+            sg_list = sg_string.split(",")
+            source_groups= [group_index + x for x in sg_list]
+        if dg_string.lower() == "connected_vpc":
+            destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
+        elif dg_string.lower() == "directconnect_prefixes":
+            destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
+        elif dg_string.lower() == "s3_prefixes":
+            destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
+        elif dg_string.lower() == "any":
+            destination_groups = ["ANY"]
+        else:
+            dg_list = dg_string.split(",")
+            destination_groups = [group_index + x for x in dg_list]
+        services_string = sys.argv[5]
+        if services_string.lower() == "any":
+            services = ["ANY"]
+        else:
+            services_list = services_string.split(",")
+            services = [list_index + x for x in services_list]
+        action = sys.argv[6].upper()
+        section = sys.argv[7]
+        if len(sys.argv) == 9:
+            sequence_number = sys.argv[8]
+            new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
+        else:
+            new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
+        if new_rule == 200:
+            print("\n The rule has been created.")
+            print(getSDDCDFWRule(proxy,session_token, section))
+        else:
+            print("Incorrect syntax. Try again.")
+    elif intent_name == "new-dfw-section":
+        if len(sys.argv) >= 5:
+            print("Wrong syntax, try again.")
+        if len(sys.argv) == 3:
+            name = sys.argv[2]
+            category = "Application"
+            status_code = newSDDCDFWSection(proxy, session_token, name, category)
+            if status_code == 200:
+                print("Success:")
+                print("\nThe section " + name + " has been created in the " + category + " category.")
+                print(getSDDCDFWSection(proxy, session_token))
+            else:
+                print("There was an error. Check the syntax.")
+        if len(sys.argv) == 4:
+            name = sys.argv[2]
+            category = sys.argv[3]
+            status_code = newSDDCDFWSection(proxy, session_token, name, category)
+            if status_code == 200:
+                print("Success:")
+                print("\nThe section " + name + " has been created in the " + category + " category.")
+                print(getSDDCDFWSection(proxy, session_token))
+            else:
+                print("There was an error. Check the syntax.")
+    elif intent_name == "remove-dfw-rule":
+        if len(sys.argv) != 4:
+            print("Incorrect syntax. ")
+        else:
+            section_id = sys.argv[2]
+            rule_id = sys.argv[3]
+            if delete_sddc_dfw_rule_json(proxy, session_token, section_id, rule_id) == 200:
+                print("The rule " + rule_id + " has been deleted")
+                print(getSDDCDFWRule(proxy,session_token, section_id))
+            else :
+                print("Issues deleting the security rule. Check the syntax.")
+    elif intent_name == "remove-dfw-section":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. ")
+        else:
+            section_id = sys.argv[2]
+            if delete_sddc_dfw_section_json(proxy, session_token, section_id) == 200:
+                print("The section " + section_id + " has been deleted.")
+                print(getSDDCDFWSection(proxy,session_token))
+            else :
+                print("Issues deleting the DFW section. Check the syntax.")
+    elif intent_name == "show-dfw-section":
+        print(getSDDCDFWSection(proxy, session_token))
+    elif intent_name == "show-dfw-section-rules":
+        if len(sys.argv) == 2:
+            print("Incorrect syntax. Specify the section name.")
+        if len(sys.argv) == 3:
+            section = sys.argv[2]
+            print(getSDDCDFWRule(proxy, session_token,section))
+
+
+    # ============================
+    # NSX-T - Firewall Services
+    # ============================
+
+
+    elif intent_name == "new-service":
+        if len(sys.argv) == 2:
+            service_id = input("Please input the name of the service:")
+            service_entry_list = []
+                # Start a loop that will run until the user enters 'quit'.
+                # Ask the user for a name.
             destination_port = ""
-            while source_port != 'done':
-                source_port = input("Plese enter the Source Ports or type 'done' when your list is finished:")
-                if source_port != "done":
-                    source_port_list.append(source_port)
-            while (destination_port != 'next') and (destination_port != "done"):
+            while destination_port != 'done':
+                destination_port_list = []
+                source_port_list = []
+                service_entry_id = input("Please enter the Service Entry ID:")
+                l4_protocol = input("Please enter the L4 Protocol:")
                 source_port = ""
-                destination_port = input("Plese enter the Destination Ports, type 'next' when you want to define another service entry or 'done' if you have finished:")
-                if (destination_port != 'next') and (destination_port != "done"):
-                    destination_port_list.append(destination_port)
-            # print(service_id)
-            # print(destination_port_list)
-            # print(source_port_list)
-            # print(l4_protocol)
-            service_entry = {
-                "l4_protocol": l4_protocol,
-                "source_ports": source_port_list,
-                "destination_ports" : destination_port_list,
-                "resource_type" : "L4PortSetServiceEntry",
-                "id" : service_entry_id,
-                "display_name" : service_entry_id     }
-            service_entry_list.append(service_entry)
-            # print(service_entry)
-            # print(service_entry_list)
-        newSDDCService(proxy,session_token,service_id,service_entry_list)
-        sddc_service = getSDDCService(proxy,session_token,service_id)
-        print(sddc_service)
-    elif len(sys.argv) == 4:
-        name = sys.argv[2]
-        service_entry_string = sys.argv[3]
-        service_entry_list = service_entry_string.split(",")
-        newSDDCService(proxy,session_token,name,service_entry_list)
-        sddc_service = getSDDCService(proxy,session_token,service_id)
-        print(sddc_service)
-    else:
-        print("Incorrect syntax")
-elif intent_name == "remove-service":
-    if len(sys.argv) > 3:
-        print("This command did not work. Follow the instructions")
-    else:
-        service_id = sys.argv[2]
-        sddc_service_delete = removeSDDCService(proxy,session_token,service_id)
-elif intent_name == "show-services" or intent_name == "show-service":
-    if len(sys.argv) == 2:
-        sddc_services = getSDDCServices(proxy,session_token)
-        print(sddc_services)
-    elif len(sys.argv) == 3:
-        service_id = sys.argv[2]
-        sddc_service = getSDDCService(proxy,session_token,service_id)
-        print(sddc_service)
-    else:
-        print("This command did not work. Follow the instructions")
-
-
-# ============================
-# NSX-T - Inventory Groups
-# ============================
-
-
-elif intent_name == "new-group":
-    gw = sys.argv[2].lower()
-    group_id = sys.argv[3]
-    if gw == "mgw" and len(sys.argv) == 4:
-        ip_addresses = []
-        ip_address = ''
-        # Start a loop that will run until the user enters 'done'.
-        while ip_address != 'done':
-        # Ask the user for a name.
-            ip_address = input("Please enter IP address (for example, \"172.16.10.20\") or type 'done' when your list is finished:")
-        # Add the new name to our list.
-            if ip_address != "done":
-                ip_addresses.append(ip_address)
-        newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
-        print(newSDDCGroup)
-    if gw == "mgw" and len(sys.argv) == 5:
-        ip_addresses_string = sys.argv [4]
-        ip_addresses = ip_addresses_string.split(",")
-        newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
-        print(newSDDCGroup)
-    if gw == "cgw":
-        group_criteria = sys.argv[4].lower()
-        if group_criteria not in ["ip-based", "member-based", "criteria-based", "group-based"]:
-            print("Incorrect syntax. Make sure you use one of the 4 methods to define a CGW group: ip-based, member-based, criteria-based, or group-based.")
+                destination_port = ""
+                while source_port != 'done':
+                    source_port = input("Plese enter the Source Ports or type 'done' when your list is finished:")
+                    if source_port != "done":
+                        source_port_list.append(source_port)
+                while (destination_port != 'next') and (destination_port != "done"):
+                    source_port = ""
+                    destination_port = input("Plese enter the Destination Ports, type 'next' when you want to define another service entry or 'done' if you have finished:")
+                    if (destination_port != 'next') and (destination_port != "done"):
+                        destination_port_list.append(destination_port)
+                # print(service_id)
+                # print(destination_port_list)
+                # print(source_port_list)
+                # print(l4_protocol)
+                service_entry = {
+                    "l4_protocol": l4_protocol,
+                    "source_ports": source_port_list,
+                    "destination_ports" : destination_port_list,
+                    "resource_type" : "L4PortSetServiceEntry",
+                    "id" : service_entry_id,
+                    "display_name" : service_entry_id     }
+                service_entry_list.append(service_entry)
+                # print(service_entry)
+                # print(service_entry_list)
+            newSDDCService(proxy,session_token,service_id,service_entry_list)
+            sddc_service = getSDDCService(proxy,session_token,service_id)
+            print(sddc_service)
+        elif len(sys.argv) == 4:
+            name = sys.argv[2]
+            service_entry_string = sys.argv[3]
+            service_entry_list = service_entry_string.split(",")
+            newSDDCService(proxy,session_token,name,service_entry_list)
+            sddc_service = getSDDCService(proxy,session_token,service_id)
+            print(sddc_service)
         else:
-            if group_criteria == "ip-based" and len(sys.argv) == 5:
-                ip_addresses = []
-            # Set new_name to something other than 'quit'.
-                ip_address = ''
-            # Start a loop that will run until the user enters 'quit'.
-                while ip_address != 'done':
+            print("Incorrect syntax")
+    elif intent_name == "remove-service":
+        if len(sys.argv) > 3:
+            print("This command did not work. Follow the instructions")
+        else:
+            service_id = sys.argv[2]
+            sddc_service_delete = removeSDDCService(proxy,session_token,service_id)
+    elif intent_name == "show-services" or intent_name == "show-service":
+        if len(sys.argv) == 2:
+            sddc_services = getSDDCServices(proxy,session_token)
+            print(sddc_services)
+        elif len(sys.argv) == 3:
+            service_id = sys.argv[2]
+            sddc_service = getSDDCService(proxy,session_token,service_id)
+            print(sddc_service)
+        else:
+            print("This command did not work. Follow the instructions")
+
+
+    # ============================
+    # NSX-T - Inventory Groups
+    # ============================
+
+
+    elif intent_name == "new-group":
+        gw = sys.argv[2].lower()
+        group_id = sys.argv[3]
+        if gw == "mgw" and len(sys.argv) == 4:
+            ip_addresses = []
+            ip_address = ''
+            # Start a loop that will run until the user enters 'done'.
+            while ip_address != 'done':
             # Ask the user for a name.
-                    ip_address = input("Please enter IP address (\"172.16.10.20\") or type 'done' when your list is finished: ")
+                ip_address = input("Please enter IP address (for example, \"172.16.10.20\") or type 'done' when your list is finished:")
             # Add the new name to our list.
-                    if ip_address != "done":
-                        ip_addresses.append(ip_address)
-                newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
-                print(newSDDCGroup)
-            elif group_criteria == "ip-based" and len(sys.argv) == 6:
-                ip_addresses_string = sys.argv [5]
-                ip_addresses = ip_addresses_string.split(",")
-                newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
-                print(newSDDCGroup)
-            elif group_criteria == "criteria-based" and len(sys.argv) == 5:
-            # Only support for Virtual_Machine based criteria for now.
-                # member_type = input("Please enter your criteria type:")
-                member_type = "VirtualMachine"
-                key = input("Please enter the criteria (Name, Tag, OSName or ComputerName): ")
-                if key not in ["Name", "Tag", "OSName", "ComputerName"]:
-                    print("Incorrect syntax. Check again.")
-                else:
-                    operator=input("Please enter the operator (EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH): ")
-                    if operator not in ["EQUALS", "NOTEQUALS", "CONTAINS", "STARTSWITH", "ENDSWITH"]:
+                if ip_address != "done":
+                    ip_addresses.append(ip_address)
+            newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
+            print(newSDDCGroup)
+        if gw == "mgw" and len(sys.argv) == 5:
+            ip_addresses_string = sys.argv [4]
+            ip_addresses = ip_addresses_string.split(",")
+            newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
+            print(newSDDCGroup)
+        if gw == "cgw":
+            group_criteria = sys.argv[4].lower()
+            if group_criteria not in ["ip-based", "member-based", "criteria-based", "group-based"]:
+                print("Incorrect syntax. Make sure you use one of the 4 methods to define a CGW group: ip-based, member-based, criteria-based, or group-based.")
+            else:
+                if group_criteria == "ip-based" and len(sys.argv) == 5:
+                    ip_addresses = []
+                # Set new_name to something other than 'quit'.
+                    ip_address = ''
+                # Start a loop that will run until the user enters 'quit'.
+                    while ip_address != 'done':
+                # Ask the user for a name.
+                        ip_address = input("Please enter IP address (\"172.16.10.20\") or type 'done' when your list is finished: ")
+                # Add the new name to our list.
+                        if ip_address != "done":
+                            ip_addresses.append(ip_address)
+                    newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
+                    print(newSDDCGroup)
+                elif group_criteria == "ip-based" and len(sys.argv) == 6:
+                    ip_addresses_string = sys.argv [5]
+                    ip_addresses = ip_addresses_string.split(",")
+                    newSDDCGroup = newSDDCGroupIPaddress(proxy,session_token,gw,group_id,ip_addresses)
+                    print(newSDDCGroup)
+                elif group_criteria == "criteria-based" and len(sys.argv) == 5:
+                # Only support for Virtual_Machine based criteria for now.
+                    # member_type = input("Please enter your criteria type:")
+                    member_type = "VirtualMachine"
+                    key = input("Please enter the criteria (Name, Tag, OSName or ComputerName): ")
+                    if key not in ["Name", "Tag", "OSName", "ComputerName"]:
                         print("Incorrect syntax. Check again.")
-                    if key == "Tag" and operator == "NOTEQUALS":
-                        print("Incorrect syntax. The tag method does not support the NOTEQUALS Operator. Try again.")
                     else:
-                        value=input("Enter the value of your membership criteria: ")
+                        operator=input("Please enter the operator (EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH): ")
+                        if operator not in ["EQUALS", "NOTEQUALS", "CONTAINS", "STARTSWITH", "ENDSWITH"]:
+                            print("Incorrect syntax. Check again.")
+                        if key == "Tag" and operator == "NOTEQUALS":
+                            print("Incorrect syntax. The tag method does not support the NOTEQUALS Operator. Try again.")
+                        else:
+                            value=input("Enter the value of your membership criteria: ")
+                            newSDDCGroup = newSDDCGroupCriteria(proxy,session_token,gw,group_id,member_type,key,operator,value)
+                            print(newSDDCGroup)
+                elif group_criteria == "criteria-based" and len(sys.argv) == 8:
+                # Only support for Virtual_Machine based criteria for now.
+                    # member_type = input("Please enter your criteria type:")
+                    member_type = "VirtualMachine"
+                    key = sys.argv[5]
+                    operator = sys.argv[6]
+                    value = sys.argv[7]
+                    if key not in ["Name", "Tag", "OSName", "ComputerName"]:
+                        print("Incorrect syntax. Check again.")
+                    elif operator not in ["EQUALS", "NOTEQUALS", "CONTAINS", "STARTSWITH", "ENDSWITH"]:
+                        print("Incorrect syntax. Check again.")
+                    else:
                         newSDDCGroup = newSDDCGroupCriteria(proxy,session_token,gw,group_id,member_type,key,operator,value)
                         print(newSDDCGroup)
-            elif group_criteria == "criteria-based" and len(sys.argv) == 8:
-            # Only support for Virtual_Machine based criteria for now.
-                # member_type = input("Please enter your criteria type:")
-                member_type = "VirtualMachine"
-                key = sys.argv[5]
-                operator = sys.argv[6]
-                value = sys.argv[7]
-                if key not in ["Name", "Tag", "OSName", "ComputerName"]:
-                    print("Incorrect syntax. Check again.")
-                elif operator not in ["EQUALS", "NOTEQUALS", "CONTAINS", "STARTSWITH", "ENDSWITH"]:
-                    print("Incorrect syntax. Check again.")
-                else:
-                    newSDDCGroup = newSDDCGroupCriteria(proxy,session_token,gw,group_id,member_type,key,operator,value)
+                elif group_criteria == "member-based" and len(sys.argv) == 5:
+                # v1 will be based on a list of VMs. Will not include segment-based for the time being,
+                    vm_list = []
+                # Set new_name to something other than 'quit'.
+                    vm_name = ''
+                # Start a loop that will run until the user enters 'quit'.
+                    while vm_name != 'done':
+                # Ask the user for a name.
+                        vm_name = input("Please enter the name of the VM or type 'done' when your list is finished: ")
+                # Add the new name to our list.
+                        if vm_name != "done":
+                            vm_id = getVMExternalID(proxy,session_token,vm_name)
+                            vm_list.append(vm_id)
+                    newSDDCGroup = newSDDCGroupVM(proxy,session_token,gw,group_id,vm_list)
                     print(newSDDCGroup)
-            elif group_criteria == "member-based" and len(sys.argv) == 5:
-            # v1 will be based on a list of VMs. Will not include segment-based for the time being,
-                vm_list = []
-            # Set new_name to something other than 'quit'.
-                vm_name = ''
-            # Start a loop that will run until the user enters 'quit'.
-                while vm_name != 'done':
-            # Ask the user for a name.
-                    vm_name = input("Please enter the name of the VM or type 'done' when your list is finished: ")
-            # Add the new name to our list.
-                    if vm_name != "done":
-                        vm_id = getVMExternalID(proxy,session_token,vm_name)
-                        vm_list.append(vm_id)
-                newSDDCGroup = newSDDCGroupVM(proxy,session_token,gw,group_id,vm_list)
-                print(newSDDCGroup)
-            elif group_criteria == "member-based" and len(sys.argv) == 6:
-                vm_name_string = sys.argv[5]
-                vm_name_list = vm_name_string.split(",")
-                ## iterate through list or through previous string to get list of external ids
-                vm_external_id_list = [getVMExternalID(proxy,session_token,x) for x in vm_name_list]
-                # vm_id = getVMExternalID(proxy,session_token,vm_name)
-                newSDDCGroup = newSDDCGroupVM(proxy,session_token,gw,group_id,vm_external_id_list)
-                print(newSDDCGroup)
-            elif group_criteria == "group-based":
-                #Example: new-group cgw new-group-name group-based existing-group-to-add-as-member
-                group_name_string = sys.argv[5]
-                retval = newSDDCGroupGr(proxy,session_token,gw,group_id,group_name_string)
-                if retval == 200:
-                    print("Group created")
+                elif group_criteria == "member-based" and len(sys.argv) == 6:
+                    vm_name_string = sys.argv[5]
+                    vm_name_list = vm_name_string.split(",")
+                    ## iterate through list or through previous string to get list of external ids
+                    vm_external_id_list = [getVMExternalID(proxy,session_token,x) for x in vm_name_list]
+                    # vm_id = getVMExternalID(proxy,session_token,vm_name)
+                    newSDDCGroup = newSDDCGroupVM(proxy,session_token,gw,group_id,vm_external_id_list)
+                    print(newSDDCGroup)
+                elif group_criteria == "group-based":
+                    #Example: new-group cgw new-group-name group-based existing-group-to-add-as-member
+                    group_name_string = sys.argv[5]
+                    retval = newSDDCGroupGr(proxy,session_token,gw,group_id,group_name_string)
+                    if retval == 200:
+                        print("Group created")
+                    else:
+                        print("Could not create group")
                 else:
-                    print("Could not create group")
+                    print("Incorrect syntax. Try again.")
+    elif intent_name == "remove-group":
+        if len(sys.argv) != 4:
+            print("This command did not work. Follow the instructions")
+        else:
+            gw = sys.argv[2].lower()
+            group_id = sys.argv[3]
+            sddc_group_delete = removeSDDCGroup(proxy,session_token,gw,group_id)
+    elif intent_name == "show-group":
+        if len(sys.argv) == 2:
+            mgw_groups = getSDDCGroups(proxy, session_token, "mgw")
+            print(("\nHere are the Management Groups:"))
+            print(mgw_groups)
+            cgw_groups = getSDDCGroups(proxy, session_token, "cgw")
+            print(("\nHere are the Comnpute Groups:"))
+            print(cgw_groups)
+        elif len(sys.argv) == 3:
+            gw = sys.argv[2].lower()
+            sddc_groups = getSDDCGroups(proxy, session_token, gw)
+            print(sddc_groups)
+        elif len(sys.argv) == 4:
+            group_id = sys.argv[3]
+            gw = sys.argv[2].lower()
+            sddc_groups = getSDDCGroup(proxy,session_token,gw,group_id)
+        else:
+            print("Incorrect syntax. Try again or check the help.")
+    elif intent_name == "show-group-association":
+        if len(sys.argv) == 4:
+            group_id = sys.argv[3]
+            gw = sys.argv[2].lower()
+            sddc_groups = getSDDCGroupAssociation(proxy,session_token,gw,group_id)
+        else:
+            print("Incorrect syntax. Try again or check the help.")
+
+
+    # ============================
+    # NSX-T - NAT
+    # ============================
+
+
+    elif intent_name == "new-nat-rule":
+        display_name = sys.argv[2]
+        action = sys.argv[3]
+        if action == "any" or action == "REFLEXIVE":
+            translated_network = sys.argv[4]
+            source_network = sys.argv[5]
+            service = ""
+            translated_port = ""
+            if len(sys.argv) >= 7:
+                logging = sys.argv[6]
             else:
-                print("Incorrect syntax. Try again.")
-elif intent_name == "remove-group":
-    if len(sys.argv) != 4:
-        print("This command did not work. Follow the instructions")
-    else:
-        gw = sys.argv[2].lower()
-        group_id = sys.argv[3]
-        sddc_group_delete = removeSDDCGroup(proxy,session_token,gw,group_id)
-elif intent_name == "show-group":
-    if len(sys.argv) == 2:
-        mgw_groups = getSDDCGroups(proxy, session_token, "mgw")
-        print(("\nHere are the Management Groups:"))
-        print(mgw_groups)
-        cgw_groups = getSDDCGroups(proxy, session_token, "cgw")
-        print(("\nHere are the Comnpute Groups:"))
-        print(cgw_groups)
-    elif len(sys.argv) == 3:
-        gw = sys.argv[2].lower()
-        sddc_groups = getSDDCGroups(proxy, session_token, gw)
-        print(sddc_groups)
-    elif len(sys.argv) == 4:
-        group_id = sys.argv[3]
-        gw = sys.argv[2].lower()
-        sddc_groups = getSDDCGroup(proxy,session_token,gw,group_id)
-    else:
-        print("Incorrect syntax. Try again or check the help.")
-elif intent_name == "show-group-association":
-    if len(sys.argv) == 4:
-        group_id = sys.argv[3]
-        gw = sys.argv[2].lower()
-        sddc_groups = getSDDCGroupAssociation(proxy,session_token,gw,group_id)
-    else:
-        print("Incorrect syntax. Try again or check the help.")
+                logging = False
+            if len(sys.argv) >= 8:
+                status = sys.argv[7]
+            else:
+                status = True
+            newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
+        elif action == "DNAT":
+            translated_network = sys.argv[4]
+            source_network = sys.argv[5]
+            service = sys.argv[6]
+            translated_port = sys.argv[7]
+            if len(sys.argv) >= 9:
+                logging = sys.argv[8]
+            else:
+                logging = "false"
+            if len(sys.argv) >= 10:
+                status = sys.argv[9]
+            else:
+                status = "true"
+            newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
+        else:
+            print("There was an error. Make sure you follow the instructions.")
+    elif intent_name == "remove-nat-rule":
+        if len(sys.argv) == 3:
+            id = sys.argv[2]
+            result = remove_sddc_nat_json(proxy, session_token, id)
+            print(result)
+            print("\n")
+            print(getSDDCNAT(proxy, session_token))
+        else:
+            print("Incorrect syntax. Try again or check the help.")
+    elif intent_name == "show-nat":
+        if len(sys.argv) == 2:
+            print(getSDDCNAT(proxy, session_token))
+        elif len(sys.argv) == 3:
+            NATid = sys.argv[2]
+            NATStats = getSDDCNATStatistics(proxy,session_token,NATid)
+            print(NATStats)
+        else:
+            print("Incorrect syntax. Try again or check the help.")
 
 
-# ============================
-# NSX-T - NAT
-# ============================
+    # ============================
+    # NSX-T - Public IP Addressing
+    # ============================
 
 
-elif intent_name == "new-nat-rule":
-    display_name = sys.argv[2]
-    action = sys.argv[3]
-    if action == "any" or action == "REFLEXIVE":
-        translated_network = sys.argv[4]
-        source_network = sys.argv[5]
-        service = ""
-        translated_port = ""
-        if len(sys.argv) >= 7:
-            logging = sys.argv[6]
+    elif intent_name == "new-sddc-public-ip":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. Please add a description of the public IP address.")
+        else :
+            notes = sys.argv[2]
+            if newSDDCPublicIP(proxy, session_token, notes) == 200:
+                print(getSDDCPublicIP(proxy,session_token))
+            else :
+                print("Issues creating a Public IP.")
+    elif intent_name == "remove-sddc-public-ip":
+        if len(sys.argv) != 3:
+            print("Incorrect syntax. ")
         else:
-            logging = False
-        if len(sys.argv) >= 8:
-            status = sys.argv[7]
+            public_ip = sys.argv[2]
+            if delete_sddc_public_ip_json(proxy, session_token, public_ip) == 200:
+                print(getSDDCPublicIP(proxy,session_token))
+            else :
+                print("Issues deleting the Public IP. Check the syntax.")
+    elif intent_name == "set-sddc-public-ip":
+        if len(sys.argv) != 4:
+            print("Incorrect syntax. Please add the new description of the public IP address.")
         else:
-            status = True
-        newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-    elif action == "DNAT":
-        translated_network = sys.argv[4]
-        source_network = sys.argv[5]
-        service = sys.argv[6]
-        translated_port = sys.argv[7]
-        if len(sys.argv) >= 9:
-            logging = sys.argv[8]
+            public_ip = sys.argv[2]
+            notes = sys.argv[3]
+            if setSDDCPublicIP(proxy, session_token, notes, public_ip) == 200:
+                print(getSDDCPublicIP(proxy,session_token))
+            else :
+                print("Issues updating a Public IP. Check the syntax.")
+    elif intent_name == "show-sddc-public-ip":
+        print(getSDDCPublicIP(proxy,session_token))
+
+
+    # ============================
+    # NSX-T - Segments
+    # ============================
+
+    elif intent_name == "configure-t1":
+        configure_t1(**vars(args))
+    elif intent_name == "remove-t1":
+        remove_t1(**vars(args))
+    elif intent_name == "new-segment":
+        new_segment(**vars(args))
+    elif intent_name == "configure-segment":
+        configure_segment(**vars(args))
+    elif intent_name == "remove-segment":
+        remove_segment(**vars(args))
+    elif intent_name == "new-network":
+        if sys.argv[3].lower() == "routed" and len(sys.argv) == 7:
+            # DHCP-Enabled Network
+            display_name = sys.argv[2]
+            routing_type = "ROUTED"
+            gateway_address = sys.argv[4]
+            dhcp_range = sys.argv[5]
+            domain_name = sys.argv[6]
+        elif sys.argv[3].lower() == "disconnected" :
+            # Disconnected Network
+            display_name = sys.argv[2]
+            routing_type = "DISCONNECTED"
+            gateway_address = sys.argv[4]
+            dhcp_range = ""
+            domain_name = ""
+        elif sys.argv[3].lower() == "routed" and len(sys.argv) == 5:
+            # Static Network
+            display_name = sys.argv[2]
+            gateway_address = sys.argv[4]
+            dhcp_range = ""
+            domain_name = ""
+            routing_type = "ROUTED"
+        elif sys.argv[3].lower() == "extended":
+            display_name = sys.argv[2]
+            tunnel_id = sys.argv[4]
+            l2vpn_path = getSDDCL2VPNSessionPath(proxy,session_token)
+            print(newSDDCStretchednetworks(proxy,session_token,display_name,tunnel_id, l2vpn_path))
         else:
-            logging = "false"
-        if len(sys.argv) >= 10:
-            status = sys.argv[9]
+            print("Incorrect syntax. Try again or check the help.")
+        newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
+        print(newSDDC)
+    elif intent_name == "remove-network":
+        network_id = sys.argv[2]
+        removeSDDCNetworks(proxy, session_token,network_id)
+    elif intent_name == "show-network":
+        getSDDCnetworks(proxy, session_token)
+    elif intent_name == "connect-segment":
+        network_id = sys.argv[2]
+        if len(sys.argv) == 6:
+            # DHCP-Enabled Network
+            gateway_address = sys.argv[3]
+            dhcp_range = sys.argv[4]
+            domain_name = sys.argv[5]
+        elif len(sys.argv) == 4:
+            # Static Network
+            gateway_address = sys.argv[3]
+            dhcp_range = ""
+            domain_name = ""
         else:
-            status = "true"
-        newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-    else:
-        print("There was an error. Make sure you follow the instructions.")
-elif intent_name == "remove-nat-rule":
-    if len(sys.argv) == 3:
+            print("Incorrect syntax. Try again or check the help.")    
+        connect_segment(proxy, session_token, network_id, gateway_address, dhcp_range, domain_name)
+    elif intent_name == "disconnect-segment":
+        network_id = sys.argv[2]
+        disconnect_segment(proxy, session_token, network_id)
+    elif intent_name == "create-lots-networks":
+        number = int(sys.argv[2])
+        createLotsNetworks(proxy,session_token,number)
+
+
+    # ============================
+    # NSX-T - VPN
+    # ============================
+
+
+    elif intent_name == "new-l2vpn":
+        display_name = sys.argv[2]
+        endpoint = sys.argv[3]
+        peer_ip = sys.argv[4]
+        print("Creating an IPSec VPN IKE Profile...")
+        ike_profile = newSDDCIPSecVpnIkeProfile(proxy,session_token,display_name)
+        print(ike_profile)
+        print("Creating an IPSec VPN Tunnel Profile...")
+        tunnel_profile = newSDDCIPSecVpnTunnelProfile(proxy,session_token,display_name)
+        print(tunnel_profile)
+        print("Creating an IPSec VPN Session...")
+        vpn_session = newSDDCIPSecVpnSession(proxy,session_token,display_name,endpoint,peer_ip)
+        print(vpn_session)
+        print("Creating an L2 VPN Session...")
+        l2vpn = newSDDCL2VPN(proxy, session_token, display_name)
+        print(l2vpn)
+    elif intent_name == "remove-l2vpn":
         id = sys.argv[2]
-        result = remove_sddc_nat_json(proxy, session_token, id)
-        print(result)
-        print("\n")
-        print(getSDDCNAT(proxy, session_token))
+        status_code = delete_l2vpn_json(proxy, session_token, id)
+        if status_code == 200:
+            print(f'L2 VPN with ID {id} has been deleted successfully')
+    elif intent_name == "new-vpn":
+        vpn_name = input("Enter the VPN Name: ")
+        remote_private_ip = input('Enter the remote private IP:')
+        remote_public_ip = input('Enter the remote public IP:')
+        source_networks = input('Enter your source networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
+        destination_networks = input('Enter your destination networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
+        print(vpn_name + remote_private_ip + remote_public_ip)
+    elif intent_name == "remove-vpn":
+        id = sys.argv[2]
+        status_code = delete_ipsec_vpn_json(proxy, session_token, id)
+        if status_code == 200:
+            print(f'IPSEC VPN with ID {id} has been deleted successfully')
+    elif intent_name == "remove-vpn-ike-profile":
+        id = sys.argv[2]
+        status_code = delete_ipsec_vpn_ike_profile_json(proxy, session_token, id)
+        if status_code == 200:
+            print(f'VPN IKE Profile {id} has been deleted successfully')
+    elif intent_name == "remove-vpn-ipsec-tunnel-profile":
+        id = sys.argv[2]
+        status_code = delete_ipsec_vpn_profile_json(proxy, session_token, id)
+        if status_code == 200:
+            print(f'IPSEC VPN Profile {id} has been removed successufully')
+    elif intent_name == "show-l2vpn":
+        l2vpn = getSDDCL2VPNSession(proxy, session_token)
+        print(l2vpn)
+    elif intent_name == "show-l2vpn-services":
+        l2vpn = getSDDCL2VPNServices(proxy, session_token)
+        print(l2vpn)
+    elif intent_name == "show-vpn":
+        if len(sys.argv) == 2:
+            SDDCVPN = getSDDCVPN(proxy, session_token)
+            print(SDDCVPN)
+        elif len(sys.argv) == 3:
+            VPN_ID = sys.argv[2]
+            SDDC_VPN_STATS = getSDDCVPNSTATS(proxy,session_token,VPN_ID)
+            print(SDDC_VPN_STATS)
+        else:
+            print("Incorrect syntax. Check the help.")
+    elif intent_name == "show-vpn-ike-profile":
+        vpn_ipsec_profile = getSDDCVPNIpsecProfiles(proxy, session_token)
+        print(vpn_ipsec_profile)
+    elif intent_name == "show-vpn-internet-ip":
+        getSDDCVPNInternetIP(proxy, session_token)
+    elif intent_name == "show-vpn-ipsec-endpoints":
+        vpn_ipsec_endpoints = getSDDCVPNIpsecEndpoints(proxy, session_token)
+        print(vpn_ipsec_endpoints)
+    elif intent_name == "show-vpn-ipsec-tunnel-profile":
+        vpn_ipsec_tunnel_profile = getSDDCVPNIpsecTunnelProfiles(proxy, session_token)
+        print(vpn_ipsec_tunnel_profile)
+    elif intent_name == "show-vpn-detailed":
+        if len(sys.argv) == 3:
+            VPN_ID = sys.argv[2]
+            SDDC_VPN_SERVICES = getSDDCVPNServices(proxy,session_token,VPN_ID)
+            print(SDDC_VPN_SERVICES)
+        else:
+            print("Incorrect syntax. Check the help.")
+
+    # elif intent_name == "new-service-entry":
+    #    print("This is WIP")
+
+    # ============================
+    # VCDR - Cloud File System
+    # ============================
+    elif intent_name == "show-vcdr-fs":
+        """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
+        getVCDRCloudFS(strVCDRProdURL, session_token)
+
+    elif intent_name == "show-vcdr-fs-details":
+        """Get details for an individual cloud file system."""
+        cloud_fs_id = sys.argv[2]
+        getVCDRCloudFSDetails(strVCDRProdURL, cloud_fs_id, session_token)
+
+    # ============================
+    # VCDR - Protected Sites
+    # ============================
+    elif intent_name == "show-vcdr-sites":
+        """Get a list of all protected sites associated with an individual cloud file system."""
+        cloud_fs_id = sys.argv[2]
+        getVCDRSites(strVCDRProdURL, cloud_fs_id, session_token)
+
+    elif intent_name == "show-vcdr-site-details":
+        """Get details about an individual protected site."""
+        cloud_fs_id = sys.argv[2]
+        site_id = sys.argv[3]
+        getVCDRSiteDetails(strVCDRProdURL, cloud_fs_id, site_id, session_token)
+
+    # ============================
+    # VCDR - Protected VM
+    # ============================
+    elif intent_name == "show-vcdr-vm":
+        """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
+        cloud_fs_id = sys.argv[2]
+        getVCDRVM(strVCDRProdURL, cloud_fs_id, session_token)
+
+    # ============================
+    # VCDR - Protection Groups
+    # ============================
+    elif intent_name == "show-vcdr-pgs":
+        """Get a list of all protection groups associated with an individual cloud file system."""
+        cloud_fs_id = sys.argv[2]
+        getVCDRPG(strVCDRProdURL, cloud_fs_id, session_token)
+
+    elif intent_name == "show-vcdr-pg-details":
+        """Get details for the requested protection group."""
+        cloud_fs_id = sys.argv[2]
+        pg_id = sys.argv[3]
+        getVCDRPGDetails(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+
+    # ============================
+    # VCDR - Protection Group Snapshots
+    # ============================
+    elif intent_name == "show-vcdr-pg-snaps":
+        """Get a list of all snapshots in a specific protection group."""
+        cloud_fs_id = sys.argv[2]
+        pg_id = sys.argv[3]
+        getVCDRPGSnaps(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
+
+    elif intent_name == "show-vcdr-pg-snap-details":
+        """Get a list of all snapshots in a specific protection group."""
+        cloud_fs_id = sys.argv[2]
+        pg_id = sys.argv[3]
+        snap_id = sys.argv[4]
+        getVCDRSnapDetails(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token)
+
+    # ============================
+    # VCDR - Recovery SDDC
+    # ============================
+    elif intent_name == "show-vcdr-sddcs":
+        """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
+        getVCDRSDDCs(strVCDRProdURL, session_token)
+
+    elif intent_name == "show-vcdr-sddc-details":
+        """Get details of a specific Recovery SDDC."""
+        sddc_id = sys.argv[2]
+        getVCDRSDDCDetails(strVCDRProdURL, sddc_id, session_token)
+
+    # ============================
+    # Help
+    # ============================
+    elif intent_name == "help":
+        getHelp()
     else:
-        print("Incorrect syntax. Try again or check the help.")
-elif intent_name == "show-nat":
-    if len(sys.argv) == 2:
-        print(getSDDCNAT(proxy, session_token))
-    elif len(sys.argv) == 3:
-        NATid = sys.argv[2]
-        NATStats = getSDDCNATStatistics(proxy,session_token,NATid)
-        print(NATStats)
-    else:
-        print("Incorrect syntax. Try again or check the help.")
+        getHelp()
 
 
-# ============================
-# NSX-T - Public IP Addressing
-# ============================
-
-
-elif intent_name == "new-sddc-public-ip":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. Please add a description of the public IP address.")
-    else :
-        notes = sys.argv[2]
-        if newSDDCPublicIP(proxy, session_token, notes) == 200:
-            print(getSDDCPublicIP(proxy,session_token))
-        else :
-            print("Issues creating a Public IP.")
-elif intent_name == "remove-sddc-public-ip":
-    if len(sys.argv) != 3:
-        print("Incorrect syntax. ")
-    else:
-        public_ip = sys.argv[2]
-        if delete_sddc_public_ip_json(proxy, session_token, public_ip) == 200:
-            print(getSDDCPublicIP(proxy,session_token))
-        else :
-            print("Issues deleting the Public IP. Check the syntax.")
-elif intent_name == "set-sddc-public-ip":
-    if len(sys.argv) != 4:
-        print("Incorrect syntax. Please add the new description of the public IP address.")
-    else:
-        public_ip = sys.argv[2]
-        notes = sys.argv[3]
-        if setSDDCPublicIP(proxy, session_token, notes, public_ip) == 200:
-            print(getSDDCPublicIP(proxy,session_token))
-        else :
-            print("Issues updating a Public IP. Check the syntax.")
-elif intent_name == "show-sddc-public-ip":
-    print(getSDDCPublicIP(proxy,session_token))
-
-
-# ============================
-# NSX-T - Segments
-# ============================
-
-elif intent_name == "configure-t1":
-    configure_t1(**vars(args))
-elif intent_name == "remove-t1":
-    remove_t1(**vars(args))
-elif intent_name == "new-segment":
-    new_segment(**vars(args))
-elif intent_name == "configure-segment":
-    configure_segment(**vars(args))
-elif intent_name == "remove-segment":
-    remove_segment(**vars(args))
-elif intent_name == "new-network":
-    if sys.argv[3].lower() == "routed" and len(sys.argv) == 7:
-        # DHCP-Enabled Network
-        display_name = sys.argv[2]
-        routing_type = "ROUTED"
-        gateway_address = sys.argv[4]
-        dhcp_range = sys.argv[5]
-        domain_name = sys.argv[6]
-    elif sys.argv[3].lower() == "disconnected" :
-        # Disconnected Network
-        display_name = sys.argv[2]
-        routing_type = "DISCONNECTED"
-        gateway_address = sys.argv[4]
-        dhcp_range = ""
-        domain_name = ""
-    elif sys.argv[3].lower() == "routed" and len(sys.argv) == 5:
-        # Static Network
-        display_name = sys.argv[2]
-        gateway_address = sys.argv[4]
-        dhcp_range = ""
-        domain_name = ""
-        routing_type = "ROUTED"
-    elif sys.argv[3].lower() == "extended":
-        display_name = sys.argv[2]
-        tunnel_id = sys.argv[4]
-        l2vpn_path = getSDDCL2VPNSessionPath(proxy,session_token)
-        print(newSDDCStretchednetworks(proxy,session_token,display_name,tunnel_id, l2vpn_path))
-    else:
-        print("Incorrect syntax. Try again or check the help.")
-    newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
-    print(newSDDC)
-elif intent_name == "remove-network":
-    network_id = sys.argv[2]
-    removeSDDCNetworks(proxy, session_token,network_id)
-elif intent_name == "show-network":
-    getSDDCnetworks(proxy, session_token)
-elif intent_name == "connect-segment":
-    network_id = sys.argv[2]
-    if len(sys.argv) == 6:
-        # DHCP-Enabled Network
-        gateway_address = sys.argv[3]
-        dhcp_range = sys.argv[4]
-        domain_name = sys.argv[5]
-    elif len(sys.argv) == 4:
-        # Static Network
-        gateway_address = sys.argv[3]
-        dhcp_range = ""
-        domain_name = ""
-    else:
-        print("Incorrect syntax. Try again or check the help.")    
-    connect_segment(proxy, session_token, network_id, gateway_address, dhcp_range, domain_name)
-elif intent_name == "disconnect-segment":
-    network_id = sys.argv[2]
-    disconnect_segment(proxy, session_token, network_id)
-elif intent_name == "create-lots-networks":
-    number = int(sys.argv[2])
-    createLotsNetworks(proxy,session_token,number)
-
-
-# ============================
-# NSX-T - VPN
-# ============================
-
-
-elif intent_name == "new-l2vpn":
-    display_name = sys.argv[2]
-    endpoint = sys.argv[3]
-    peer_ip = sys.argv[4]
-    print("Creating an IPSec VPN IKE Profile...")
-    ike_profile = newSDDCIPSecVpnIkeProfile(proxy,session_token,display_name)
-    print(ike_profile)
-    print("Creating an IPSec VPN Tunnel Profile...")
-    tunnel_profile = newSDDCIPSecVpnTunnelProfile(proxy,session_token,display_name)
-    print(tunnel_profile)
-    print("Creating an IPSec VPN Session...")
-    vpn_session = newSDDCIPSecVpnSession(proxy,session_token,display_name,endpoint,peer_ip)
-    print(vpn_session)
-    print("Creating an L2 VPN Session...")
-    l2vpn = newSDDCL2VPN(proxy, session_token, display_name)
-    print(l2vpn)
-elif intent_name == "remove-l2vpn":
-    id = sys.argv[2]
-    status_code = delete_l2vpn_json(proxy, session_token, id)
-    if status_code == 200:
-        print(f'L2 VPN with ID {id} has been deleted successfully')
-elif intent_name == "new-vpn":
-    vpn_name = input("Enter the VPN Name: ")
-    remote_private_ip = input('Enter the remote private IP:')
-    remote_public_ip = input('Enter the remote public IP:')
-    source_networks = input('Enter your source networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
-    destination_networks = input('Enter your destination networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
-    print(vpn_name + remote_private_ip + remote_public_ip)
-elif intent_name == "remove-vpn":
-    id = sys.argv[2]
-    status_code = delete_ipsec_vpn_json(proxy, session_token, id)
-    if status_code == 200:
-        print(f'IPSEC VPN with ID {id} has been deleted successfully')
-elif intent_name == "remove-vpn-ike-profile":
-    id = sys.argv[2]
-    status_code = delete_ipsec_vpn_ike_profile_json(proxy, session_token, id)
-    if status_code == 200:
-        print(f'VPN IKE Profile {id} has been deleted successfully')
-elif intent_name == "remove-vpn-ipsec-tunnel-profile":
-    id = sys.argv[2]
-    status_code = delete_ipsec_vpn_profile_json(proxy, session_token, id)
-    if status_code == 200:
-        print(f'IPSEC VPN Profile {id} has been removed successufully')
-elif intent_name == "show-l2vpn":
-    l2vpn = getSDDCL2VPNSession(proxy, session_token)
-    print(l2vpn)
-elif intent_name == "show-l2vpn-services":
-    l2vpn = getSDDCL2VPNServices(proxy, session_token)
-    print(l2vpn)
-elif intent_name == "show-vpn":
-    if len(sys.argv) == 2:
-        SDDCVPN = getSDDCVPN(proxy, session_token)
-        print(SDDCVPN)
-    elif len(sys.argv) == 3:
-        VPN_ID = sys.argv[2]
-        SDDC_VPN_STATS = getSDDCVPNSTATS(proxy,session_token,VPN_ID)
-        print(SDDC_VPN_STATS)
-    else:
-        print("Incorrect syntax. Check the help.")
-elif intent_name == "show-vpn-ike-profile":
-    vpn_ipsec_profile = getSDDCVPNIpsecProfiles(proxy, session_token)
-    print(vpn_ipsec_profile)
-elif intent_name == "show-vpn-internet-ip":
-    getSDDCVPNInternetIP(proxy, session_token)
-elif intent_name == "show-vpn-ipsec-endpoints":
-    vpn_ipsec_endpoints = getSDDCVPNIpsecEndpoints(proxy, session_token)
-    print(vpn_ipsec_endpoints)
-elif intent_name == "show-vpn-ipsec-tunnel-profile":
-    vpn_ipsec_tunnel_profile = getSDDCVPNIpsecTunnelProfiles(proxy, session_token)
-    print(vpn_ipsec_tunnel_profile)
-elif intent_name == "show-vpn-detailed":
-    if len(sys.argv) == 3:
-        VPN_ID = sys.argv[2]
-        SDDC_VPN_SERVICES = getSDDCVPNServices(proxy,session_token,VPN_ID)
-        print(SDDC_VPN_SERVICES)
-    else:
-        print("Incorrect syntax. Check the help.")
-
-# elif intent_name == "new-service-entry":
-#    print("This is WIP")
-
-# ============================
-# VCDR - Cloud File System
-# ============================
-elif intent_name == "show-vcdr-fs":
-    """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
-    getVCDRCloudFS(strVCDRProdURL, session_token)
-
-elif intent_name == "show-vcdr-fs-details":
-    """Get details for an individual cloud file system."""
-    cloud_fs_id = sys.argv[2]
-    getVCDRCloudFSDetails(strVCDRProdURL, cloud_fs_id, session_token)
-
-# ============================
-# VCDR - Protected Sites
-# ============================
-elif intent_name == "show-vcdr-sites":
-    """Get a list of all protected sites associated with an individual cloud file system."""
-    cloud_fs_id = sys.argv[2]
-    getVCDRSites(strVCDRProdURL, cloud_fs_id, session_token)
-
-elif intent_name == "show-vcdr-site-details":
-    """Get details about an individual protected site."""
-    cloud_fs_id = sys.argv[2]
-    site_id = sys.argv[3]
-    getVCDRSiteDetails(strVCDRProdURL, cloud_fs_id, site_id, session_token)
-
-# ============================
-# VCDR - Protected VM
-# ============================
-elif intent_name == "show-vcdr-vm":
-    """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
-    cloud_fs_id = sys.argv[2]
-    getVCDRVM(strVCDRProdURL, cloud_fs_id, session_token)
-
-# ============================
-# VCDR - Protection Groups
-# ============================
-elif intent_name == "show-vcdr-pgs":
-    """Get a list of all protection groups associated with an individual cloud file system."""
-    cloud_fs_id = sys.argv[2]
-    getVCDRPG(strVCDRProdURL, cloud_fs_id, session_token)
-
-elif intent_name == "show-vcdr-pg-details":
-    """Get details for the requested protection group."""
-    cloud_fs_id = sys.argv[2]
-    pg_id = sys.argv[3]
-    getVCDRPGDetails(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
-
-# ============================
-# VCDR - Protection Group Snapshots
-# ============================
-elif intent_name == "show-vcdr-pg-snaps":
-    """Get a list of all snapshots in a specific protection group."""
-    cloud_fs_id = sys.argv[2]
-    pg_id = sys.argv[3]
-    getVCDRPGSnaps(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
-
-elif intent_name == "show-vcdr-pg-snap-details":
-    """Get a list of all snapshots in a specific protection group."""
-    cloud_fs_id = sys.argv[2]
-    pg_id = sys.argv[3]
-    snap_id = sys.argv[4]
-    getVCDRSnapDetails(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token)
-
-# ============================
-# VCDR - Recovery SDDC
-# ============================
-elif intent_name == "show-vcdr-sddcs":
-    """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
-    getVCDRSDDCs(strVCDRProdURL, session_token)
-
-elif intent_name == "show-vcdr-sddc-details":
-    """Get details of a specific Recovery SDDC."""
-    sddc_id = sys.argv[2]
-    getVCDRSDDCDetails(strVCDRProdURL, sddc_id, session_token)
-
-# ============================
-# Help
-# ============================
-elif intent_name == "help":
-    getHelp()
-else:
-    getHelp()
-    
+if __name__ == "__main__":
+    main()
