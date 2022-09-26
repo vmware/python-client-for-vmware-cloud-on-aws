@@ -17,16 +17,21 @@ import requests
 def get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAWSID, region):
     """Returns all compatible subnets for linking in selected AWS Account and AWS Region"""
     myHeader = {'csp-auth-token': sessiontoken}
-    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/compatible-subnets"
-    params = {'org': orgID, 'linkedAccountId': linkedAWSID,'region': region}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/compatible-subnets" 
+    params = {'linkedAccountId': linkedAWSID,'region': region}
     response = requests.get(myURL, headers=myHeader, params=params)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
         print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        print(f'API call failed with status code {response.status_code} : {response.reason} URL: {myURL}.')
+        if 'error_message' in json_response.keys():
+           print(json_response['error_message'])
+        if 'error_messages' in json_response.keys():
+            if len(json_response['error_messages']) > 0:
+                print(f"Error Message: {json_response['error_messages'][0]}")
+        return None
 
 
 def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
@@ -40,7 +45,8 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        if "error_message" in json_response.keys():
+            print(json_response['error_message'])
 
 
 # ============================
