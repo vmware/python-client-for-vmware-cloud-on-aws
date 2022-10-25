@@ -24,7 +24,7 @@ def get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAWSID, re
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
+        print("There was an error. Check the syntax.\nUsage: show-compatible-subnets [LINKED-ACCOUNT-OBJID]")
         print(f'API call failed with status code {response.status_code} : {response.reason} URL: {myURL}.')
         if 'error_message' in json_response.keys():
            print(json_response['error_message'])

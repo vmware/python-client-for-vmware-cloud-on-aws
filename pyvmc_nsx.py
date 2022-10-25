@@ -929,13 +929,18 @@ def get_vms_json(proxy_url, session_token):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/realized-state/enforcement-points/vmc-enforcementpoint/virtual-machines'
     response = requests.get(my_url, headers=my_header)
-    json_response = response.json()
+    
     if response.status_code == 200:
+        json_response = response.json()
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        if response.status_code == 504:
+            print("Gateway Timeout. Please check your network, firewall rules, or system status.")
+            print (f'API call failed with status code {response.status_code} : {response.reason}. URL: {my_url}.')
+        else:
+            print("There was an error. Check the syntax.")
+            print (f'API call failed with status code {response.status_code} : {response.reason}. URL: {my_url}.')
+        exit(1) #Should return None
 
 
 # ============================

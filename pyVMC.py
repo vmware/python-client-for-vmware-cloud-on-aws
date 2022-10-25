@@ -306,12 +306,12 @@ def getCompatibleSubnets(orgID, sessiontoken, linkedAccountId,region):
         return
     vpc_map = jsonResponse['vpc_map']
     table = PrettyTable(['vpc','description'])
-    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
+    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible','connected_account_id'])
     for i in vpc_map:
         myvpc = jsonResponse['vpc_map'][i]
         table.add_row([myvpc['vpc_id'],myvpc['description']])
         for j in myvpc['subnets']:
-            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible']])
+            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible'],j['connected_account_id']])
     print(table)
     print(subnet_table)
 
@@ -1592,7 +1592,7 @@ def setSDDCBGPAS(proxy_url,sessiontoken,asn):
     }
     set_sddc_bgp_as_json(proxy_url,sessiontoken,json_data)
     print("The BGP AS has been updated:")
-    getSDDCBGPAS(proxy_url,session_token)
+    getSDDCBGPAS(proxy_url,sessiontoken)
  
  
 def getSDDCMTU(proxy_url,sessiontoken):
@@ -2536,7 +2536,7 @@ def remove_segment(**kwargs):
     
 def connect_segment(proxy_url, sessiontoken, network_id, gateway_address, dhcp_range, domain_name):
     """ Connects an existing SDDC Network to the default CGW. L2 VPN networks are not currently supported. """
-    segment = search_nsx_json(proxy, session_token, "Segment", network_id)
+    segment = search_nsx_json(proxy, sessiontoken, "Segment", network_id)
     if 'connectivity_path' in segment['results'][0]:
         if segment['results'][0]['connectivity_path'] == "/infra/tier-1s/cgw":
             json_data = {
@@ -2552,7 +2552,7 @@ def connect_segment(proxy_url, sessiontoken, network_id, gateway_address, dhcp_r
                 del (json_data["domain_name"])
             connect_segment_json(proxy_url, sessiontoken, network_id, json_data)
             print(f'The network has been connected:  {network_id}')
-            search_nsx(proxy, session_token, "Segment", network_id)    
+            search_nsx(proxy, sessiontoken, "Segment", network_id)    
     else:
         print("")
         print("Please check your segments again.  CONNECT and DISCONNECT comands may only be used for segments on the default CGW.")
@@ -2560,7 +2560,7 @@ def connect_segment(proxy_url, sessiontoken, network_id, gateway_address, dhcp_r
 
 def disconnect_segment(proxy_url, sessiontoken, network_id):
     """ Connects an existing SDDC Network. L2 VPN networks are not currently supported. """
-    segment = search_nsx_json(proxy, session_token, "Segment", network_id)
+    segment = search_nsx_json(proxy, sessiontoken, "Segment", network_id)
     if 'connectivity_path' in segment['results'][0]:
         if segment['results'][0]['connectivity_path'] == "/infra/tier-1s/cgw":
             json_data = {
@@ -2569,7 +2569,7 @@ def disconnect_segment(proxy_url, sessiontoken, network_id):
                     }
             connect_segment_json(proxy_url, sessiontoken, network_id, json_data)
             print("The network has been disconnected:")
-            search_nsx (proxy, session_token, "Segment", network_id)  
+            search_nsx (proxy, sessiontoken, "Segment", network_id)  
     else:
         print("")
         print("Please check your segments again.  CONNECT and DISCONNECT comands may only be used for segments on the default CGW.")
