@@ -55,7 +55,7 @@ from pyvmc_vcdr import *
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
-    sys.exit()
+    sys.exit(1)
 
 DEBUG_MODE = False
 
@@ -87,7 +87,7 @@ def getServiceDefinitions(**kwargs):
 def addUsersToCSPGroup(csp_url, session_token):
     if len(sys.argv) < 4:
         print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
-        sys.exit()
+        sys.exit(1)
     groupId = sys.argv[2]
     usernamesToAdd = sys.argv[3].split(',')
     params = {
@@ -102,7 +102,7 @@ def addUsersToCSPGroup(csp_url, session_token):
 def findCSPUserByServiceRole(csp_url, session_token):
     if len(sys.argv) < 3:
         print('Usage: find-csp-user-by-service-role [role]')
-        sys.exit()
+        sys.exit(1)
     role_name = sys.argv[2]
     json_response = get_csp_users_json(csp_url, ORG_ID, session_token)
     users = json_response['results']
@@ -121,7 +121,7 @@ def findCSPUserByServiceRole(csp_url, session_token):
 def getCSPGroupDiff(csp_url, session_token):
     if len(sys.argv) < 3:
         print('Usage: show-csp-group-diff [groupID] [showall|skipmembers|skipowners]')
-        sys.exit()
+        sys.exit(1)
     # Optional filter for org owners and members
     SKIP_MEMBERS = False
     SKIP_OWNERS = False
@@ -163,7 +163,7 @@ def getCSPGroupDiff(csp_url, session_token):
         if i % 25 == 0:
             wait = input("Press Enter to show more users, q to quit: ")
             if wait == 'q':
-                sys.exit()
+                sys.exit(0)  # quiting is not an error
             print('Group role list:')
             print(grouprolelist)
         print(user['user']['email'],f'({i} of {len(users)})')
@@ -255,38 +255,66 @@ def showORGusers(orgID, sessiontoken):
 # SDDC - AWS Account and VPC
 # ============================
 
+def setSDDCConnectedServices(**kwargs):
+    """Sets SDDC access to S3 to either internet or connected VPC via input value. tue = ENI, false = internet"""
+    proxy_url = kwargs["proxy"]
+    sessiontoken = kwargs["sessiontoken"]
+    value = kwargs["ENIorInternet"]
 
-def setSDDCConnectedServices(proxy_url, sessiontoken, value):
-    """Sets SDDC access to S3 to either internet or connected VPC via input value"""
+    # pull the first connected VPC
     json_response = get_conencted_vpc_json(proxy_url, sessiontoken)
+    if json_response == None:
+        sys.exit(1)
+
     sddc_connected_vpc = json_response['results'][0]
+    # create the JSON
     json_data = {
         "name": "s3",
         "enabled": value
     }
-    json_response_status_code = set_connected_vpc_services_json(proxy, sessiontoken, sddc_connected_vpc['linked_vpc_id'], json_data)
-    return json_response_status_code
+    json_response_status_code = set_connected_vpc_services_json(proxy_url, sessiontoken, sddc_connected_vpc['linked_vpc_id'], json_data)
+
+    if json_response_status_code == None:
+        sys.exit(1)
+
+    print(f'S3 connected via ENI is {value}')
 
 
-def getCompatibleSubnets(orgID, sessiontoken, linkedAccountId,region):
+# 
+def getCompatibleSubnets(**kwargs):
     """Lists all of the compatible subnets by Account ID and AWS Region"""
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    SddcID = kwargs["SDDC_ID"]
+    linkedAccountId = kwargs["LinkedAccount"]
+    region = kwargs["Region"]
+    strProdURL = kwargs["strProdURL"]
+
     jsonResponse = get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAccountId, region)
     if jsonResponse == None:
-        return
+        print("API Error")
+        sys.exit(1)
+    
     vpc_map = jsonResponse['vpc_map']
     table = PrettyTable(['vpc','description'])
-    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible'])
+    subnet_table = PrettyTable(['vpc_id','subnet_id','subnet_cidr_block','name','compatible','connected_account_id'])
     for i in vpc_map:
         myvpc = jsonResponse['vpc_map'][i]
         table.add_row([myvpc['vpc_id'],myvpc['description']])
         for j in myvpc['subnets']:
-            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible']])
+            subnet_table.add_row([j['vpc_id'],j['subnet_id'],j['subnet_cidr_block'],j['name'],j['compatible'],j['connected_account_id']])
+    print(f"VPC for {orgID} in region {region}")
     print(table)
+    print(f"Compatible Subnets for Org {orgID}")
     print(subnet_table)
 
-
-def getConnectedAccounts(orgID, sessiontoken):
+# Print Connected Accounts
+def getConnectedAccounts(**kwargs):
     """Prints all connected AWS accounts"""
+    strProdURL = kwargs["strProdURL"]
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+
     accounts = get_connected_accounts_json(strProdURL, orgID, sessiontoken)
     orgtable = PrettyTable(['OrgID'])
     orgtable.add_row([orgID])
@@ -294,12 +322,18 @@ def getConnectedAccounts(orgID, sessiontoken):
     table = PrettyTable(['Account Number','id'])
     for i in accounts:
         table.add_row([i['account_number'],i['id']])
+    
+    print("Connected Accounts")
     print(table)
 
-
-def getSDDCConnectedVPC(proxy_url, session_token):
-    """Returns table with Connected VPC and Services information - Compatible with M18+ SDDCs only"""
+def getSDDCConnectedVPC(**kwargs):
+    """Prints table with Connected VPC and Services information - Compatible with M18+ SDDCs only"""
+    proxy_url = kwargs['proxy']
+    session_token = kwargs["sessiontoken"]
+    # NSX 
     json_response = get_conencted_vpc_json(proxy_url, session_token)
+    if json_response == None:
+        sys.exit(1)
     sddc_connected_vpc = json_response['results'][0]
     sddc_connected_vpc_services = get_connected_vpc_services_json(proxy_url, session_token, sddc_connected_vpc['linked_vpc_id'])
 #   The API changed for connected VPCs from M16 to M18 when the connected VPC prefix lists were added to M18.
@@ -310,16 +344,24 @@ def getSDDCConnectedVPC(proxy_url, session_token):
         eni = sddc_connected_vpc['traffic_group_eni_mappings'][0]['eni']
     else:
         eni = "Unknown"
-    table = PrettyTable(['Customer-Owned Account', 'Connected VPC ID', 'Subnet', 'Availability Zone', 'ENI', 'Service Access'])
-    table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], eni, sddc_connected_vpc_services['results'][0]['enabled']])
-    return table
+    table = PrettyTable(['Customer-Owned Account', 'Connected VPC ID', 'Subnet', 'Availability Zone', 'ENI', 'Service Name', 'Service Access'])
+    table.add_row([sddc_connected_vpc['linked_account'], sddc_connected_vpc['linked_vpc_id'], sddc_connected_vpc['linked_vpc_subnets'][0]['cidr'], sddc_connected_vpc['linked_vpc_subnets'][0]['availability_zone'], eni, sddc_connected_vpc_services['results'][0]['name'],sddc_connected_vpc_services['results'][0]['enabled']])
+    print("Connected Services")
+    print(table)
 
 
-def getSDDCShadowAccount(proxy_url,sessiontoken):
+# def getSDDCShadowAccount(proxy_url,sessiontoken):
+def getSDDCShadowAccount(**kwargs):
     """Returns SDDC Shadow Account"""
+    proxy_url = kwargs["proxy"]
+    sessiontoken = kwargs["sessiontoken"]
+    #
     json_response = get_sddc_shadow_account_json(proxy_url, sessiontoken)
+    if json_response == None:
+        sys.exit(1)
     sddc_shadow_account = json_response['shadow_account']
-    return sddc_shadow_account
+    print("Shadow Account is:")
+    print(sddc_shadow_account)
 
 
 def getAccessToken(myKey):
@@ -336,19 +378,31 @@ def getAccessToken(myKey):
 # SDDC - SDDC
 # ============================
 
-
-def getSDDCState(org_id, sddc_id, sessiontoken):
+def getSDDCState(**kwargs):
     """Prints out state of selected SDDC"""
+    org_id = kwargs["ORG_ID"]
+    sddc_id = kwargs["SDDC_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    strProdURL = kwargs["strProdURL"]
+
     sddc_state = get_sddc_info_json(strProdURL, org_id, sessiontoken, sddc_id)
+    if sddc_state == None:
+        sys.exit(1)
     table = PrettyTable(['Name', 'Id', 'Status', 'Type', 'Region', 'Deployment Type'])
     table.add_row([sddc_state['name'], sddc_state['id'], sddc_state['sddc_state'], sddc_state['sddc_type'], sddc_state['resource_config']['region'], sddc_state['resource_config']['deployment_type']])
     print("\nThis is your current environment:")
     print (table)
 
-
-def getSDDCS(orgID, sessiontoken):
+def getSDDCS(**kwargs):
     """Prints all SDDCs in an Org with their clusters and number of hosts"""
+    strProdURL = kwargs["strProdURL"]
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+
     sddcInfo = get_sddcs_json(strProdURL, orgID, sessiontoken)
+    if sddcInfo == None:
+        sys.exit(1)
+
     orgtable = PrettyTable(['OrgID'])
     orgtable.add_row([orgID])
     print(str(orgtable))
@@ -365,19 +419,36 @@ def getSDDCS(orgID, sessiontoken):
     print(table)
 
 
-def getVMs(proxy_url, session_token):
+#def getVMs(proxy_url, session_token):
+def getVMs(**kwargs):   
     """ Gets a list of all compute VMs, with their power state and their external ID. """
+    proxy_url = kwargs["proxy"]
+    session_token = kwargs["sessiontoken"]
+
     json_response = get_vms_json(proxy_url, session_token)
+
+    if json_response == None:
+        sys.exit(1)
+
     extracted_dictionary = json_response['results']
     table = PrettyTable(['Display_Name', 'Status', 'External_ID'])
     for i in extracted_dictionary:
         table.add_row([i['display_name'], i['power_state'], i['external_id']])
-    return table
+    print("Virtual Machine List:")
+    print(table)
 
-
-def getSDDChosts(sddcID, orgID, sessiontoken):
+def getSDDChosts(**kwargs):
     """Prints out all SDDC Hosts"""
+    strProdURL = kwargs["strProdURL"]
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    sddcID = kwargs["SDDC_ID"]
+
     jsonResponse = get_sddc_info_json(strProdURL, orgID, sessiontoken, sddcID)
+    if jsonResponse == None:
+        print("API Error")
+        sys.exit(1)
+
     cdcID = jsonResponse['resource_config']['vc_ip']
     cdcID = cdcID.split("vcenter")
     cdcID = cdcID[1]
@@ -389,6 +460,7 @@ def getSDDChosts(sddcID, orgID, sessiontoken):
         for i in c['esx_host_list']:
             hostName = i['name'] + cdcID
             table.add_row([c['cluster_name'], hostName, i['esx_state'], i['esx_id']])
+    print("SDDC Hosts:")
     print(table)
 
 
@@ -908,7 +980,7 @@ def search_nsx(**kwargs):
         print("    VirtualNetworkInterface")
         print("")
         print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
-        sys.exit()
+        sys.exit(1)
     else:
         object_type = kwargs['object_type']
     if kwargs['object_id'] is None:
@@ -1238,7 +1310,7 @@ def create_ids_profile(**kwargs):
     """Create an IDS Profile"""
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
     display_name = kwargs['objectname']
     cvss = None
     pa = None
@@ -1316,13 +1388,14 @@ def create_ids_profile(**kwargs):
     if response_code == 200:
         print(f'The IDS Profile {display_name} has been created successfully')
     else:
-        sys.exit(f'There was an error, please check your syntax')
+        print(f'There was an error, please check your syntax')
+        sys.exit(1)
 
 
 def create_ids_policy(**kwargs):
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
     display_name = kwargs['objectname']
     json_data = {
         "resource_type": "IdsSecurityPolicy",
@@ -1333,7 +1406,8 @@ def create_ids_policy(**kwargs):
     if response_code == 200:
         print(f'The IDS policy {display_name} has been created successfully')
     else:
-        sys.exit('There was an error, please check your syntax')
+        print('There was an error, please check your syntax')
+        sys.exit(1)
 
 
 def get_ids_rules():
@@ -1354,7 +1428,7 @@ def get_ids_rules():
 def create_ids_rule(**kwargs):
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the IDS Rule to be configured.  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
 
 #   Load variables from kwargs
     display_name = kwargs['objectname']
@@ -1426,7 +1500,7 @@ def delete_ids_policy(**kwargs):
     if kwargs['objectname'] is None:
         print(
             "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
     ids_policy_name = kwargs['objectname']
     json_response_code = delete_ids_policy_json(proxy, session_token, ids_policy_name)
     if json_response_code == 200:
@@ -1439,7 +1513,7 @@ def delete_ids_rule(**kwargs):
     if kwargs['objectname'] is None:
         print(
             "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
     ids_rule_name = kwargs['objectname']
     ids_policy_name = kwargs['ids_policy'][0]
     json_response_code = delete_ids_rule_json(proxy, session_token, ids_rule_name, ids_policy_name)
@@ -1586,7 +1660,7 @@ def setSDDCBGPAS(proxy_url,sessiontoken,asn):
     }
     set_sddc_bgp_as_json(proxy_url,sessiontoken,json_data)
     print("The BGP AS has been updated:")
-    getSDDCBGPAS(proxy_url,session_token)
+    getSDDCBGPAS(proxy_url,sessiontoken)
  
  
 def getSDDCMTU(proxy_url,sessiontoken):
@@ -1776,9 +1850,8 @@ def getSDDCDNS_Services(**kwargs):
         sddc_dns_service = get_sddc_dns_services_json(proxy,sessiontoken,tier1_scope)
         table = PrettyTable(['ID', 'Name', 'Listener IP'])
         table.add_row([sddc_dns_service['id'], sddc_dns_service['display_name'], sddc_dns_service['listener_ip']])
-        # return table
+        # print table
         print(table)
-    sys.exit()
 
 
 def getSDDCDNS_Zones(**kwargs):
@@ -2409,7 +2482,7 @@ def configure_t1(**kwargs):
     proxy = kwargs['proxy']
     if kwargs['tier1-id'] is None or kwargs['t1type'] is None:
         print("Please use -t1id (or --tier1-id) to specify the name of the T1 router to be configured, and -t1t or --t1type to specify the type (ROUTED/NATTED/ISOLATED).  Consult the help for additional options.")
-        sys.exit()
+        sys.exit(1)
     t1_id = kwargs["tier1-id"]
     json_data = {"type": kwargs["t1type"]}
     status = configure_t1_json(proxy, sessiontoken, t1_id, json_data)
@@ -2431,7 +2504,7 @@ def remove_t1(**kwargs):
         print("Are you trying to break the environment?")
         print("Do not try to delete the default CGW of MGW.")
         print(" ")
-        sys.exit()
+        sys.exit(1)
     status = delete_t1_json(proxy, sessiontoken, t1_id)
     if status ==200:
         print(f'Tier1 gateway {t1_id} has been deleted.')
@@ -2447,15 +2520,15 @@ def new_segment(**kwargs):
     proxy = kwargs['proxy']
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
         print("Please specify a name for the segment, and the gateway/network.")
-        sys.exit()
+        sys.exit(1)
     if kwargs['segment_type'] == "moveable" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
-        sys.exit()
+        sys.exit(1)
     segment_name = kwargs["objectname"]
     segment=search_nsx_json(proxy, sessiontoken, "Segment", segment_name)
     if len(segment['results']) > 0:
         print("The segment already appears to exist.")
-        sys.exit()
+        sys.exit(1)
     segment_type = kwargs['segment_type']
     json_data = {
         "display_name":f'{segment_name}',
@@ -2506,7 +2579,7 @@ def configure_segment(**kwargs):
         segment_path = segment['results'][0]['path']
     else:
         print("The segment does not exist.  Please create a segment using 'new-segment'.")
-        sys.exit()
+        sys.exit(1)
     # Establish a list of keys to keep - these represent the values we are willing/able to update.
     keep_list = ['display_name', 'connectivity_path','advanced_config','type']
     # Construct a new JSON using just the keys we want to keep
@@ -3072,7 +3145,7 @@ def main():
     """Parsers to be used as parent to pass glaf(s) for correct API URL, ORG_ID, or SDDC_ID"""
         
     csp_url_flag = argparse.ArgumentParser(add_help=False)
-    csp_url_flag.add_argument("--strCSPProdURL",help=argparse.SUPPRESS)
+    csp_url_flag.add_argument("--strCSPProdURL",help=argparse.SUPPRESS) # TOM What about config.ini?
 
     vmc_url_flag = argparse.ArgumentParser(add_help=False)
     vmc_url_flag.add_argument("--strProdURL",help=argparse.SUPPRESS)
@@ -3118,27 +3191,39 @@ def main():
 # ============================
 # SDDC - AWS Account and VPC
 # ============================
-    parent_aws_parser = argparse.ArgumentParser(add_help=False)
-    parent_aws_parser.add_argument("--ORG_ID", help = argparse.SUPPRESS)
-    #     aws account id
-    #     aws region
-    #  some of the following require the PROXY url as well as / instead of strProdURL
 
-    show_compatible_subnets_parser=subparsers.add_parser('show-compatible-subnets', parents = [parent_aws_parser, nsx_url_flag], help = 'show compatible native AWS subnets connected to the SDDC')
-    show_connected_accounts_parser=subparsers.add_parser('show-connected-accounts', parents = [parent_aws_parser], help = 'show native AWS accounts connected to the SDDC')
-    set_sddc_connected_services_parser=subparsers.add_parser('set-sddc-connected-services', parents = [parent_aws_parser], help = 'change whether to use S3 over the Internet or via the ENI')
-    show_sddc_connected_vpc_parser=subparsers.add_parser('show-sddc-connected-vpc', parents = [parent_aws_parser], help = 'show the VPC connected to the SDDC')
-    show_shadow_account_parser=subparsers.add_parser('show-shadow-account', parents = [parent_aws_parser], help = 'show the Shadow AWS Account VMC is deployed in')
+    show_compatible_subnets_parser=subparsers.add_parser('show-compatible-subnets', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'show compatible native AWS subnets connected to the SDDC')
+    show_compatible_subnets_parser.add_argument("LinkedAccount", help = "The Object ID of the linked Account") # positional arg 1
+    show_compatible_subnets_parser.add_argument("Region", help = "The text of the region ID") # positional arg 2
+    show_compatible_subnets_parser.set_defaults(func = getCompatibleSubnets)
+    
+    show_connected_accounts_parser=subparsers.add_parser('show-connected-accounts', parents = [vmc_url_flag,org_id_flag, sddc_id_parser_flag], help = 'show native AWS accounts connected to the SDDC')
+    show_connected_accounts_parser.set_defaults(func = getConnectedAccounts)
+
+    set_sddc_connected_services_parser=subparsers.add_parser('set-sddc-connected-services', parents = [nsx_url_flag], help = 'change whether to use S3 over the Internet(false) or via the ENI(true)')
+    set_sddc_connected_services_parser.add_argument('ServiceName', choices=['s3'], help="Only s3 for now")
+    set_sddc_connected_services_parser.add_argument('ENIorInternet', choices=['true','false'], help="Connect s3 to ENI (true) or Internet (false)")
+    set_sddc_connected_services_parser.set_defaults(func = setSDDCConnectedServices)
+
+    show_sddc_connected_vpc_parser=subparsers.add_parser('show-sddc-connected-vpc', parents = [vmc_url_flag,sddc_id_parser_flag, nsx_url_flag], help = 'show the VPC connected to the SDDC')
+    show_sddc_connected_vpc_parser.set_defaults(func = getSDDCConnectedVPC)
+    show_shadow_account_parser=subparsers.add_parser('show-shadow-account', parents = [vmc_url_flag,nsx_url_flag], help = 'show the Shadow AWS Account VMC is deployed in')
+    show_shadow_account_parser.set_defaults(func = getSDDCShadowAccount) 
 
 # ============================
 # SDDC - SDDC
 # ============================
     parent_sddc_parser = argparse.ArgumentParser(add_help=False)
 
-    show_sddc_state_parser=subparsers.add_parser('show-sddc-state', parents = [], help = 'get a view of your selected SDDC')
-    show_sddc_hosts_parser=subparsers.add_parser('show-sddc-hosts', parents = [], help = 'display a list of the hosts in your SDDC')
-    show_sddcs_parser=subparsers.add_parser('show-sddcs', parents = [], help = 'display a lit of your SDDCs')
-    show_vms_parser=subparsers.add_parser('show-vms', parents = [], help = 'get a list of your VMs')
+    show_sddc_state_parser=subparsers.add_parser('show-sddc-state', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'get a view of your selected SDDC')
+    show_sddc_state_parser.set_defaults(func = getSDDCState) 
+    show_sddc_hosts_parser=subparsers.add_parser('show-sddc-hosts', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'display a list of the hosts in your SDDC')
+    show_sddc_hosts_parser.set_defaults(func = getSDDChosts)
+
+    show_sddcs_parser=subparsers.add_parser('show-sddcs', parents = [vmc_url_flag,org_id_flag], help = 'display a list of your SDDCs')
+    show_sddcs_parser.set_defaults(func = getSDDCS)
+    show_vms_parser=subparsers.add_parser('show-vms', parents = [nsx_url_flag], help = 'get a list of your VMs')
+    show_vms_parser.set_defaults(func = getVMs)
 
 # ============================
 # SDDC - TKG
@@ -3538,7 +3623,7 @@ def main():
 
         if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0:
             print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
-            sys.exit()
+            sys.exit(1)
     except:
         print(
             '''There are problems with your config.ini file.  
@@ -3549,7 +3634,7 @@ def main():
             - ORG_ID         - this should be the ID of your VMware Cloud Organization, found in the VMware Cloud Services Portal.
             - SDDC_ID        - if applicable, this should be the ID of the VMware Cloud SDDC (Software Defined Datacenter) you wish to work with.
             ''')
-        sys.exit()
+        sys.exit(1)
 
     class data():
         sddc_name       = ""
@@ -3577,7 +3662,7 @@ def main():
     # Update the dictionary with the session token
     params.update({"sessiontoken": sessiontoken})
 
-    # If flags are present for VMC, add the appropriate URL to the parameters payload.
+    # If flags are present for VMC, add the appropriate URL to the parameters payload. Command line arguments overload
     try:
         args.strProdURL
         params.update({"strProdURL": strProdURL})
@@ -3605,7 +3690,7 @@ def main():
     except:
         pass
 
-    # If flags are present for SDDC_ID, add the SDDC_ID to the parameters payload.
+ # If flags are present for ORG_ID, add the ORG_ID to the parameters payload.
     try:
         args.SDDC_ID
         params.update({"SDDC_ID": SDDC_ID})
@@ -3629,6 +3714,7 @@ def main():
 
     # Call the appropriate function with the dictionary containing the arguments.
     args.func(**params)
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()
@@ -3696,20 +3782,7 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #         print(session_token)
 
 
-#     # ============================
-#     # SDDC - SDDC
-#     # ============================
-
-
-#     elif intent_name == "show-sddc-state":
-#         getSDDCState(ORG_ID, SDDC_ID, session_token)
-#     elif intent_name == "show-sddcs":
-#         getSDDCS(ORG_ID, session_token)
-#     elif intent_name == "show-vms":
-#         print(getVMs(proxy,session_token))
-#     elif intent_name == "show-sddc-hosts":
-#         getSDDChosts(SDDC_ID, ORG_ID, session_token)
-
+# BR: deleted SDDC 
 
 #     # ============================
 #     # SDDC - TKG
