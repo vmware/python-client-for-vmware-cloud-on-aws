@@ -269,6 +269,7 @@ def get_conencted_vpc_json(proxy, session_token):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 
 def get_connected_vpc_services_json(proxy, session_token, vpc_id):
@@ -298,6 +299,7 @@ def get_sddc_shadow_account_json(proxy_url, session_token):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
         print(json_response['error_message'])
+        return None
 
 
 
@@ -312,6 +314,7 @@ def set_connected_vpc_services_json(proxy, session_token, vpc_id, json_data):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
         print(response['error_message'])
+        return None
 
 
 # ============================
@@ -936,6 +939,7 @@ def get_vms_json(proxy_url, session_token):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
         print(json_response['error_message'])
+        return None
 
 
 # ============================

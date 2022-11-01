@@ -66,6 +66,7 @@ def get_sddcs_json(strProdURL, orgID, sessiontoken):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 
 def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
@@ -80,6 +81,7 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 
 # ============================
