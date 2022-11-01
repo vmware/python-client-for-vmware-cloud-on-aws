@@ -84,58 +84,66 @@ def getServiceDefinitions(**kwargs):
         table.add_row([i['displayName'], i['serviceAccessType'], i['serviceUrls']['serviceHome']])
     print(table)
 
-def addUsersToCSPGroup(csp_url, session_token):
-    if len(sys.argv) < 4:
-        print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
-        sys.exit(1)
-    groupId = sys.argv[2]
-    usernamesToAdd = sys.argv[3].split(',')
+def addUsersToCSPGroup(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    group_id = kwargs['group_id']
+    email = kwargs['email']
     params = {
             'notifyUsers': 'false',
-            'usernamesToAdd': usernamesToAdd
+            'usernamesToAdd': email
     }
-    json_response = add_users_csp_group_json(csp_url, ORG_ID, session_token, groupId, params)
+    json_response = add_users_csp_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id, params)
     print(f"Added: {json_response['succeeded']}" )
     print(f"Failed: {json_response['failed']}" )
 
 
-def findCSPUserByServiceRole(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: find-csp-user-by-service-role [role]')
+def findCSPUserByServiceRole(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    if kwargs['service_role'] is None:
+        print("Please use -srole or --service_role to specify the role name to search by.  Use show-csp-service-roles to see entitled roles.")
         sys.exit(1)
-    role_name = sys.argv[2]
-    json_response = get_csp_users_json(csp_url, ORG_ID, session_token)
+    else:
+        service_role = kwargs['service_role']
+    json_response = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
     users = json_response['results']
     table = PrettyTable(['Email','Service Role', 'Org Role'])
     for user in users:
         for servicedef in user['serviceRoles']:
             for role in servicedef['serviceRoles']:
-                if role['name'] == role_name:
+                if role['name'] == service_role:
                     display_role = ''
                     for orgrole in user['organizationRoles']:
                         display_role = display_role + orgrole['name'] + ' '
-                    table.add_row([user['user']['email'],role_name,display_role])
+                    table.add_row([user['user']['email'],service_role,display_role])
     print(table)
 
 
-def getCSPGroupDiff(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-group-diff [groupID] [showall|skipmembers|skipowners]')
-        sys.exit(1)
-    # Optional filter for org owners and members
+def getCSPGroupDiff(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
     SKIP_MEMBERS = False
     SKIP_OWNERS = False
-    if len(sys.argv) == 4:
-        if sys.argv[3] == "skipmembers":
-            SKIP_MEMBERS = True
-            print('Skipping members...')
-        elif sys.argv[3] == "skipowners":
-            SKIP_OWNERS = True
-            print('Skipping owners...')
-    groupId = sys.argv[2]
-    json_response_groups = get_csp_group_info_json(csp_url, ORG_ID, session_token, groupId)
+    if kwargs['group_id'] is None:
+        print('Usage: show-csp-group-diff --group-id <GROUP ID> --filter [showall|skipmembers|skipowners]')
+        sys.exit(1)
+    else:
+        group_id = kwargs['group_id']
+    if kwargs['filter'] == "skipmembers":
+        SKIP_MEMBERS = True
+        print('Skipping members...')
+    elif kwargs['filter'] == "skipowners":
+        SKIP_OWNERS = True
+        print('Skipping owners...')
+    else:
+        pass
+    json_response_groups = get_csp_group_info_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
     grouproles = json_response_groups['serviceRoles']
-    json_response_users = get_csp_users_json(csp_url, ORG_ID, session_token)
+    json_response_users = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
     users = json_response_users['results']
     grouprolelist = []
     for role in grouproles:
@@ -180,11 +188,16 @@ def getCSPGroupDiff(csp_url, session_token):
         print("------------- ")
 
 
-def getCSPGroupMembers(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-group-members [groupID]')
-    groupid = sys.argv[2]
-    json_response = get_csp_users_group_json(csp_url, ORG_ID, session_token, groupid)
+def getCSPGroupMembers(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    if kwargs['group_id'] is None:
+        print("Please use -gid or --group-id to specify the ID of the group you would like membership of.")
+        sys.exit()
+    else:
+        group_id = kwargs['group_id']
+    json_response = get_csp_users_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
     users = json_response['results']
     table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
     for user in users:
@@ -192,43 +205,52 @@ def getCSPGroupMembers(csp_url, session_token):
     print(table)
 
 
-def getCSPGroups(csp_url, session_token):
+def getCSPGroups(**kwargs):
     """Get List of CSP groups from your Organization -- br"""
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']  
+    try:
+        kwargs.get('search_term')
+        searchTerm = kwargs['search_term']
+        json_response = get_csp_groups_searchterm_json(strCSPProdURL, ORG_ID, sessiontoken,searchTerm)
+    except:
+        json_response = get_csp_groups_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response is not None:
+        groups = json_response['results']
+        numGroups = len(groups)
+        if(numGroups == 0):
+            print("No results returned.")
+        else:
+            print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
+            table = PrettyTable(['ID','Name', 'Group Type','User Count'])
+            for grp in groups:
+                table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
+            print(table)
 
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-groups [GROUP_SEARCH_TERM]. You must include a search term with characters contained in the group name. No globbing allowed.')
+
+def searchCSPOrgUsers(**kwargs):
+    # for i, j in kwargs.items():
+    #     print(i, j)
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']  
+    if kwargs['search_term'] is None:
+        print("Plese enter a search term (--search-term).  To simply show all ORG users, please use show-org-users")
+        sys.exit()
     else:
-        searchTerm = sys.argv[2] 
-        json_response = get_csp_groups_json(csp_url, ORG_ID, session_token,searchTerm)
-        if json_response != None:
-            groups = json_response['results']
-            numGroups = len(groups)
-            if(numGroups == 0):
-                print("No results returned.")
-            else:
-                print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
-                table = PrettyTable(['ID','Name', 'Group Type','User Count'])
-                for grp in groups:
-                    table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-                print(table)
-
-
-def getCSPOrgUsers(csp_url,session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-org-users [searchTerms]')
-    else:
-        searchTerm = sys.argv[2]
-        params = {
+        searchTerm = kwargs['search_term']
+    params = {
             'userSearchTerm': searchTerm
         }
-        json_response = search_csp_users_json(csp_url, session_token, params, ORG_ID)
-        users = json_response['results']
-        if len(users) >= 20:
-            print("Search API is limited to 20 results, refine your search term for accurate results.")
-        table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
-        for user in users:
-            table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
-        print(table)
+    json_response = search_csp_users_json(strCSPProdURL, sessiontoken, params, ORG_ID)
+    users = json_response['results']
+    if len(users) >= 20:
+        print("Search API is limited to 20 results, refine your search term for accurate results.")
+    table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
+    for user in users:
+        table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
+    print(table)
 
 
 def getCSPServiceRoles(**kwargs):
@@ -241,9 +263,12 @@ def getCSPServiceRoles(**kwargs):
             print(svc_role)
 
 
-def showORGusers(orgID, sessiontoken):
+def showORGusers(**kwargs):
     """Prints out all Org users, sorted by last name"""
-    jsonResponse = get_csp_users_json(strCSPProdURL, orgID, sessiontoken)
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    jsonResponse = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
     users = jsonResponse['results']
     table = PrettyTable(['First Name', 'Last Name', 'User Name'])
     for i in users:
@@ -2514,14 +2539,14 @@ def remove_t1(**kwargs):
 def new_segment(**kwargs):
     """
     Creates a new network segment - requires options to configure correctly.
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
         print("Please specify a name for the segment, and the gateway/network.")
         sys.exit(1)
-    if kwargs['segment_type'] == "moveable" and kwargs['tier1_id'] is None:
+    if kwargs['segment_type'] == "flexible" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
         sys.exit(1)
     segment_name = kwargs["objectname"]
@@ -2566,7 +2591,7 @@ def configure_segment(**kwargs):
     """
     Reconfigures an existing network segment - requires options to configure correctly.
     If segment does not exist, prompts user to create using 'new-segment'
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -2592,7 +2617,7 @@ def configure_segment(**kwargs):
         json_data["type"] = f'{kwargs["routing_type"]}'
     if kwargs['tier1_id'] is not None:
         if segment_path == "/infra/tier-1s/cgw":
-            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'moveable' segment.")
+            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'flexible' segment.")
         else:
             json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
     # make the call to the API
@@ -2608,7 +2633,7 @@ def configure_segment(**kwargs):
 def remove_segment(**kwargs):
     """
     Removes a network segment - requires options to configure correctly.
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -3163,7 +3188,6 @@ def main():
     # CSP - Services
     # ============================
 
-
     csp_service_parser = subparsers.add_parser('show-csp-services', parents=[csp_url_flag,org_id_flag], help='Show the entitled services in the VMware Cloud Service Console.')
     csp_service_parser.set_defaults(func = getServiceDefinitions)
     csp_service_role_parser = subparsers.add_parser('show-csp-service-roles', parents=[csp_url_flag, org_id_flag] , help='Show the entitled service roles in the VMware Cloud Service Console.')
@@ -3174,19 +3198,33 @@ def main():
 # CSP - User and Group Management
 # ============================
     parent_user_group_parser = argparse.ArgumentParser(add_help=False)
-    #     csp_group_id
-    #     email
-    #     csp_service_role_name
-    #     filter (showall|skipmembers|skipowners)
+    parent_user_group_parser.add_argument('-gid', '--group-id', help= "The ID of the group to search or modify.")
+    parent_user_group_parser.add_argument('--filter', choices=['showall', 'skipmembers','skipowners'], help = "Filter out specific members of the group.")
+    parent_user_group_parser.add_argument('-email', '--email', nargs = '+', help= "Use to specify an email to search by, or a list of space-separated emails to add to a group.")
+    parent_user_group_parser.add_argument('-srole', '--service-role', help= "The service role to search by.")
+    parent_user_group_parser.add_argument('--search-term', help = "Text string to filter search.")
+    
 
-    add_users_to_csp_group_parser=subparsers.add_parser('add-users-to-csp-group', parents = [csp_url_flag], help = 'CSP user to a group')
-    show_csp_group_diff_parser=subparsers.add_parser('show-csp-group-diff', parents = [csp_url_flag], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
-    show_csp_group_members_parser=subparsers.add_parser('show-csp-group-members', parents = [csp_url_flag], help = 'show CSP group members')
-    show_csp_groups_parser=subparsers.add_parser('show-csp-groups', parents = [csp_url_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
-    show_csp_org_users_parser=subparsers.add_parser('show-csp-org-users', parents = [csp_url_flag], help = 'show a CSP user')
-    show_csp_service_roles_parser=subparsers.add_parser('show-csp-service-roles', parents = [csp_url_flag], help = 'show CSP service roles for the currently logged in user')
-    find_csp_user_by_service_role_parser=subparsers.add_parser('find-csp-user-by-service-role', parents = [csp_url_flag], help = 'search for CSP users with a specific service role')
-    show_org_users_parser=subparsers.add_parser('show-org-users', parents = [csp_url_flag], help = 'show the list of organization users')
+    add_users_to_csp_group_parser=subparsers.add_parser('add-users-to-csp-group', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'CSP user to a group')
+    add_users_to_csp_group_parser.set_defaults(func = addUsersToCSPGroup)
+
+    show_csp_group_diff_parser=subparsers.add_parser('show-csp-group-diff', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
+    show_csp_group_diff_parser.set_defaults(func = getCSPGroupDiff)
+
+    show_csp_group_members_parser=subparsers.add_parser('show-csp-group-members', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'show CSP group members')
+    show_csp_group_members_parser.set_defaults(func = getCSPGroupMembers)
+
+    show_csp_groups_parser=subparsers.add_parser('show-csp-groups', parents = [csp_url_flag, org_id_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
+    show_csp_groups_parser.set_defaults(func = getCSPGroups)
+
+    search_csp_org_users_parser=subparsers.add_parser('search-csp-org-users', parents = [csp_url_flag, org_id_flag,parent_user_group_parser], help = 'Search for users in the CSP or org.')
+    search_csp_org_users_parser.set_defaults(func = searchCSPOrgUsers)
+
+    find_csp_user_by_service_role_parser=subparsers.add_parser('find-csp-user-by-service-role', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
+    find_csp_user_by_service_role_parser.set_defaults(func = findCSPUserByServiceRole)
+
+    show_org_users_parser=subparsers.add_parser('show-org-users', parents = [csp_url_flag, org_id_flag], help = 'Show all organization users')
+    show_org_users_parser.set_defaults(func = showORGusers)
 
 # ============================
 # SDDC - AWS Account and VPC
@@ -3477,7 +3515,7 @@ def main():
     parent_segment_parser.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
     parent_segment_parser.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
     parent_segment_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
-    parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","moveable"], default="moveable", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'MOVEABLE'")
+    parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
     parent_segment_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
 
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
