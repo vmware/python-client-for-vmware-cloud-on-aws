@@ -31,6 +31,7 @@ pip3 install PTable or pip3 install PTable -t . --upgrade
 With git BASH on Windows, you might need to use 'python -m pip install' instead of pip3 install
 
 """
+from random import choices
 import re
 
 import requests                         # need this for Get/Post/Delete
@@ -78,64 +79,92 @@ def getServiceDefinitions(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     json_response = get_services_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     services= json_response['servicesList']
     table = PrettyTable(['Service Name', 'Access type', 'Service URL'])
     for i in services:
         table.add_row([i['displayName'], i['serviceAccessType'], i['serviceUrls']['serviceHome']])
     print(table)
 
-def addUsersToCSPGroup(csp_url, session_token):
-    if len(sys.argv) < 4:
-        print('Usage: add-users-to-csp-group [groupID] [comma separated email addresses')
-        sys.exit(1)
-    groupId = sys.argv[2]
-    usernamesToAdd = sys.argv[3].split(',')
+def addUsersToCSPGroup(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    group_id = kwargs['group_id']
+    email = kwargs['email']
     params = {
             'notifyUsers': 'false',
-            'usernamesToAdd': usernamesToAdd
+            'usernamesToAdd': email
     }
-    json_response = add_users_csp_group_json(csp_url, ORG_ID, session_token, groupId, params)
+    json_response = add_users_csp_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id, params)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     print(f"Added: {json_response['succeeded']}" )
     print(f"Failed: {json_response['failed']}" )
 
 
-def findCSPUserByServiceRole(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: find-csp-user-by-service-role [role]')
+def findCSPUserByServiceRole(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    if kwargs['service_role'] is None:
+        print("Please use -srole or --service_role to specify the role name to search by.  Use show-csp-service-roles to see entitled roles.")
         sys.exit(1)
-    role_name = sys.argv[2]
-    json_response = get_csp_users_json(csp_url, ORG_ID, session_token)
+    else:
+        service_role = kwargs['service_role']
+    json_response = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response['results']
     table = PrettyTable(['Email','Service Role', 'Org Role'])
     for user in users:
         for servicedef in user['serviceRoles']:
             for role in servicedef['serviceRoles']:
-                if role['name'] == role_name:
+                if role['name'] == service_role:
                     display_role = ''
                     for orgrole in user['organizationRoles']:
                         display_role = display_role + orgrole['name'] + ' '
-                    table.add_row([user['user']['email'],role_name,display_role])
+                    table.add_row([user['user']['email'],service_role,display_role])
     print(table)
 
 
-def getCSPGroupDiff(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-group-diff [groupID] [showall|skipmembers|skipowners]')
-        sys.exit(1)
-    # Optional filter for org owners and members
+def getCSPGroupDiff(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
     SKIP_MEMBERS = False
     SKIP_OWNERS = False
-    if len(sys.argv) == 4:
-        if sys.argv[3] == "skipmembers":
-            SKIP_MEMBERS = True
-            print('Skipping members...')
-        elif sys.argv[3] == "skipowners":
-            SKIP_OWNERS = True
-            print('Skipping owners...')
-    groupId = sys.argv[2]
-    json_response_groups = get_csp_group_info_json(csp_url, ORG_ID, session_token, groupId)
+    if kwargs['group_id'] is None:
+        print('Usage: show-csp-group-diff --group-id <GROUP ID> --filter [showall|skipmembers|skipowners]')
+        sys.exit(1)
+    else:
+        group_id = kwargs['group_id']
+    if kwargs['filter'] == "skipmembers":
+        SKIP_MEMBERS = True
+        print('Skipping members...')
+    elif kwargs['filter'] == "skipowners":
+        SKIP_OWNERS = True
+        print('Skipping owners...')
+    else:
+        pass
+    json_response_groups = get_csp_group_info_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
+    if json_response_groups == None:
+        print("API Error")
+        sys.exit(1)
+
     grouproles = json_response_groups['serviceRoles']
-    json_response_users = get_csp_users_json(csp_url, ORG_ID, session_token)
+    json_response_users = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response_users == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response_users['results']
     grouprolelist = []
     for role in grouproles:
@@ -180,11 +209,20 @@ def getCSPGroupDiff(csp_url, session_token):
         print("------------- ")
 
 
-def getCSPGroupMembers(csp_url, session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-group-members [groupID]')
-    groupid = sys.argv[2]
-    json_response = get_csp_users_group_json(csp_url, ORG_ID, session_token, groupid)
+def getCSPGroupMembers(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    if kwargs['group_id'] is None:
+        print("Please use -gid or --group-id to specify the ID of the group you would like membership of.")
+        sys.exit()
+    else:
+        group_id = kwargs['group_id']
+    json_response = get_csp_users_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response['results']
     table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
     for user in users:
@@ -192,43 +230,64 @@ def getCSPGroupMembers(csp_url, session_token):
     print(table)
 
 
-def getCSPGroups(csp_url, session_token):
+def getCSPGroups(**kwargs):
     """Get List of CSP groups from your Organization -- br"""
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']  
+    try:
+        kwargs.get('search_term')
+        searchTerm = kwargs['search_term']
+        json_response = get_csp_groups_searchterm_json(strCSPProdURL, ORG_ID, sessiontoken,searchTerm)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
 
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-groups [GROUP_SEARCH_TERM]. You must include a search term with characters contained in the group name. No globbing allowed.')
+    except:
+        json_response = get_csp_groups_json(strCSPProdURL, ORG_ID, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+
+    if json_response is not None:
+        groups = json_response['results']
+        numGroups = len(groups)
+        if(numGroups == 0):
+            print("No results returned.")
+        else:
+            print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
+            table = PrettyTable(['ID','Name', 'Group Type','User Count'])
+            for grp in groups:
+                table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
+            print(table)
+
+
+def searchCSPOrgUsers(**kwargs):
+    # for i, j in kwargs.items():
+    #     print(i, j)
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']  
+    if kwargs['search_term'] is None:
+        print("Plese enter a search term (--search-term).  To simply show all ORG users, please use show-org-users")
+        sys.exit()
     else:
-        searchTerm = sys.argv[2] 
-        json_response = get_csp_groups_json(csp_url, ORG_ID, session_token,searchTerm)
-        if json_response != None:
-            groups = json_response['results']
-            numGroups = len(groups)
-            if(numGroups == 0):
-                print("No results returned.")
-            else:
-                print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
-                table = PrettyTable(['ID','Name', 'Group Type','User Count'])
-                for grp in groups:
-                    table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-                print(table)
-
-
-def getCSPOrgUsers(csp_url,session_token):
-    if len(sys.argv) < 3:
-        print('Usage: show-csp-org-users [searchTerms]')
-    else:
-        searchTerm = sys.argv[2]
-        params = {
+        searchTerm = kwargs['search_term']
+    params = {
             'userSearchTerm': searchTerm
         }
-        json_response = search_csp_users_json(csp_url, session_token, params, ORG_ID)
-        users = json_response['results']
-        if len(users) >= 20:
-            print("Search API is limited to 20 results, refine your search term for accurate results.")
-        table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
-        for user in users:
-            table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
-        print(table)
+    json_response = search_csp_users_json(strCSPProdURL, sessiontoken, params, ORG_ID)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
+    users = json_response['results']
+    if len(users) >= 20:
+        print("Search API is limited to 20 results, refine your search term for accurate results.")
+    table = PrettyTable(['Username', 'First Name', 'Last Name', 'Email', 'userId'])
+    for user in users:
+        table.add_row([user['user']['username'], user['user']['firstName'], user['user']['lastName'], user['user']['email'], user['user']['userId']])
+    print(table)
 
 
 def getCSPServiceRoles(**kwargs):
@@ -236,14 +295,25 @@ def getCSPServiceRoles(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     json_response = get_csp_service_roles_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     for svc_def in json_response['serviceRoles']:
         for svc_role in svc_def['serviceRoleNames']:
             print(svc_role)
 
 
-def showORGusers(orgID, sessiontoken):
+def showORGusers(**kwargs):
     """Prints out all Org users, sorted by last name"""
-    jsonResponse = get_csp_users_json(strCSPProdURL, orgID, sessiontoken)
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strCSPProdURL = kwargs['strCSPProdURL']
+    jsonResponse = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = jsonResponse['results']
     table = PrettyTable(['First Name', 'Last Name', 'User Name'])
     for i in users:
@@ -655,7 +725,7 @@ def get_deployment_id(sddc, org_id, session_token):
     return deployment_id
 
 
-def get_resource_id(group_id, org_id, session_token):
+def get_resource_id(strProdURL, group_id, org_id, session_token):
     json_response = get_resource_id_json(strProdURL, org_id, group_id, session_token)
     resource_id = json_response[0]['id']
     return resource_id
@@ -693,7 +763,7 @@ def get_group_id(group, org_id, session_token):
     return group_id
 
 
-def get_sddc_groups(org_id, session_token):
+def get_sddc_groups(strProdURL, org_id, session_token):
     json_response = get_sddc_groups_json(strProdURL, org_id, session_token)
     if (json_response['empty'] == True):
         print("     No SDDC Group found\n")
@@ -793,7 +863,7 @@ def check_empty_group(group_id, org_id, session_token):
 # ============================
 
 
-def get_route_tables(resource_id, org_id, session_token):
+def get_route_tables(strProdURL, resource_id, org_id, session_token):
     json_response = get_route_tables_json(strProdURL, resource_id, org_id, session_token)
     if  not json_response['content']:       #'content' is empty []
         print("    Routing Tables empty")
@@ -1735,13 +1805,25 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
 def getSDDCT0BGPRoutes(proxy, session_token):
     """Prints BGP routes for T0 edge gateway"""
     bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
+    if bgp_neighbors == None:
+        print("API Error")
+        sys.exit(1)
+
     learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
     advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
     neighbors = bgp_neighbors['results']
     for i in range(len(neighbors)):
         bgp_neighbor_id = neighbors[i]['id']
         route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
+        if route_learned_json == None:
+            print("API Error")
+            sys.exit(1)
+
         route_advertised_json = get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id)
+        if route_advertised_json == None:
+            print("API Error")
+            sys.exit(1)
+
 #       Building the learned routes table
         edgeLearnedRoutes = route_learned_json['results'][0]['egde_node_routes']
         sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
@@ -1805,10 +1887,37 @@ def getSDDCT0PrefixLists(proxy, session_token):
     else:
         print("No user created prefixes found.")
 
+def getSDDCroutes(**kwargs):
+    proxy_url = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs['strProdURL']
+    if kwargs['route_type'] == 't0':
+        getSDDCT0routes(proxy_url, sessiontoken)
+    elif kwargs['route_type'] == 'bgp':
+        getSDDCT0BGPRoutes(proxy_url, sessiontoken)
+    elif kwargs['route_type'] == 'static':
+        getSDDCT0staticroutes(proxy_url,sessiontoken)
+    elif kwargs['route_type'] == 'tgw':
+        params = {}
+        params.update({"ORG_ID": ORG_ID})
+        params.update({"sessiontoken": sessiontoken})
+        params.update({"strProdURL": strProdURL})
+        try:
+            search_name = kwargs['search_name']
+            params.update({"search_name": search_name})
+            getTGWroutes(**params)
+        except:
+            getTGWroutes(**params)
+
 
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
+    if t0_routes_json == None:
+        print("API Error")
+        sys.exit(1)
+
     t0_routes = t0_routes_json['results'][1]['route_entries']
     route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_routes:
@@ -1822,11 +1931,48 @@ def getSDDCT0routes(proxy_url, session_token):
 def getSDDCT0staticroutes(proxy_url,session_token):
     """Prints static routes configured on T0 edge gateway"""
     t0_static_routes_json = get_sddc_t0_static_routes_json(proxy_url, session_token)
+    if t0_static_routes_json == None:
+        print("API Error")
+        sys.exit(1)
+
     t0_static_routes = t0_static_routes_json['results']
     route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_static_routes:
         route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
     print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+
+def getTGWroutes(**kwargs):
+    """===== Show TGW route tables ========="""
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs['strProdURL']
+    sddc_groups = get_sddc_groups( strProdURL, ORG_ID, sessiontoken)
+    group_id = None
+    search_name = kwargs['search_name']
+    if DEBUG_MODE:
+        print(f'DEBUG: sddc_groups = {sddc_groups}')
+    if search_name is not None:
+        for grp in sddc_groups:
+            if grp['name'] == search_name:
+                group_id = grp['id']
+                group_name = search_name
+                if DEBUG_MODE:
+                    print(f'DEBUG: Found {search_name} with group ID {group_id}')
+                break
+    else:
+        group = input('   Select SDDC Group: ')
+        group_id = sddc_groups[int(group) -1]['id']
+        group_name = sddc_groups[int(group) -1]['name']
+    if DEBUG_MODE:
+        print(f'DEBUG: User input group = {group}')
+        print(f'DEBUG: group_id from sddc_groups = {group_id}')
+    #group_id = get_group_id(group, ORG_ID, session_token)
+    if group_id is None:
+        print('Could not retrieve group ID')
+    else:
+        resource_id = get_resource_id(strProdURL, group_id, ORG_ID, sessiontoken)
+        print(f'Route table for {group_name} ({group_id})')
+        get_route_tables(strProdURL, resource_id, ORG_ID, sessiontoken)
 
 
 # ============================
@@ -2514,14 +2660,14 @@ def remove_t1(**kwargs):
 def new_segment(**kwargs):
     """
     Creates a new network segment - requires options to configure correctly.
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
         print("Please specify a name for the segment, and the gateway/network.")
         sys.exit(1)
-    if kwargs['segment_type'] == "moveable" and kwargs['tier1_id'] is None:
+    if kwargs['segment_type'] == "flexible" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
         sys.exit(1)
     segment_name = kwargs["objectname"]
@@ -2566,7 +2712,7 @@ def configure_segment(**kwargs):
     """
     Reconfigures an existing network segment - requires options to configure correctly.
     If segment does not exist, prompts user to create using 'new-segment'
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -2592,7 +2738,7 @@ def configure_segment(**kwargs):
         json_data["type"] = f'{kwargs["routing_type"]}'
     if kwargs['tier1_id'] is not None:
         if segment_path == "/infra/tier-1s/cgw":
-            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'moveable' segment.")
+            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'flexible' segment.")
         else:
             json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
     # make the call to the API
@@ -2608,7 +2754,7 @@ def configure_segment(**kwargs):
 def remove_segment(**kwargs):
     """
     Removes a network segment - requires options to configure correctly.
-    Supports new, 'moveable' networks under M18 and later as well as 'fixed' networks pre-M18
+    Supports new, 'flexible' networks under M18 and later as well as 'fixed' networks pre-M18
     """
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -2925,6 +3071,9 @@ def getVCDRCloudFS(**kwargs):
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
     json_response = get_vcdr_cloud_fs_json(strVCDRProdURL, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     # print(json.dumps(json_response, indent = 2))
     cloud_fs = json_response["cloud_file_systems"]
     table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
@@ -2938,6 +3087,9 @@ def getVCDRCloudFSDetails(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Cloud FS Name: {json_response['name']}")
     print(f"Capacity GiB: {json_response['capacity_gib']:,.2f}")
@@ -2955,6 +3107,9 @@ def getVCDRSites(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     sites = json_response["protected_sites"]
     table = PrettyTable(['Site Name', 'Site ID'])
     for i in sites:
@@ -2968,6 +3123,9 @@ def getVCDRSiteDetails(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     site_id = kwargs['site_id']
     json_response = get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Site Name: {json_response['name']}")
     print(f"Site Type: {json_response['type']}")
@@ -2983,6 +3141,9 @@ def getVCDRVM(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_vm_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     vms = json_response["vms"]
     table = PrettyTable(['VM Name', 'VCDR VM ID', 'VM Size'])
     for i in vms:
@@ -2999,6 +3160,9 @@ def getVCDRPG(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     pgs = json_response["protection_groups"]
     table = PrettyTable(['Protection Group Name', 'Protection Group ID'])
     for i in pgs:
@@ -3012,7 +3176,10 @@ def getVCDRPGDetails(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     pg_id = kwargs['protection_group_id']
     json_response = get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
-    print(json.dumps(json_response, indent = 2))
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+    # print(json.dumps(json_response, indent = 2))
     print(" ")
     print(f"Protection Group Name: {json_response['name']}")
     print(f"Protection Group Health: {json_response['health']}")
@@ -3041,6 +3208,9 @@ def getVCDRPGSnaps(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     pg_id = kwargs['protection_group_id']
     json_response = get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     snaps = json_response["snapshots"]
     table = PrettyTable(['Snapshot Name', 'Snaphot ID'])
     for i in snaps:
@@ -3055,6 +3225,9 @@ def getVCDRSnapDetails(**kwargs):
     pg_id = kwargs['protection_group_id']
     snap_id = kwargs['protection_group_snap_id']
     json_response = get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     create_stamp_int = int(json_response['creation_timestamp'])
     create_stamp = datetime.utcfromtimestamp(create_stamp_int/1e9)
     expire_stamp_int = int(json_response['expiration_timestamp'])
@@ -3076,6 +3249,9 @@ def getVCDRSDDCs(**kwargs):
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
     json_response = get_vcdr_sddcs_json(strVCDRProdURL, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     sddcs = json_response["data"]
     table = PrettyTable(['Recovery SDDC Name', 'Recovery SDDC ID'])
     for i in sddcs:
@@ -3088,19 +3264,15 @@ def getVCDRSDDCDetails(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     sddc_id = kwargs['recovery_sddc_id']
     json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Recovery SDDC Name: {json_response['name']}")
     print(f"Recovery SDDC Region: {json_response['region']}")
     print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
     print(" ")
 
-    """Get details of a specific Recovery SDDC."""
-    json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, session_token)
-    print(" ")
-    print(f"Recovery SDDC Name: {json_response['name']}")
-    print(f"Recovery SDDC Region: {json_response['region']}")
-    print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
-    print(" ")
 
 
 # --------------------------------------------
@@ -3163,7 +3335,6 @@ def main():
     # CSP - Services
     # ============================
 
-
     csp_service_parser = subparsers.add_parser('show-csp-services', parents=[csp_url_flag,org_id_flag], help='Show the entitled services in the VMware Cloud Service Console.')
     csp_service_parser.set_defaults(func = getServiceDefinitions)
     csp_service_role_parser = subparsers.add_parser('show-csp-service-roles', parents=[csp_url_flag, org_id_flag] , help='Show the entitled service roles in the VMware Cloud Service Console.')
@@ -3174,19 +3345,33 @@ def main():
 # CSP - User and Group Management
 # ============================
     parent_user_group_parser = argparse.ArgumentParser(add_help=False)
-    #     csp_group_id
-    #     email
-    #     csp_service_role_name
-    #     filter (showall|skipmembers|skipowners)
+    parent_user_group_parser.add_argument('-gid', '--group-id', help= "The ID of the group to search or modify.")
+    parent_user_group_parser.add_argument('--filter', choices=['showall', 'skipmembers','skipowners'], help = "Filter out specific members of the group.")
+    parent_user_group_parser.add_argument('-email', '--email', nargs = '+', help= "Use to specify an email to search by, or a list of space-separated emails to add to a group.")
+    parent_user_group_parser.add_argument('-srole', '--service-role', help= "The service role to search by.")
+    parent_user_group_parser.add_argument('--search-term', help = "Text string to filter search.")
+    
 
-    add_users_to_csp_group_parser=subparsers.add_parser('add-users-to-csp-group', parents = [csp_url_flag], help = 'CSP user to a group')
-    show_csp_group_diff_parser=subparsers.add_parser('show-csp-group-diff', parents = [csp_url_flag], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
-    show_csp_group_members_parser=subparsers.add_parser('show-csp-group-members', parents = [csp_url_flag], help = 'show CSP group members')
-    show_csp_groups_parser=subparsers.add_parser('show-csp-groups', parents = [csp_url_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
-    show_csp_org_users_parser=subparsers.add_parser('show-csp-org-users', parents = [csp_url_flag], help = 'show a CSP user')
-    show_csp_service_roles_parser=subparsers.add_parser('show-csp-service-roles', parents = [csp_url_flag], help = 'show CSP service roles for the currently logged in user')
-    find_csp_user_by_service_role_parser=subparsers.add_parser('find-csp-user-by-service-role', parents = [csp_url_flag], help = 'search for CSP users with a specific service role')
-    show_org_users_parser=subparsers.add_parser('show-org-users', parents = [csp_url_flag], help = 'show the list of organization users')
+    add_users_to_csp_group_parser=subparsers.add_parser('add-users-to-csp-group', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'CSP user to a group')
+    add_users_to_csp_group_parser.set_defaults(func = addUsersToCSPGroup)
+
+    show_csp_group_diff_parser=subparsers.add_parser('show-csp-group-diff', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
+    show_csp_group_diff_parser.set_defaults(func = getCSPGroupDiff)
+
+    show_csp_group_members_parser=subparsers.add_parser('show-csp-group-members', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'show CSP group members')
+    show_csp_group_members_parser.set_defaults(func = getCSPGroupMembers)
+
+    show_csp_groups_parser=subparsers.add_parser('show-csp-groups', parents = [csp_url_flag, org_id_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
+    show_csp_groups_parser.set_defaults(func = getCSPGroups)
+
+    search_csp_org_users_parser=subparsers.add_parser('search-csp-org-users', parents = [csp_url_flag, org_id_flag,parent_user_group_parser], help = 'Search for users in the CSP or org.')
+    search_csp_org_users_parser.set_defaults(func = searchCSPOrgUsers)
+
+    find_csp_user_by_service_role_parser=subparsers.add_parser('find-csp-user-by-service-role', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
+    find_csp_user_by_service_role_parser.set_defaults(func = findCSPUserByServiceRole)
+
+    show_org_users_parser=subparsers.add_parser('show-org-users', parents = [csp_url_flag, org_id_flag], help = 'Show all organization users')
+    show_org_users_parser.set_defaults(func = showORGusers)
 
 # ============================
 # SDDC - AWS Account and VPC
@@ -3267,12 +3452,6 @@ def main():
     get_group_info_parser=subparsers.add_parser('get-group-info', parents = [], help = 'Display details for an SDDC group')
 
 # ============================
-# VTC - TGW Operations
-# ============================
-
-    show_tgw_routes_parser=subparsers.add_parser('show-tgw-routes', parents = [], help = 'Show the vTGW route table')
-
-# ============================
 # VTC - VPC Operations
 # ============================
 
@@ -3348,10 +3527,12 @@ def main():
     show_sddc_bgp_as_parser=subparsers.add_parser('show-sddc-bgp-as', parents = [nsx_url_flag], help = 'show the BGP AS number')
     show_sddc_bgp_vpn_parser=subparsers.add_parser('show-sddc-bgp-vpn', parents = [nsx_url_flag], help = 'show whether DX is preferred over VPN')
     show_t0_bgp_neighbors_parser=subparsers.add_parser('show-t0-bgp-neighbors', parents = [nsx_url_flag], help = 'show T0 BGP neighbors')
-    show_t0_bgp_routes_parser=subparsers.add_parser('show-t0-bgp-routes', parents = [nsx_url_flag], help = 'show all learned and advertised routes through BGP')
     show_t0_prefix_lists_parser=subparsers.add_parser('show-t0-prefix-lists', parents = [nsx_url_flag], help = 'show T0 prefix lists')
-    show_t0_routes_parser=subparsers.add_parser('show-t0-routes', parents = [nsx_url_flag], help = 'show routes at the T0 router')
-    show_t0_static_routes_parser=subparsers.add_parser('show-t0-static-routes', parents = [nsx_url_flag], help = 'show static routes at the T0 router')
+
+    show_routes_parser=subparsers.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
+    show_routes_parser.add_argument('-rt', '--route-type', choices = ['t0', 'bgp', 'static', 'tgw'], required= True, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
+    show_routes_parser.add_argument('--search-name', help = "Optionally, enter the name of the SDDC group you wish to view the route table for.")
+    show_routes_parser.set_defaults(func = getSDDCroutes)
 
 # ============================
 # NSX-T - DNS
@@ -3477,7 +3658,7 @@ def main():
     parent_segment_parser.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
     parent_segment_parser.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
     parent_segment_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
-    parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","moveable"], default="moveable", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'MOVEABLE'")
+    parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
     parent_segment_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
 
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
@@ -3506,7 +3687,7 @@ def main():
     """ Subparser for Tier1 Gateway function - remove-t1 """
     remove_t1_parser=subparsers.add_parser('remove-t1', parents = [nsx_url_flag], help='Removes a secondary T1 router.')
     remove_t1_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
-    remove_t1_parser.set_defaults(func=remove_t1_parser)
+    remove_t1_parser.set_defaults(func=remove_t1)
 
 # ============================
 # NSX-T - VPN
@@ -3949,43 +4130,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             group_id = get_group_id(group, ORG_ID, session_token)
 #             resource_id = get_resource_id(group_id, ORG_ID, session_token)
 #             get_group_info(group_id, resource_id, ORG_ID, session_token)
-
-
-#     # ============================
-#     # VTC - TGW Operations
-#     # ============================
-
-
-#     elif intent_name == "show-tgw-routes":
-#         print("===== Show TGW route tables =========")
-#         #get_sddc_groups( ORG_ID, session_token)
-#         sddc_groups = get_sddc_groups( ORG_ID, session_token)
-#         group_id = None
-#         if DEBUG_MODE:
-#             print(f'DEBUG: sddc_groups = {sddc_groups}')
-#         if len(sys.argv) > 2:
-#             search_name = sys.argv[2]
-#             for grp in sddc_groups:
-#                 if grp['name'] == search_name:
-#                     group_id = grp['id']
-#                     group_name = search_name
-#                     if DEBUG_MODE:
-#                         print(f'DEBUG: Found {search_name} with group ID {group_id}')
-#                     break
-#         else:
-#             group = input('   Select SDDC Group: ')
-#             group_id = sddc_groups[int(group) -1]['id']
-#             group_name = sddc_groups[int(group) -1]['name']
-#             if DEBUG_MODE:
-#                 print(f'DEBUG: User input group = {group}')
-#                 print(f'DEBUG: group_id from sddc_groups = {group_id}')
-#         #group_id = get_group_id(group, ORG_ID, session_token)
-#         if group_id is None:
-#             print('Could not retrieve group ID')
-#         else:
-#             resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#             print(f'Route table for {group_name} ({group_id})')
-#             get_route_tables(resource_id, ORG_ID, session_token)
 
 
 #     # ============================

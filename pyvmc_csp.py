@@ -14,9 +14,9 @@ import requests
 # ============================
 
 
-def get_csp_groups_json(strCSProdURL, org_id, session_token):
+def get_csp_groups_json(strCSProdURL, ORG_ID, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups'
+    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{ORG_ID}/groups'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     return json_response
@@ -50,11 +50,11 @@ def get_csp_users_json(strCSPProdURL, orgID, session_token):
         print(json_response['error_message'])
 
 
-def get_csp_groups_json(strCSProdURL, org_id, session_token,searchTerm):
+def get_csp_groups_searchterm_json(strCSProdURL, org_id, session_token,search_term):
     """make the call to the API looking for groups that CONTAIN the search term - br"""
     myHeader = {'csp-auth-token': session_token}
 
-    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups-search?groupSearchTerm={searchTerm}'
+    myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{org_id}/groups-search?groupSearchTerm={search_term}'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     #
