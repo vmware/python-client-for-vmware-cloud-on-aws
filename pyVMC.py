@@ -31,6 +31,7 @@ pip3 install PTable or pip3 install PTable -t . --upgrade
 With git BASH on Windows, you might need to use 'python -m pip install' instead of pip3 install
 
 """
+from random import choices
 import re
 
 import requests                         # need this for Get/Post/Delete
@@ -78,6 +79,10 @@ def getServiceDefinitions(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     json_response = get_services_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     services= json_response['servicesList']
     table = PrettyTable(['Service Name', 'Access type', 'Service URL'])
     for i in services:
@@ -95,6 +100,10 @@ def addUsersToCSPGroup(**kwargs):
             'usernamesToAdd': email
     }
     json_response = add_users_csp_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id, params)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     print(f"Added: {json_response['succeeded']}" )
     print(f"Failed: {json_response['failed']}" )
 
@@ -109,6 +118,10 @@ def findCSPUserByServiceRole(**kwargs):
     else:
         service_role = kwargs['service_role']
     json_response = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response['results']
     table = PrettyTable(['Email','Service Role', 'Org Role'])
     for user in users:
@@ -142,8 +155,16 @@ def getCSPGroupDiff(**kwargs):
     else:
         pass
     json_response_groups = get_csp_group_info_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
+    if json_response_groups == None:
+        print("API Error")
+        sys.exit(1)
+
     grouproles = json_response_groups['serviceRoles']
     json_response_users = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response_users == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response_users['results']
     grouprolelist = []
     for role in grouproles:
@@ -198,6 +219,10 @@ def getCSPGroupMembers(**kwargs):
     else:
         group_id = kwargs['group_id']
     json_response = get_csp_users_group_json(strCSPProdURL, ORG_ID, sessiontoken, group_id)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response['results']
     table = PrettyTable(['Username','First Name', 'Last Name','Email','userId'])
     for user in users:
@@ -214,8 +239,16 @@ def getCSPGroups(**kwargs):
         kwargs.get('search_term')
         searchTerm = kwargs['search_term']
         json_response = get_csp_groups_searchterm_json(strCSPProdURL, ORG_ID, sessiontoken,searchTerm)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+
     except:
         json_response = get_csp_groups_json(strCSPProdURL, ORG_ID, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+
     if json_response is not None:
         groups = json_response['results']
         numGroups = len(groups)
@@ -244,6 +277,10 @@ def searchCSPOrgUsers(**kwargs):
             'userSearchTerm': searchTerm
         }
     json_response = search_csp_users_json(strCSPProdURL, sessiontoken, params, ORG_ID)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = json_response['results']
     if len(users) >= 20:
         print("Search API is limited to 20 results, refine your search term for accurate results.")
@@ -258,6 +295,10 @@ def getCSPServiceRoles(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     json_response = get_csp_service_roles_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     for svc_def in json_response['serviceRoles']:
         for svc_role in svc_def['serviceRoleNames']:
             print(svc_role)
@@ -269,6 +310,10 @@ def showORGusers(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     jsonResponse = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+
     users = jsonResponse['results']
     table = PrettyTable(['First Name', 'Last Name', 'User Name'])
     for i in users:
@@ -680,7 +725,7 @@ def get_deployment_id(sddc, org_id, session_token):
     return deployment_id
 
 
-def get_resource_id(group_id, org_id, session_token):
+def get_resource_id(strProdURL, group_id, org_id, session_token):
     json_response = get_resource_id_json(strProdURL, org_id, group_id, session_token)
     resource_id = json_response[0]['id']
     return resource_id
@@ -718,7 +763,7 @@ def get_group_id(group, org_id, session_token):
     return group_id
 
 
-def get_sddc_groups(org_id, session_token):
+def get_sddc_groups(strProdURL, org_id, session_token):
     json_response = get_sddc_groups_json(strProdURL, org_id, session_token)
     if (json_response['empty'] == True):
         print("     No SDDC Group found\n")
@@ -818,7 +863,7 @@ def check_empty_group(group_id, org_id, session_token):
 # ============================
 
 
-def get_route_tables(resource_id, org_id, session_token):
+def get_route_tables(strProdURL, resource_id, org_id, session_token):
     json_response = get_route_tables_json(strProdURL, resource_id, org_id, session_token)
     if  not json_response['content']:       #'content' is empty []
         print("    Routing Tables empty")
@@ -1760,13 +1805,25 @@ def getSDDCT0BGPneighbors(csp_url, session_token):
 def getSDDCT0BGPRoutes(proxy, session_token):
     """Prints BGP routes for T0 edge gateway"""
     bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
+    if bgp_neighbors == None:
+        print("API Error")
+        sys.exit(1)
+
     learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
     advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
     neighbors = bgp_neighbors['results']
     for i in range(len(neighbors)):
         bgp_neighbor_id = neighbors[i]['id']
         route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
+        if route_learned_json == None:
+            print("API Error")
+            sys.exit(1)
+
         route_advertised_json = get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id)
+        if route_advertised_json == None:
+            print("API Error")
+            sys.exit(1)
+
 #       Building the learned routes table
         edgeLearnedRoutes = route_learned_json['results'][0]['egde_node_routes']
         sourceAddrLearned = edgeLearnedRoutes[0]['source_address']
@@ -1830,10 +1887,37 @@ def getSDDCT0PrefixLists(proxy, session_token):
     else:
         print("No user created prefixes found.")
 
+def getSDDCroutes(**kwargs):
+    proxy_url = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs['strProdURL']
+    if kwargs['route_type'] == 't0':
+        getSDDCT0routes(proxy_url, sessiontoken)
+    elif kwargs['route_type'] == 'bgp':
+        getSDDCT0BGPRoutes(proxy_url, sessiontoken)
+    elif kwargs['route_type'] == 'static':
+        getSDDCT0staticroutes(proxy_url,sessiontoken)
+    elif kwargs['route_type'] == 'tgw':
+        params = {}
+        params.update({"ORG_ID": ORG_ID})
+        params.update({"sessiontoken": sessiontoken})
+        params.update({"strProdURL": strProdURL})
+        try:
+            search_name = kwargs['search_name']
+            params.update({"search_name": search_name})
+            getTGWroutes(**params)
+        except:
+            getTGWroutes(**params)
+
 
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
+    if t0_routes_json == None:
+        print("API Error")
+        sys.exit(1)
+
     t0_routes = t0_routes_json['results'][1]['route_entries']
     route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_routes:
@@ -1847,11 +1931,48 @@ def getSDDCT0routes(proxy_url, session_token):
 def getSDDCT0staticroutes(proxy_url,session_token):
     """Prints static routes configured on T0 edge gateway"""
     t0_static_routes_json = get_sddc_t0_static_routes_json(proxy_url, session_token)
+    if t0_static_routes_json == None:
+        print("API Error")
+        sys.exit(1)
+
     t0_static_routes = t0_static_routes_json['results']
     route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_static_routes:
         route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
     print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
+
+def getTGWroutes(**kwargs):
+    """===== Show TGW route tables ========="""
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs['strProdURL']
+    sddc_groups = get_sddc_groups( strProdURL, ORG_ID, sessiontoken)
+    group_id = None
+    search_name = kwargs['search_name']
+    if DEBUG_MODE:
+        print(f'DEBUG: sddc_groups = {sddc_groups}')
+    if search_name is not None:
+        for grp in sddc_groups:
+            if grp['name'] == search_name:
+                group_id = grp['id']
+                group_name = search_name
+                if DEBUG_MODE:
+                    print(f'DEBUG: Found {search_name} with group ID {group_id}')
+                break
+    else:
+        group = input('   Select SDDC Group: ')
+        group_id = sddc_groups[int(group) -1]['id']
+        group_name = sddc_groups[int(group) -1]['name']
+    if DEBUG_MODE:
+        print(f'DEBUG: User input group = {group}')
+        print(f'DEBUG: group_id from sddc_groups = {group_id}')
+    #group_id = get_group_id(group, ORG_ID, session_token)
+    if group_id is None:
+        print('Could not retrieve group ID')
+    else:
+        resource_id = get_resource_id(strProdURL, group_id, ORG_ID, sessiontoken)
+        print(f'Route table for {group_name} ({group_id})')
+        get_route_tables(strProdURL, resource_id, ORG_ID, sessiontoken)
 
 
 # ============================
@@ -2950,6 +3071,9 @@ def getVCDRCloudFS(**kwargs):
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
     json_response = get_vcdr_cloud_fs_json(strVCDRProdURL, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     # print(json.dumps(json_response, indent = 2))
     cloud_fs = json_response["cloud_file_systems"]
     table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
@@ -2963,6 +3087,9 @@ def getVCDRCloudFSDetails(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Cloud FS Name: {json_response['name']}")
     print(f"Capacity GiB: {json_response['capacity_gib']:,.2f}")
@@ -2980,6 +3107,9 @@ def getVCDRSites(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     sites = json_response["protected_sites"]
     table = PrettyTable(['Site Name', 'Site ID'])
     for i in sites:
@@ -2993,6 +3123,9 @@ def getVCDRSiteDetails(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     site_id = kwargs['site_id']
     json_response = get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Site Name: {json_response['name']}")
     print(f"Site Type: {json_response['type']}")
@@ -3008,6 +3141,9 @@ def getVCDRVM(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_vm_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     vms = json_response["vms"]
     table = PrettyTable(['VM Name', 'VCDR VM ID', 'VM Size'])
     for i in vms:
@@ -3024,6 +3160,9 @@ def getVCDRPG(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     pgs = json_response["protection_groups"]
     table = PrettyTable(['Protection Group Name', 'Protection Group ID'])
     for i in pgs:
@@ -3037,7 +3176,10 @@ def getVCDRPGDetails(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     pg_id = kwargs['protection_group_id']
     json_response = get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
-    print(json.dumps(json_response, indent = 2))
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
+    # print(json.dumps(json_response, indent = 2))
     print(" ")
     print(f"Protection Group Name: {json_response['name']}")
     print(f"Protection Group Health: {json_response['health']}")
@@ -3066,6 +3208,9 @@ def getVCDRPGSnaps(**kwargs):
     cloud_fs_id = kwargs['cloud_fs_id']
     pg_id = kwargs['protection_group_id']
     json_response = get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     snaps = json_response["snapshots"]
     table = PrettyTable(['Snapshot Name', 'Snaphot ID'])
     for i in snaps:
@@ -3080,6 +3225,9 @@ def getVCDRSnapDetails(**kwargs):
     pg_id = kwargs['protection_group_id']
     snap_id = kwargs['protection_group_snap_id']
     json_response = get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     create_stamp_int = int(json_response['creation_timestamp'])
     create_stamp = datetime.utcfromtimestamp(create_stamp_int/1e9)
     expire_stamp_int = int(json_response['expiration_timestamp'])
@@ -3101,6 +3249,9 @@ def getVCDRSDDCs(**kwargs):
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
     json_response = get_vcdr_sddcs_json(strVCDRProdURL, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     sddcs = json_response["data"]
     table = PrettyTable(['Recovery SDDC Name', 'Recovery SDDC ID'])
     for i in sddcs:
@@ -3113,19 +3264,15 @@ def getVCDRSDDCDetails(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     sddc_id = kwargs['recovery_sddc_id']
     json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, sessiontoken)
+    if json_response == None:
+        print("API Error")
+        sys.exit(1)
     print(" ")
     print(f"Recovery SDDC Name: {json_response['name']}")
     print(f"Recovery SDDC Region: {json_response['region']}")
     print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
     print(" ")
 
-    """Get details of a specific Recovery SDDC."""
-    json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, session_token)
-    print(" ")
-    print(f"Recovery SDDC Name: {json_response['name']}")
-    print(f"Recovery SDDC Region: {json_response['region']}")
-    print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
-    print(" ")
 
 
 # --------------------------------------------
@@ -3305,12 +3452,6 @@ def main():
     get_group_info_parser=subparsers.add_parser('get-group-info', parents = [], help = 'Display details for an SDDC group')
 
 # ============================
-# VTC - TGW Operations
-# ============================
-
-    show_tgw_routes_parser=subparsers.add_parser('show-tgw-routes', parents = [], help = 'Show the vTGW route table')
-
-# ============================
 # VTC - VPC Operations
 # ============================
 
@@ -3386,10 +3527,12 @@ def main():
     show_sddc_bgp_as_parser=subparsers.add_parser('show-sddc-bgp-as', parents = [nsx_url_flag], help = 'show the BGP AS number')
     show_sddc_bgp_vpn_parser=subparsers.add_parser('show-sddc-bgp-vpn', parents = [nsx_url_flag], help = 'show whether DX is preferred over VPN')
     show_t0_bgp_neighbors_parser=subparsers.add_parser('show-t0-bgp-neighbors', parents = [nsx_url_flag], help = 'show T0 BGP neighbors')
-    show_t0_bgp_routes_parser=subparsers.add_parser('show-t0-bgp-routes', parents = [nsx_url_flag], help = 'show all learned and advertised routes through BGP')
     show_t0_prefix_lists_parser=subparsers.add_parser('show-t0-prefix-lists', parents = [nsx_url_flag], help = 'show T0 prefix lists')
-    show_t0_routes_parser=subparsers.add_parser('show-t0-routes', parents = [nsx_url_flag], help = 'show routes at the T0 router')
-    show_t0_static_routes_parser=subparsers.add_parser('show-t0-static-routes', parents = [nsx_url_flag], help = 'show static routes at the T0 router')
+
+    show_routes_parser=subparsers.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
+    show_routes_parser.add_argument('-rt', '--route-type', choices = ['t0', 'bgp', 'static', 'tgw'], required= True, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
+    show_routes_parser.add_argument('--search-name', help = "Optionally, enter the name of the SDDC group you wish to view the route table for.")
+    show_routes_parser.set_defaults(func = getSDDCroutes)
 
 # ============================
 # NSX-T - DNS
@@ -3544,7 +3687,7 @@ def main():
     """ Subparser for Tier1 Gateway function - remove-t1 """
     remove_t1_parser=subparsers.add_parser('remove-t1', parents = [nsx_url_flag], help='Removes a secondary T1 router.')
     remove_t1_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
-    remove_t1_parser.set_defaults(func=remove_t1_parser)
+    remove_t1_parser.set_defaults(func=remove_t1)
 
 # ============================
 # NSX-T - VPN
@@ -3987,43 +4130,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             group_id = get_group_id(group, ORG_ID, session_token)
 #             resource_id = get_resource_id(group_id, ORG_ID, session_token)
 #             get_group_info(group_id, resource_id, ORG_ID, session_token)
-
-
-#     # ============================
-#     # VTC - TGW Operations
-#     # ============================
-
-
-#     elif intent_name == "show-tgw-routes":
-#         print("===== Show TGW route tables =========")
-#         #get_sddc_groups( ORG_ID, session_token)
-#         sddc_groups = get_sddc_groups( ORG_ID, session_token)
-#         group_id = None
-#         if DEBUG_MODE:
-#             print(f'DEBUG: sddc_groups = {sddc_groups}')
-#         if len(sys.argv) > 2:
-#             search_name = sys.argv[2]
-#             for grp in sddc_groups:
-#                 if grp['name'] == search_name:
-#                     group_id = grp['id']
-#                     group_name = search_name
-#                     if DEBUG_MODE:
-#                         print(f'DEBUG: Found {search_name} with group ID {group_id}')
-#                     break
-#         else:
-#             group = input('   Select SDDC Group: ')
-#             group_id = sddc_groups[int(group) -1]['id']
-#             group_name = sddc_groups[int(group) -1]['name']
-#             if DEBUG_MODE:
-#                 print(f'DEBUG: User input group = {group}')
-#                 print(f'DEBUG: group_id from sddc_groups = {group_id}')
-#         #group_id = get_group_id(group, ORG_ID, session_token)
-#         if group_id is None:
-#             print('Could not retrieve group ID')
-#         else:
-#             resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#             print(f'Route table for {group_name} ({group_id})')
-#             get_route_tables(resource_id, ORG_ID, session_token)
 
 
 #     # ============================
