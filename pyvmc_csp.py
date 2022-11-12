@@ -47,7 +47,10 @@ def get_csp_users_json(strCSPProdURL, orgID, session_token):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        try:
+            print(json_response['error_message'])
+        except:
+            pass
 
 
 def get_csp_groups_searchterm_json(strCSProdURL, org_id, session_token,search_term):

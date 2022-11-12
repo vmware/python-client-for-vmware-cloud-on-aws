@@ -328,10 +328,11 @@ def attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json
     myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
     response = requests.patch(myURL, headers=myHeader, json = neighbor_json)
     # json_response = response.json()
-    if response.status_code != 200:
+    if response.status_code == 200:
+        return response.status_code
+    else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-    else:
         return response.status_code
 
 def get_sddc_bgp_as_json(proxy_url,sessiontoken):
@@ -360,6 +361,7 @@ def get_sddc_edge_cluster_json(proxy_url, sessiontoken):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def get_sddc_edge_nodes_json(proxy_url, sessiontoken, edge_cluster_id):
@@ -374,6 +376,7 @@ def get_sddc_edge_nodes_json(proxy_url, sessiontoken, edge_cluster_id):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def get_sddc_internet_stats_json(proxy_url, sessiontoken, edge_path):
@@ -388,6 +391,7 @@ def get_sddc_internet_stats_json(proxy_url, sessiontoken, edge_path):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def get_sddc_mtu_json(proxy_url,sessiontoken):
@@ -395,12 +399,13 @@ def get_sddc_mtu_json(proxy_url,sessiontoken):
     myURL = f'{proxy_url}/cloud-service/api/v1/infra/external/config'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    if response.status_code == 200:
-        return json_response
-    else:
+    if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        return False
+    else:
+        json_response = response.json()
+        return json_response
 
 
 def get_sddc_t0_advertised_routes_json(proxy, session_token, bgp_neighbor_id):
@@ -422,13 +427,13 @@ def get_sddc_t0_bgp_neighbors_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors'
     response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    if response.status_code == 200:
-        return json_response
-    else:
+    if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        return False
+    else:
+        json_response = response.json()
+        return json_response
 
 
 def get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id):
@@ -443,6 +448,7 @@ def get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def get_sddc_bgp_vpn_json(proxy_url, sessiontoken):
@@ -457,6 +463,7 @@ def get_sddc_bgp_vpn_json(proxy_url, sessiontoken):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id):
@@ -523,16 +530,19 @@ def new_bgp_prefix_list_json(proxy, session_token, prefix_list_id, prefix_list):
     if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-
+        sys.exit(1)
 
 def remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id):
     """Removes BGP prefix lists from T0 edge gateway - applicable for route based VPN"""
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id
     response = requests.delete(myURL, headers=myHeader)
-    if response.status_code != 200:
+    if response.status_code == 200:
+        return response.status_code
+    else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return response.status_code
 
 
 def set_sddc_bgp_as_json(proxy,session_token,json_data):
@@ -545,6 +555,9 @@ def set_sddc_bgp_as_json(proxy,session_token,json_data):
     if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
+    else:
+        return True
 
 
 def set_sddc_mtu_json(proxy_url,sessiontoken,json_data):
@@ -554,6 +567,9 @@ def set_sddc_mtu_json(proxy_url,sessiontoken,json_data):
     if response.status_code != 200:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
+    else:
+        return True
 
 
 # ============================
@@ -943,8 +959,19 @@ def get_vms_json(proxy_url, session_token):
 
 
 # ============================
-# Segments
+# T1 Gateways
 # ============================
+
+def create_t1_json(proxy_url, sessiontoken, t1_id, json_data):
+    """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it doesn't already exist."""
+    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{t1_id}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    if response.status_code != 200:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
+    return response.status_code
 
 def configure_t1_json(proxy_url, sessiontoken, t1_id, json_data):
     """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it doesn't already exist."""
@@ -965,6 +992,10 @@ def delete_t1_json(proxy_url, sessiontoken, t1_id):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
     return response.status_code
+
+# ============================
+# Segments
+# ============================
 
 def new_segment_json(proxy_url, sessiontoken, segment_name, segment_type, json_data):
     my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
@@ -1024,6 +1055,7 @@ def get_cgw_segments_json(proxy_url, sessiontoken):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return False
 
 
 def new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data):

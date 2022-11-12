@@ -44,6 +44,7 @@ import sys
 import pandas as pd
 from deepdiff import DeepDiff
 from os.path import exists
+from os import makedirs
 from prettytable import PrettyTable
 from requests.sessions import session
 from datetime import datetime
@@ -67,6 +68,15 @@ def generate_table(results):
     for dct in results:
         table.add_row([dct.get(c, "") for c in keyslist])
     return table
+
+def create_directory(dir_name):
+    # checking if the directory demo_folder exist or not.
+    if not exists(dir_name):  
+        # if the demo_folder directory is not present then create it.
+        makedirs(dir_name)
+        print(f'Created directory:{dir_name}')
+    else:
+        print(f'Directory already exists: {dir_name}')
 
 # ============================
 # CSP - Service Definitions
@@ -310,7 +320,7 @@ def showORGusers(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     jsonResponse = get_csp_users_json(strCSPProdURL, ORG_ID, sessiontoken)
-    if json_response == None:
+    if jsonResponse == None:
         print("API Error")
         sys.exit(1)
 
@@ -1100,13 +1110,15 @@ def search_nsx(**kwargs):
         print(table.get_string(fields=["display_name", "cves", "attack_target", "cvss"]))
     elif object_type == "PrefixList":
         for item in results:
+            if not 'description' in item:
+                item['description'] = "--"
             if not item.get("prefixes"):
                 item.clear()
         results = list(filter(None, results))
         if len(results) !=0:
             table = generate_table(results)
             table._max_width = {"prefixes" : 50}
-            print(table.get_string(fields=["resource_type", "id", "description", "prefixes"]))
+            print(table.get_string(fields=["resource_type", "id", "description","prefixes"]))
         else:
             print("None found.")
     elif object_type == "RouteBasedIPSecVpnSession":
@@ -1584,6 +1596,7 @@ def delete_ids_rule(**kwargs):
         print(
             "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
         sys.exit(1)
+    session_token = kwargs['session_token']
     ids_rule_name = kwargs['objectname']
     ids_policy_name = kwargs['ids_policy'][0]
     json_response_code = delete_ids_rule_json(proxy, session_token, ids_rule_name, ids_policy_name)
@@ -1598,62 +1611,123 @@ def delete_ids_rule(**kwargs):
 # ============================
 
 
-def attachT0BGPprefixlist(proxy, session_token, neighbor_id):
-    """Attaches identified prefix list to T0 edge gateway - applicable for route-based VPN"""
-    neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
-    for key in list(neighbor_json.keys()):
-        if key.startswith('_'):
-            del neighbor_json[key]
-#   while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
-#   begin input loop
-    test = ''
-    while test != "5":
-        print("\nPlease select an option:")
-        print("\t1- Review neighbor config ")
-        print("\t2- Add in_route_filter (only one allowed) ")
-        print("\t3- Add out_route_filter (only one allowed) ")
-        print("\t4- Clear all prefix lists")
-        print("\t5- Commit changes")
-        print("\t6- Abort")
-        print("\n")
-        test=input('What would you like to do? ')
-        if test == "1":
-            pretty_json = json.dumps(neighbor_json, indent=2)
-            print(pretty_json)
-            print()
-        elif test == "2":
-            prefix_list_id = input('Please enter the prefix list ID exactly ')
-            neighbor_json['route_filtering'][0]["in_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
-            print()
-            print(f'Prefix list {prefix_list_id} has been added to in_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
-            print()
-        elif test =="3":
-            prefix_list_id = input('Please enter the prefix list ID exactly ')
-            neighbor_json['route_filtering'][0]["out_route_filters"] = ['/infra/tier-0s/vmc/prefix-lists/' + prefix_list_id]
-            print()
-            print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
-            print()
-        elif test =="4":
-            if neighbor_json.get("in_route_filters"):
-                del neighbor_json["in_route_filters"]
-            if neighbor_json.get("out_route_filters"):
-                del neighbor_json["out_route_filters"]
-            neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-        elif test == "5":
-            status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+def attachT0BGPprefixlist(**kwargs):
+    """Attaches identified prefix list to a route-based VPN"""
+    proxy = kwargs['proxy']
+    session_token =  kwargs['sessiontoken']
+
+    # set the neighbor ID, retrieve the configuration of the neighbor from NSX, clear unwanted keys from JSON
+    if kwargs['neighbor_id'] is not None:
+        neighbor_id = kwargs['neighbor_id']
+        neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
+        if neighbor_json != False:
+            for key in list(neighbor_json.keys()):
+                if key.startswith('_'):
+                    del neighbor_json[key]
+        else:
+            print("Something went wrong, please try again.")
+            sys.exit(1)
+    else:
+        print("Please specify the BGP neighbor ID to configure using --neighbor-id.  Use 'pyVMC.py bgp show --neighbors for a list.'")
+        sys.exit(1)
+
+    # If "interactive" mode is FALSE, check that user has provided prefix list ID and route filter choice
+    if kwargs['interactive'] is False:
+        if kwargs['prefix_list_id'] is not None:
+            # Check to ensure prefix list of same ID does not already exist... if so, exit.
+            prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
+            prefix_results = prefix_lists['results']
+            for prefixlist in prefix_results:
+                if prefixlist['id'] == prefix_list_id:
+                    print("prefix list already exists - please specify a different name or ID.")
+                    sys.ext(1)
+                else:
+                    continue
+            prefix_list_id = kwargs['prefix_list_id']
+        else:
+            print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
+            sys.exit(1)
+        if kwargs['route_filter'] is not None:
+            route_filter = kwargs['route_filter']
+        else:
+            print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
+            sys.exit(1)
+        # proceed to attach prefix list
+        neighbor_json['route_filtering'][0][f'{route_filter}_route_filters'] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+        status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+        if status_code == 200:
             print(f'Status {status_code}. Complete - route filter entry:')
             print()
             pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
             print(pretty_json)
             print()
-        elif test == "6":
-            break
         else:
-            print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
+            print(f'Status {status_code}. Prefix list was NOT attached.')
+            sys.exit(1)
+
+    # If Interactive is TRUE, then prompt the user for input on what to do next
+    else:
+        # while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
+        # begin input loop
+        test = ''
+        while test != "5":
+            print("\nPlease select an option:")
+            print("\t1- Review neighbor config ")
+            print("\t2- Add in_route_filter (only one allowed) ")
+            print("\t3- Add out_route_filter (only one allowed) ")
+            print("\t4- Clear all prefix lists")
+            print("\t5- Commit changes")
+            print("\t6- Abort")
+            print("\n")
+            test=input('What would you like to do? ')
+            if test == "1":
+                pretty_json = json.dumps(neighbor_json, indent=2)
+                print(pretty_json)
+                print()
+            elif test == "2":
+                prefix_list_id = input('Please enter the prefix list ID exactly ')
+                neighbor_json['route_filtering'][0]["in_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+                print()
+                print(f'Prefix list {prefix_list_id} has been added to in_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
+                print()
+            elif test =="3":
+                prefix_list_id = input('Please enter the prefix list ID exactly ')
+                neighbor_json['route_filtering'][0]["out_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+                print()
+                print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
+                print()
+            elif test =="4":
+                if neighbor_json.get("in_route_filters"):
+                    del neighbor_json["in_route_filters"]
+                if neighbor_json.get("out_route_filters"):
+                    del neighbor_json["out_route_filters"]
+                neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+            elif test == "5":
+                status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+                if status_code == 200:
+                    print(f'Status {status_code}. Complete - route filter entry:')
+                    print()
+                    pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
+                    print(pretty_json)
+                    print()
+                else:
+                    print(f'Status {status_code}. Prefix list was NOT attached.')
+                    sys.exit(1)
+            elif test == "6":
+                break
+            else:
+                print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
 
-def detachT0BGPprefixlists(proxy, session_token, neighbor_id):
-    """Detaches all prefix lists from specified T0 BGP neighbor - applicable for route-based VPN"""
+def detachT0BGPprefixlists(**kwargs):
+    """Detaches all prefix lists from specified T0 BGP neighbor - applicable for a route-based VPN"""
+    proxy = kwargs['proxy']
+    session_token =  kwargs['sessiontoken']
+    if kwargs['neighbor_id'] is not None:
+        neighbor_id = kwargs['neighbor_id']
+    else:
+        print("Please specify the BGP neighbor ID to configure using --neighbor-id.  Use 'pyVMC.py bgp show --neighbors for a list.'")
+        sys.exit(1)
     neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
     print(json.dumps(neighbor_json, indent=2))
     for key in list(neighbor_json.keys()):
@@ -1661,11 +1735,17 @@ def detachT0BGPprefixlists(proxy, session_token, neighbor_id):
             del neighbor_json[key]
     neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
     status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
-    print(f'Status {status_code}. Prefix lists detached from {neighbor_id}')
+    if status_code == 200:
+        print(f'Status {status_code}. Prefix lists detached from {neighbor_id}')
+    else:
+        print(f'Status {status_code}. Prefix lists were NOT detached from {neighbor_id}')
+        sys.exit(1)
 
-
-def newBGPprefixlist(csp_url, session_token):
-    """Creates new prefix list for T0 edge gateway - applicable for route based VPN"""
+# def newBGPprefixlist(csp_url, session_token):
+def newBGPprefixlist(**kwargs):
+    """Creates new prefix list for a route based VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
 #   capture details for new prefix list
     description= input('Enter a description name for the prefix list:  ').lower()
     display_name= input('Enter a display name for the prefix list:  ').lower()
@@ -1710,96 +1790,201 @@ def newBGPprefixlist(csp_url, session_token):
             print("Please review the prefix list carefully... be sure you are not going to block all traffic!")
             print(prefix_list)
         elif test == "1":
-            new_bgp_prefix_list_json(csp_url, session_token, prefix_list_id, prefix_list)
+            new_bgp_prefix_list_json(proxy, session_token, prefix_list_id, prefix_list)
             print("prefix list added")
         elif test == "4":
             break
         else:
             print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
+def delRBVPNprefixlist(**kwargs):
+    """Deletes a route-based VPN prefix list from the SDDC."""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    if kwargs['prefix_list_id'] is not None:
+        prefix_list_id = kwargs['prefix_list_id']
+    else:
+        print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show --prefix-lists for a list.'")
+        sys.exit(1)
+    response = remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
+    if response == 200:
+        print(f'The BGP prefix list {prefix_list_id} has been deleted.')
+    else:
+        print("The prefix list was not deleted.")
+        sys.exit(1)
 
-def getSDDCBGPAS(proxy_url,sessiontoken):
-    json_response = get_sddc_bgp_as_json(proxy_url,sessiontoken)
-    sddc_bgp_as = json_response['local_as_num']
-    print(f'The SDDC BGP Autonomous System is ASN {sddc_bgp_as}')
+
+def getSDDCBGPAS(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    json_response = get_sddc_bgp_as_json(proxy,sessiontoken)
+    if json_response != False:
+        sddc_bgp_as = json_response['local_as_num']
+        print(f'The SDDC BGP Autonomous System is ASN {sddc_bgp_as}')
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
 
 
-def setSDDCBGPAS(proxy_url,sessiontoken,asn):
+def setSDDCBGPAS(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    if kwargs['asn'] is not None:
+        asn = kwargs['asn']
+    else:
+        print("Please provide deisred ASN value with -asn [VALUE].")
     json_data = {
     "local_as_num": asn
     }
-    set_sddc_bgp_as_json(proxy_url,sessiontoken,json_data)
-    print("The BGP AS has been updated:")
-    getSDDCBGPAS(proxy_url,sessiontoken)
- 
- 
-def getSDDCMTU(proxy_url,sessiontoken):
-    json_response = get_sddc_mtu_json(proxy_url,sessiontoken)
-    sddc_MTU = json_response['intranet_mtu']
-    print(f'The MTU over the Direct Connect is {sddc_MTU} Bytes.')
+    response = set_sddc_bgp_as_json(proxy,sessiontoken,json_data)
+    if response!= False:
+        print("The BGP AS has been updated:")
+        getSDDCBGPAS(proxy,sessiontoken)    
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
 
 
-def setSDDCMTU(proxy_url,sessiontoken,mtu):
+ 
+def getSDDCMTU(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    json_response = get_sddc_mtu_json(proxy,sessiontoken)
+    if json_response != False:
+        sddc_MTU = json_response['intranet_mtu']
+        print(f'The MTU over the Direct Connect is {sddc_MTU} Bytes.')
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+
+
+def setSDDCMTU(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    if kwargs['mtu'] is not None:
+        mtu = kwargs['mtu']
+    else:
+        print("Please provide deisred MTU value with -mtu [VALUE].")
     json_data = {
     "intranet_mtu" : mtu
     }
-    set_sddc_mtu_json(proxy_url,sessiontoken,json_data)
-    print("The MTU has been updated:")
-    getSDDCMTU(proxy_url,sessiontoken)
+    response = set_sddc_mtu_json(proxy,sessiontoken,json_data)
+    if response!= False:
+        print("The MTU has been updated:")
+        getSDDCMTU(proxy,sessiontoken)
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
 
 
 def getSDDCEdgeCluster(proxy_url, sessiontoken):
     """ Gets the Edge Cluster ID """
     json_response = get_sddc_edge_cluster_json(proxy_url, sessiontoken)
-    edge_cluster_id = json_response['results'][0]['id']
-    return edge_cluster_id
-
+    if json_response != False:
+        edge_cluster_id = json_response['results'][0]['id']
+        return edge_cluster_id
+    else:
+        return False
 
 def getSDDCEdgeNodes(proxy_url, sessiontoken, edge_cluster_id,edge_id):
     """ Gets the Edge Nodes Path """
     json_response= get_sddc_edge_nodes_json(proxy_url, sessiontoken, edge_cluster_id)
-    edge_path = json_response['results'][edge_id]['path']
-    return edge_path
+    if json_response != False:
+        edge_path = json_response['results'][edge_id]['path']
+        return edge_path
+    else:
+        return False
 
 
 def getSDDCInternetStats(proxy_url, sessiontoken, edge_path):
     """Displays counters for egress interface"""
     json_response = get_sddc_internet_stats_json(proxy_url, sessiontoken, edge_path)
-    total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
-    return total_bytes
-
-
-def getSDDCBGPVPN(proxy_url, sessiontoken):
-    """Retreives preferred path - VPN or DX."""
-    json_response = get_sddc_bgp_vpn_json(proxy_url, sessiontoken)
-    sddc_bgp_vpn = json_response['route_preference']
-    if sddc_bgp_vpn == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
-        return "The preferred path is over VPN, with Direct Connect as a back-up."
+    if json_response != False:
+        total_bytes = json_response['per_node_statistics'][0]['tx']['total_bytes']
+        return total_bytes
     else:
-        return "The preferred path is over Direct Connect, with VPN as a back-up."
+        return False
 
 
-def getSDDCT0BGPneighbors(csp_url, session_token):
+def getSDDCBGPVPN(**kwargs):
+    """Retreives preferred path - VPN or DX."""
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    json_response = get_sddc_bgp_vpn_json(proxy, sessiontoken)
+    if json_response != False:
+        sddc_bgp_vpn = json_response['route_preference']
+        if sddc_bgp_vpn == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
+            return "The preferred path is over VPN, with Direct Connect as a back-up."
+        else:
+            return "The preferred path is over Direct Connect, with VPN as a back-up."
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+
+def getSDDCEgressInterfaceCtrs(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    edge_cluster_id = getSDDCEdgeCluster(proxy, sessiontoken)
+    if edge_cluster_id == False:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+    else:
+        pass
+    edge_path_0 = getSDDCEdgeNodes(proxy, sessiontoken, edge_cluster_id, 0)
+    if edge_path_0 == False:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+    else:
+        pass
+    edge_path_1 = getSDDCEdgeNodes(proxy, sessiontoken, edge_cluster_id, 1)
+    if edge_path_1 == False:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+    else:
+        pass
+    stat_0 = getSDDCInternetStats(proxy,sessiontoken, edge_path_0)
+    if stat_0 == False:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+    else:
+        pass
+    stat_1 = getSDDCInternetStats(proxy,sessiontoken, edge_path_1)
+    if stat_1 == False:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+    else:
+        pass
+    total_stat = stat_0 + stat_1
+    print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")    
+
+
+def getSDDCT0BGPneighbors(**kwargs):
     """Prints BGP neighbors for T0 edge gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
     bgp_neighbors = get_sddc_t0_bgp_neighbors_json(proxy, session_token)
-    neighbors = bgp_neighbors['results']
-    bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
-    for neighbor in neighbors:
-        if neighbor.get("in_route_filters"):
-            in_filter = neighbor['in_route_filters']
-        else:
-            in_filter = "-"
-        if neighbor.get("out_route_filters"):
-            out_filter = neighbor['out_route_filters']
-        else:
-            out_filter = "-"
-        bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
-    print('NEIGHBORS:')
-    print(bgp_table)
-    if len(sys.argv) == 3:
-        if sys.argv[2] == "showjson":
-            print('RAW JSON:')
-            print(json.dumps(neighbors,indent=2))
+    if bgp_neighbors != False:
+        neighbors = bgp_neighbors['results']
+        bgp_table = PrettyTable(['ID','Remote AS Num','Remote Address','In_route_filter','Out_route_filter'])
+        for neighbor in neighbors:
+            if neighbor.get("in_route_filters"):
+                in_filter = neighbor['in_route_filters']
+            else:
+                in_filter = "-"
+            if neighbor.get("out_route_filters"):
+                out_filter = neighbor['out_route_filters']
+            else:
+                out_filter = "-"
+            bgp_table.add_row([neighbor['id'],neighbor['remote_as_num'],neighbor['neighbor_address'],in_filter, out_filter])
+        print('NEIGHBORS:')
+        print(bgp_table)
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "showjson":
+                print('RAW JSON:')
+                print(json.dumps(neighbors,indent=2))
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
 
 
 def getSDDCT0BGPRoutes(proxy, session_token):
@@ -1842,8 +2027,10 @@ def getSDDCT0BGPRoutes(proxy, session_token):
     print (learnedRoutesTable.get_string(sortby="BGP Neighbor"))
 
 
-def getSDDCT0PrefixLists(proxy, session_token):
+def getSDDCT0PrefixLists(**kwargs):
     """Prints prefix lists for T0 edge gateway - applicable for route-based VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
     prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
     prefix_results = prefix_lists['results']
 #   clear results for any prefix lists found that contain "System created prefix list"
@@ -1880,12 +2067,76 @@ def getSDDCT0PrefixLists(proxy, session_token):
                 print(f'PREFIX ENTRIES FOR {prefixlist["id"]}:')
                 print(prefixtable)
                 print("")
-        if len(sys.argv) == 3:
-            if sys.argv[2] == "showjson":
-                print('RAW JSON:')
-                print(json.dumps(prefix_lists,indent=2))
     else:
         print("No user created prefixes found.")
+
+def exportRBVPNprefixlist(**kwargs):
+    """Exports a route-based VPN prefix list to a local JSON file."""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    if kwargs['prefix_list_id'] is not None:
+        prefix_list_id = kwargs['prefix_list_id']
+    else:
+        print("Please specify the prefix list ID to export using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show --prefix-lists for a list.'")
+        sys.exit(1)
+    prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
+    prefix_results = prefix_lists['results']
+    for prefixlist in prefix_results:
+        if prefixlist['id'] == prefix_list_id:
+            exportlist = prefixlist
+        else:
+            continue
+    if exportlist is None:
+        print("No prefix lists matching that ID found.")
+        sys.exit(0)
+    # Delete unnecessary keys in the prefix list
+    for key in list(exportlist.keys()):
+        if key.startswith('_'):
+            del exportlist[key]
+    delete_list = ["path","relative_path","parent_path","unique_id","marked_for_delete","overridden", "realization_id"]
+    for key in delete_list:
+        del exportlist[key]
+    # Create the export directory if it doesn't already exist
+    dir_name = "json"
+    create_directory(dir_name)
+    # export the prefix list to a JSON file
+    filename = f'{prefix_list_id}.json'
+    export_file = f'{dir_name}/{filename}'
+    with open(export_file, 'w') as outfile:
+        json.dump(exportlist, outfile, indent=4)
+    print(f'Prefix list exported as {export_file}')
+
+def importRBVPNprefixlist(**kwargs):
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    if kwargs['filename'] is not None:
+        filename = kwargs['filename']
+    else:
+        print("Please specify the file name to import using --filename.  Files to be imported are expeted to reside in /json.")
+        sys.exit(0)
+    if kwargs['prefix_list_id'] is not None:
+        prefix_list_id = kwargs['prefix_list_id']
+        # Check to ensure prefix list of same ID does not already exist... if so, exit.
+        prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
+        prefix_results = prefix_lists['results']
+        for prefixlist in prefix_results:
+            if prefixlist['id'] == prefix_list_id:
+                print("prefix list already exists - please specify a different name or ID.")
+                sys.ext(1)
+            else:
+                continue
+    else:
+        print("Please specify the prefix list ID to create using --prefix-list-id.")
+        sys.exit(0)
+    try:
+        with open(f'json/{filename}', "r") as filehandle:
+            prefix_list = json.load(filehandle)
+    except:
+        print(f'Import failed - unable to open {filename}')
+        return
+    new_bgp_prefix_list_json(proxy, session_token, prefix_list_id, prefix_list)
+    print(f'prefix list {prefix_list} added')
+
 
 def getSDDCroutes(**kwargs):
     proxy_url = kwargs['proxy']
@@ -2619,10 +2870,26 @@ def getSDDCPublicIP(proxy_url, sessiontoken):
 
 
 # ============================
-# NSX-T - Segments
+# NSX-T - T1 Gateways
 # ============================
 
-def configure_t1(**kwargs):
+def t1_create(**kwargs):
+    """ Creates a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it does not exist already."""
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    if kwargs['tier1-id'] is None or kwargs['t1type'] is None:
+        print("Please use -t1id (or --tier1-id) to specify the name of the T1 router to be configured, and -t1t or --t1type to specify the type (ROUTED/NATTED/ISOLATED).  Consult the help for additional options.")
+        sys.exit(1)
+    t1_id = kwargs["tier1-id"]
+    json_data = {"type": kwargs["t1type"]}
+    status = create_t1_json(proxy, sessiontoken, t1_id, json_data)
+    if status == 200:
+        print(f'Tier1 gateway {t1_id} has been configured as {kwargs["t1type"]}')
+    else:
+        print("T1 was not created.  Please check your syntax and try again.")
+        sys.exit(1)
+
+def t1_configure(**kwargs):
     """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it does not exist already."""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -2636,8 +2903,9 @@ def configure_t1(**kwargs):
         print(f'Tier1 gateway {t1_id} has been configured as {kwargs["t1type"]}')
     else:
         print("T1 was not created.  Please check your syntax and try again.")
+        sys.exit(1)
 
-def remove_t1(**kwargs):
+def t1_remove(**kwargs):
     """ Deletes a Tier1 router as"""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
@@ -2656,6 +2924,12 @@ def remove_t1(**kwargs):
         print(f'Tier1 gateway {t1_id} has been deleted.')
     else: 
         print("T1 was not removed.  Please check your syntax and try again.")
+        sys.exit(1)
+
+
+# ============================
+# NSX-T - Segments
+# ============================
 
 def new_segment(**kwargs):
     """
@@ -2707,6 +2981,7 @@ def new_segment(**kwargs):
         search_nsx(**vars)
     else:
         print("The segment was not created. Please check your syntax and try again.")
+        sys.exit(1)
       
 def configure_segment(**kwargs):
     """
@@ -2750,6 +3025,7 @@ def configure_segment(**kwargs):
         search_nsx(**vars)
     else: 
         print("The segment was not modified.  Please check your syntax and try again.")
+        sys.exit(1)
 
 def remove_segment(**kwargs):
     """
@@ -2767,71 +3043,9 @@ def remove_segment(**kwargs):
             print(f'The following network has been removed: {segment_name}')
         else:
             print("The segment was not removed.  Please check your syntax and try again.")
+            sys.exit(1)
     else:
         print("The segment does not exist.")
-  
-# def connect_segment(proxy_url, sessiontoken, network_id, gateway_address, dhcp_range, domain_name):
-#     """ Connects an existing SDDC Network to the default CGW. L2 VPN networks are not currently supported. """
-#     segment = search_nsx_json(proxy, session_token, "Segment", network_id)
-#     if 'connectivity_path' in segment['results'][0]:
-#         if segment['results'][0]['connectivity_path'] == "/infra/tier-1s/cgw":
-#             json_data = {
-#                 "subnets":[{"dhcp_ranges":[dhcp_range],
-#                 "gateway_address":gateway_address}],
-#                 "domain_name":domain_name,
-#                 "id":network_id,
-#                 "advanced_config":{"connectivity":"ON"}
-#                 }
-#             if dhcp_range == "":
-#                 del (json_data["subnets"][0]['dhcp_ranges'])
-#             if domain_name =="":
-#                 del (json_data["domain_name"])
-#             connect_segment_json(proxy_url, sessiontoken, network_id, json_data)
-#             print(f'The network has been connected:  {network_id}')
-#             search_nsx(proxy, session_token, "Segment", network_id)    
-#     else:
-#         print("")
-#         print("Please check your segments again.  CONNECT and DISCONNECT comands may only be used for segments on the default CGW.")
-#         print("To connect or disconnect secondary T1 routers, please use 'configure-t1'.")
-
-# def disconnect_segment(proxy_url, sessiontoken, network_id):
-#     """ Connects an existing SDDC Network. L2 VPN networks are not currently supported. """
-#     segment = search_nsx_json(proxy, session_token, "Segment", network_id)
-#     if 'connectivity_path' in segment['results'][0]:
-#         if segment['results'][0]['connectivity_path'] == "/infra/tier-1s/cgw":
-#             json_data = {
-#                     "id":network_id,
-#                     "advanced_config":{"connectivity":"OFF"}
-#                     }
-#             connect_segment_json(proxy_url, sessiontoken, network_id, json_data)
-#             print("The network has been disconnected:")
-#             search_nsx (proxy, session_token, "Segment", network_id)  
-#     else:
-#         print("")
-#         print("Please check your segments again.  CONNECT and DISCONNECT comands may only be used for segments on the default CGW.")
-#         print("To connect or disconnect secondary T1 routers, please use 'configure-t1'.")
-
-# def newSDDCnetworks(proxy_url, sessiontoken, display_name, gateway_address, dhcp_range, domain_name, routing_type):
-#     """ Creates a new SDDC Network. L2 VPN networks are not currently supported. """
-#     json_data = {
-#             "subnets":[{"dhcp_ranges":[dhcp_range],
-#             "gateway_address":gateway_address}],
-#             "type":routing_type,
-#             "display_name":display_name,
-#             "domain_name":domain_name,
-#             "id":display_name
-#             }
-#     if routing_type == "DISCONNECTED" :
-#         json_data.update({'advanced_config':{"connectivity":"OFF"}})
-#     else:
-#         json_data.update({'advanced_config':{"connectivity":"ON"}})
-#     if dhcp_range == "":
-#         del (json_data["subnets"][0]['dhcp_ranges'])
-#     new_sddc_networks_json(proxy_url, sessiontoken, display_name, json_data)
-#     print("The following network has been created:")
-#     table = PrettyTable(['Name', 'Gateway', 'DHCP', 'Domain Name', 'Routing Type'])
-#     table.add_row([display_name, gateway_address, dhcp_range, domain_name, routing_type])
-#     return table
 
 def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l2vpn_path):
     """ Creates a new stretched/extended Network. """
@@ -2853,28 +3067,30 @@ def newSDDCStretchednetworks(proxy_url, sessiontoken, display_name, tunnel_id, l
     table.add_row([display_name, tunnel_id, "extended"])
     return table
 
-# def removeSDDCNetworks(proxy_url, sessiontoken, network_id):
-#     """ Remove an SDDC Network """
-#     remove_sddc_networks_json(proxy_url, sessiontoken, network_id)
-#     print(f'The network {network_id} has been deleted.')
 
-# def getSDDCnetworks(proxy_url, sessiontoken):
-#     """Prints out all Compute Gateway segemtns in all the SDDCs in the Org"""
-#     json_response = get_cgw_segments_json(proxy_url, sessiontoken)
-#     sddc_networks = json_response['results']
-#     table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
-#     table_extended = PrettyTable(['Name', 'id','Tunnel ID'])
-#     for i in sddc_networks:
-#         if ( i['type'] == "EXTENDED"):
-#             table_extended.add_row([i['display_name'], i['id'], i['l2_extension']['tunnel_id']])
-#         elif ( i['type'] == "DISCONNECTED"):
-#             table.add_row([i['display_name'], i['id'], i['type'],"-", "-"])
-#         else:
-#             table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
-#     print("Routed Networks:")
-#     print(table)
-#     print("Extended Networks:")
-#     print(table_extended)
+def getSDDCnetworks(**kwargs):
+    """Prints out all Compute Gateway segemtns in all the SDDCs in the Org"""
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = get_cgw_segments_json(proxy, sessiontoken)
+    if json_response != False:
+        sddc_networks = json_response['results']
+        table = PrettyTable(['Name', 'id', 'Type', 'Network', 'Default Gateway'])
+        table_extended = PrettyTable(['Name', 'id','Tunnel ID'])
+        for i in sddc_networks:
+            if ( i['type'] == "EXTENDED"):
+                table_extended.add_row([i['display_name'], i['id'], i['l2_extension']['tunnel_id']])
+            elif ( i['type'] == "DISCONNECTED"):
+                table.add_row([i['display_name'], i['id'], i['type'],"-", "-"])
+            else:
+                table.add_row([i['display_name'], i['id'], i['type'], i['subnets'][0]['network'], i['subnets'][0]['gateway_address']])
+        print("Routed Networks:")
+        print(table)
+        print("Extended Networks:")
+        print(table_extended)
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
 
 def createLotsNetworks(proxy_url, sessiontoken,network_number):
     """ Creates lots of networks! """
@@ -3066,36 +3282,34 @@ def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
 # ============================
 # VCDR - Cloud File System
 # ============================
+
 def getVCDRCloudFS(**kwargs):
     """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
-    json_response = get_vcdr_cloud_fs_json(strVCDRProdURL, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    # print(json.dumps(json_response, indent = 2))
-    cloud_fs = json_response["cloud_file_systems"]
-    table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
-    for i in cloud_fs:
-        table.add_row([i['name'], i['id']])
-    print(table)
-
-def getVCDRCloudFSDetails(**kwargs):
-    """Get details for an individual cloud file system."""
-    strVCDRProdURL = kwargs['strVCDRProdURL']
-    sessiontoken = kwargs['sessiontoken']
-    cloud_fs_id = kwargs['cloud_fs_id']
-    json_response = get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    print(" ")
-    print(f"Cloud FS Name: {json_response['name']}")
-    print(f"Capacity GiB: {json_response['capacity_gib']:,.2f}")
-    print(f"Used GiB: {json_response['used_gib']:,.2f}")
-    print(f"Recovery SDDC: {json_response['recovery_sddc_id']}")
-    print(" ")
+    if kwargs['cloud_fs_id'] is None:
+        json_response = get_vcdr_cloud_fs_json(strVCDRProdURL, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        # print(json.dumps(json_response, indent = 2))
+        cloud_fs = json_response["cloud_file_systems"]
+        table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
+        for i in cloud_fs:
+            table.add_row([i['name'], i['id']])
+        print(table)
+    else:
+        cloud_fs_id = kwargs['cloud_fs_id']
+        json_response = get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        print(" ")
+        print(f"Cloud FS Name: {json_response['name']}")
+        print(f"Capacity GiB: {json_response['capacity_gib']:,.2f}")
+        print(f"Used GiB: {json_response['used_gib']:,.2f}")
+        print(f"Recovery SDDC: {json_response['recovery_sddc_id']}")
+        print(" ")
 
 
 # ============================
@@ -3105,31 +3319,30 @@ def getVCDRSites(**kwargs):
     """Get a list of all protected sites associated with an individual cloud file system."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
-    cloud_fs_id = kwargs['cloud_fs_id']
-    json_response = get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
+    if kwargs['cloud_fs_id'] is None:
+        print("Please specify the ID of the cloud file system using '-cloud-fs-id'")
         sys.exit(1)
-    sites = json_response["protected_sites"]
-    table = PrettyTable(['Site Name', 'Site ID'])
-    for i in sites:
-        table.add_row([i['name'], i['id']])
-    print(table)
-
-def getVCDRSiteDetails(**kwargs):
-    """Get details about an individual protected site."""
-    strVCDRProdURL = kwargs['strVCDRProdURL']
-    sessiontoken = kwargs['sessiontoken']
     cloud_fs_id = kwargs['cloud_fs_id']
-    site_id = kwargs['site_id']
-    json_response = get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    print(" ")
-    print(f"Site Name: {json_response['name']}")
-    print(f"Site Type: {json_response['type']}")
-    print(" ")
+    if kwargs['site_id'] is None:
+        json_response = get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        sites = json_response["protected_sites"]
+        table = PrettyTable(['Site Name', 'Site ID'])
+        for i in sites:
+            table.add_row([i['name'], i['id']])
+        print(table)
+    else:
+        site_id = kwargs['site_id']
+        json_response = get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        print(" ")
+        print(f"Site Name: {json_response['name']}")
+        print(f"Site Type: {json_response['type']}")
+        print(" ")
 
 
 # ============================
@@ -3139,16 +3352,20 @@ def getVCDRVM(**kwargs):
     """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
+    if kwargs['cloud_fs_id'] is None:
+        print("Please specify the ID of the cloud file system using '-cloud-fs-id'")
+        sys.exit(1)
     cloud_fs_id = kwargs['cloud_fs_id']
     json_response = get_vcdr_vm_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
     if json_response == None:
         print("API Error")
         sys.exit(1)
-    vms = json_response["vms"]
-    table = PrettyTable(['VM Name', 'VCDR VM ID', 'VM Size'])
-    for i in vms:
-        table.add_row([i['name'], i['vcdr_vm_id'], i['size']])
-    print(table)
+    else:
+        vms = json_response["vms"]
+        table = PrettyTable(['VM Name', 'VCDR VM ID', 'VM Size'])
+        for i in vms:
+            table.add_row([i['name'], i['vcdr_vm_id'], i['size']])
+        print(table)
 
 
 # ============================
@@ -3158,45 +3375,45 @@ def getVCDRPG(**kwargs):
     """Get a list of all protection groups associated with an individual cloud file system."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
-    cloud_fs_id = kwargs['cloud_fs_id']
-    json_response = get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
+    if kwargs['cloud_fs_id'] is None:
+        print("Please specify the ID of the cloud file system using '-cloud-fs-id'")
         sys.exit(1)
-    pgs = json_response["protection_groups"]
-    table = PrettyTable(['Protection Group Name', 'Protection Group ID'])
-    for i in pgs:
-        table.add_row([i['name'], i['id']])
-    print(table)
-
-def getVCDRPGDetails(**kwargs):
-    """Get details for the requested protection group."""
-    strVCDRProdURL = kwargs['strVCDRProdURL']
-    sessiontoken = kwargs['sessiontoken']
-    cloud_fs_id = kwargs['cloud_fs_id']
-    pg_id = kwargs['protection_group_id']
-    json_response = get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    # print(json.dumps(json_response, indent = 2))
-    print(" ")
-    print(f"Protection Group Name: {json_response['name']}")
-    print(f"Protection Group Health: {json_response['health']}")
-    print(f"Protected Site ID: {json_response['protected_site_id']}")
-    print(f"Snapshot Schedule Active?: {json_response['snapshot_schedule_active']}")
-    print(f"Snapshot Frequency Type?: {json_response['snapshot_frequency_type']}")
-    # print(f"Used GiB: {json_response['used_gib']:,.2f}")
-    criteria = json_response["members_specs"]
-    print(f"Protected vCenter: {criteria[0]['vcenter_id']}")
-    if "vcenter_vm_name_patterns" in criteria[0]:
-        print(f"VM Naming Patterns: {criteria[0]['vcenter_vm_name_patterns']}")
-    if "vcenter_tags" in criteria[0]:
-        print(f"VM Tags: {criteria[0]['vcenter_tags']}")
-    if "vcenter_folder_paths" in criteria[0]:
-        print(f"VM Folders: {criteria[0]['vcenter_folder_paths']}")
-    print(f"Snapshot Schedule Specifications:  {json_response['schedule_specs']}")
-    print(" ")
+    else:
+        cloud_fs_id = kwargs['cloud_fs_id']
+        if kwargs['protection_group_id'] is None:
+            json_response = get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, sessiontoken)
+            if json_response == None:
+                print("API Error")
+                sys.exit(1)
+            pgs = json_response["protection_groups"]
+            table = PrettyTable(['Protection Group Name', 'Protection Group ID'])
+            for i in pgs:
+                table.add_row([i['name'], i['id']])
+            print(table)
+        else:
+            pg_id = kwargs['protection_group_id']
+            json_response = get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
+            if json_response == None:
+                print("API Error")
+                sys.exit(1)
+            # print(json.dumps(json_response, indent = 2))
+            print(" ")
+            print(f"Protection Group Name: {json_response['name']}")
+            print(f"Protection Group Health: {json_response['health']}")
+            print(f"Protected Site ID: {json_response['protected_site_id']}")
+            print(f"Snapshot Schedule Active?: {json_response['snapshot_schedule_active']}")
+            print(f"Snapshot Frequency Type?: {json_response['snapshot_frequency_type']}")
+            # print(f"Used GiB: {json_response['used_gib']:,.2f}")
+            criteria = json_response["members_specs"]
+            print(f"Protected vCenter: {criteria[0]['vcenter_id']}")
+            if "vcenter_vm_name_patterns" in criteria[0]:
+                print(f"VM Naming Patterns: {criteria[0]['vcenter_vm_name_patterns']}")
+            if "vcenter_tags" in criteria[0]:
+                print(f"VM Tags: {criteria[0]['vcenter_tags']}")
+            if "vcenter_folder_paths" in criteria[0]:
+                print(f"VM Folders: {criteria[0]['vcenter_folder_paths']}")
+            print(f"Snapshot Schedule Specifications:  {json_response['schedule_specs']}")
+            print(" ")
 
 # ============================
 # VCDR - Protection Group Snapshots
@@ -3205,41 +3422,42 @@ def getVCDRPGSnaps(**kwargs):
     """Get a list of all snapshots in a specific protection group."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
+    if kwargs['cloud_fs_id'] is None:
+        print("Please specify the ID of the cloud file system using '-cloud-fs-id'")
+        sys.exit(1)
+    if kwargs['protection_group_id'] is None:
+        print("Please specify the ID of the protection group using '-protection-group-id'")
+        sys.exit(1)
     cloud_fs_id = kwargs['cloud_fs_id']
     pg_id = kwargs['protection_group_id']
-    json_response = get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    snaps = json_response["snapshots"]
-    table = PrettyTable(['Snapshot Name', 'Snaphot ID'])
-    for i in snaps:
-        table.add_row([i['name'], i['id']])
-    print(table)
-
-def getVCDRSnapDetails(**kwargs):
-    """Get a list of all snapshots in a specific protection group."""
-    strVCDRProdURL = kwargs['strVCDRProdURL']
-    sessiontoken = kwargs['sessiontoken']
-    cloud_fs_id = kwargs['cloud_fs_id']
-    pg_id = kwargs['protection_group_id']
-    snap_id = kwargs['protection_group_snap_id']
-    json_response = get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    create_stamp_int = int(json_response['creation_timestamp'])
-    create_stamp = datetime.utcfromtimestamp(create_stamp_int/1e9)
-    expire_stamp_int = int(json_response['expiration_timestamp'])
-    expire_stamp = datetime.utcfromtimestamp(expire_stamp_int/1e9)
-    print(" ")
-    print(f"Snapshot Name: {json_response['name']}")
-    # print(f"Snapshot Creation: {json_response['creation_timestamp']}")
-    print(f"Snapshot Creation: {create_stamp}")
-    print(f"Snapshot Expiration: {expire_stamp}")
-    print(f"Snapshot Trigger: {json_response['trigger_type']}")
-    print(f"Number of VM: {json_response['vm_count']}")
-    print(" ")
+    if kwargs['protection_group_snap_id'] is None:
+        json_response = get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        snaps = json_response["snapshots"]
+        table = PrettyTable(['Snapshot Name', 'Snaphot ID'])
+        for i in snaps:
+            table.add_row([i['name'], i['id']])
+        print(table)
+    else:
+        snap_id = kwargs['protection_group_snap_id']
+        json_response = get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        create_stamp_int = int(json_response['creation_timestamp'])
+        create_stamp = datetime.utcfromtimestamp(create_stamp_int/1e9)
+        expire_stamp_int = int(json_response['expiration_timestamp'])
+        expire_stamp = datetime.utcfromtimestamp(expire_stamp_int/1e9)
+        print(" ")
+        print(f"Snapshot Name: {json_response['name']}")
+        # print(f"Snapshot Creation: {json_response['creation_timestamp']}")
+        print(f"Snapshot Creation: {create_stamp}")
+        print(f"Snapshot Expiration: {expire_stamp}")
+        print(f"Snapshot Trigger: {json_response['trigger_type']}")
+        print(f"Number of VM: {json_response['vm_count']}")
+        print(" ")
 
 # ============================
 # VCDR - Recovery SDDC
@@ -3248,30 +3466,28 @@ def getVCDRSDDCs(**kwargs):
     """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
     strVCDRProdURL = kwargs['strVCDRProdURL']
     sessiontoken = kwargs['sessiontoken']
-    json_response = get_vcdr_sddcs_json(strVCDRProdURL, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    sddcs = json_response["data"]
-    table = PrettyTable(['Recovery SDDC Name', 'Recovery SDDC ID'])
-    for i in sddcs:
-        table.add_row([i['name'], i['id']])
-    print(table)
-
-def getVCDRSDDCDetails(**kwargs):
-    """Get details of a specific Recovery SDDC."""
-    strVCDRProdURL = kwargs['strVCDRProdURL']
-    sessiontoken = kwargs['sessiontoken']
-    sddc_id = kwargs['recovery_sddc_id']
-    json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, sessiontoken)
-    if json_response == None:
-        print("API Error")
-        sys.exit(1)
-    print(" ")
-    print(f"Recovery SDDC Name: {json_response['name']}")
-    print(f"Recovery SDDC Region: {json_response['region']}")
-    print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
-    print(" ")
+    if kwargs['recovery_sddc_id'] is None:
+        json_response = get_vcdr_sddcs_json(strVCDRProdURL, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        sddcs = json_response["data"]
+        table = PrettyTable(['Recovery SDDC Name', 'Recovery SDDC ID'])
+        for i in sddcs:
+            table.add_row([i['name'], i['id']])
+        print(table)
+    else:
+        """Get details of a specific Recovery SDDC."""
+        sddc_id = kwargs['recovery_sddc_id']
+        json_response = get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, sessiontoken)
+        if json_response == None:
+            print("API Error")
+            sys.exit(1)
+        print(" ")
+        print(f"Recovery SDDC Name: {json_response['name']}")
+        print(f"Recovery SDDC Region: {json_response['region']}")
+        print(f"Recovery SDDC AZs: {json_response['availability_zones']}")
+        print(" ")
 
 
 
@@ -3463,8 +3679,8 @@ def main():
 # NSX-T - Search
 # ============================
     """ Subparser for NSX Search functions """
-    search_nsx_parser = subparsers.add_parser('search-nsx', parents = [nsx_url_flag], help='Search the NSX Manager inventory.')
-    search_nsx_parser.add_argument("-ot","--object_type", required=False, choices=["BgpNeighborConfig","BgpRoutingConfig","Group","IdsSignature","PrefixList","RouteBasedIPSecVPNSession","Segment","Service","StaticRoute","Tier0","Tier1","VirtualMachine","VirtualNetworkInterface"])
+    search_nsx_parser = subparsers.add_parser('search-nsx', parents = [nsx_url_flag],formatter_class=MyFormatter, help='Search the NSX Manager inventory.')
+    search_nsx_parser.add_argument("-ot","--object_type", required=False, choices=["BgpNeighborConfig","BgpRoutingConfig","Group","IdsSignature","PrefixList","RouteBasedIPSecVPNSession","Segment","Service","StaticRoute","Tier0","Tier1","VirtualMachine","VirtualNetworkInterface"], help="The type of object to search for.")
     search_nsx_parser.add_argument("-oid","--object_id", required=False, help="The name of the object you are searching for.")
     search_nsx_parser.set_defaults(func=search_nsx)
 
@@ -3507,27 +3723,108 @@ def main():
     # idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
 
 # ============================
-# NSX-T - BGP and Routing
+# NSX-T - Route-Based VPN Prefix Lists, Neighbors
 # ============================
-    parent_routing_parser = argparse.ArgumentParser(add_help=False)
-    #     neighbor id
-    #     prefix list id
-    #     asn
-    #     mtu
-    # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
 
-    attach_t0_prefix_list_parser=subparsers.add_parser('attach-t0-prefix-list', parents = [nsx_url_flag], help = 'attach a BGP Prefix List to a T0 BGP neighbor')
-    detach_t0_prefix_lists_parser=subparsers.add_parser('detach-t0-prefix-lists', parents = [nsx_url_flag], help = 'detach all prefix lists from specified neighbor')
-    new_t0_prefix_list_parser=subparsers.add_parser('new-t0-prefix-list', parents = [nsx_url_flag], help = 'create a new T0 BGP Prefix List')
-    remove_t0_prefix_list_parser=subparsers.add_parser('remove-t0-prefix-list', parents = [nsx_url_flag], help = 'remove a T0 BGP Prefix List')
-    set_sddc_bgp_as_parser=subparsers.add_parser('set-sddc-bgp-as', parents = [nsx_url_flag], help = 'update the BGP AS number')
-    set_mtu_parser=subparsers.add_parser('set-mtu', parents = [nsx_url_flag], help = 'set the MTU configured over the Direct Connect')
-    show_mtu_parser=subparsers.add_parser('show-mtu', parents = [nsx_url_flag], help = 'show the MTU configured over the Direct Connect')
+    # create the parser for the "rbvpn-prefix-list" command
+    rbvpn_prefixlist_parser=subparsers.add_parser('rbvpn-prefix-list' , help='Create and configure route-based VPN prefix lists.')
+    # create a subparser for rbvpn-prefix-list sub-commands
+    rbvpn_prefixlist_parser_subs = rbvpn_prefixlist_parser.add_subparsers(help='rbvpn-prefix-list sub-command help')
+
+    # create individual parsers for each sub-command
+    rbvpn_prefixlist_attach_parser = rbvpn_prefixlist_parser_subs.add_parser('attach', parents = [nsx_url_flag], help = "Attach an existing prefix list to a BGP neighbor.")
+    rbvpn_prefixlist_attach_parser.add_argument("-plid", "--prefix-list-id", help = "The ID of prefix list")
+    rbvpn_prefixlist_attach_parser.add_argument("-nid", "--neighbor-id", required = True, help = "The ID of the neighbor to attach to.  Use 'pyVMC.py rbvpn-neighbors show' for a list of BGP neighbors.")
+    rbvpn_prefixlist_attach_parser.add_argument("-rf", "--route-filter", choices = ["in","out"], type= str.lower, help = "Use to specify either in_route_filter or out_route_filter.")
+    rbvpn_prefixlist_attach_parser.add_argument("-i", "--interactive", nargs = '?', default = False, const = True, help = "Used to specify interactive mode.  If not specified, pyVMC assumes scripted mode.")
+    rbvpn_prefixlist_attach_parser.set_defaults(func = attachT0BGPprefixlist)
+
+    rbvpn_prefixlist_create_parser = rbvpn_prefixlist_parser_subs.add_parser('create', parents = [nsx_url_flag], help = "Create a new prefix list for a route-based VPN.")
+    rbvpn_prefixlist_create_parser.set_defaults(func = newBGPprefixlist)
+
+    rbvpn_prefixlist_delete_parser = rbvpn_prefixlist_parser_subs.add_parser('delete', parents = [nsx_url_flag], help = "Delete a prefix list for a route-based VPN.")
+    rbvpn_prefixlist_delete_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
+    rbvpn_prefixlist_delete_parser.set_defaults(func = delRBVPNprefixlist)
+
+    rbvpn_prefixlist_detach_parser = rbvpn_prefixlist_parser_subs.add_parser('detach', parents = [nsx_url_flag], help = "Detach all prefix lists from a BGP neighbor.")
+    rbvpn_prefixlist_detach_parser.set_defaults(func = detachT0BGPprefixlists)
+
+    rbvpn_prefixlist_export_parser = rbvpn_prefixlist_parser_subs.add_parser('export', parents = [nsx_url_flag], help = "Export an existing route-based VPN prefix list to a JSON file.")
+    rbvpn_prefixlist_export_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
+    rbvpn_prefixlist_export_parser.set_defaults(func = exportRBVPNprefixlist)
+
+    rbvpn_prefixlist_import_parser = rbvpn_prefixlist_parser_subs.add_parser('import', parents = [nsx_url_flag], help = "Import a JSON file as a route-based VPN prefix list (will overwrite an existing list of the same name).")
+    rbvpn_prefixlist_import_parser.add_argument("-fn", "--filename", required = True, help = "The name of the file to import as a route-based VPN prefix list.  This must match the format of the json/sample-rbvpn-prefix-list.json file.")
+    rbvpn_prefixlist_import_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
+    rbvpn_prefixlist_import_parser.set_defaults(func = importRBVPNprefixlist)
+
+    rbvpn_prefixlist_show_parser = rbvpn_prefixlist_parser_subs.add_parser('show', parents = [nsx_url_flag], help = "Show list of available prefix lists for a route-based VPN.")
+    rbvpn_prefixlist_show_parser.set_defaults(func = getSDDCT0PrefixLists)
+
+    rbvpn_neighbors_parser=subparsers.add_parser('rbvpn-neighbors' , help='Show and configure BGP Neighbors for route-based VPN.')
+    rbvpn_neighbors_parser_subs = rbvpn_neighbors_parser.add_subparsers(help='rbvpn-neighbors sub-command help')
+
+    rbvpn_neighbors_show_parser = rbvpn_neighbors_parser_subs.add_parser('show', parents = [nsx_url_flag], help = "Show current BGP neighbors for route-based VPNs..")
+    rbvpn_neighbors_show_parser.set_defaults(func = getSDDCT0BGPneighbors)
+
+# ============================
+# NSX-T - MTU
+# ============================
+
+    # create the parser for the "mtu" command
+    mtu_parser_main=subparsers.add_parser('mtu', help='Show and update configuration data associated with Maximum Transmission Unit value for the Intranet Interface.')
+    # create a subparser for bgp sub-commands
+    mtu_parser_subs = mtu_parser_main.add_subparsers(help='mtu sub-command help')
+
+    # create individual parsers for each sub-command
+    mtu_show_parser = mtu_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show the currently configured value for MTU on the Intranet Interface.")
+    mtu_show_parser.set_defaults(func = getSDDCMTU)
+
+    mtu_update_parser = mtu_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the MTU on the Intranet Interface.")
+    mtu_update_parser.add_argument("-mtu", help = "new MTU value for the Direct Connect / Intranet Interface.")
+    mtu_update_parser.set_defaults(func = setSDDCMTU)
+
+# ============================
+# NSX-T - ASN
+# ============================
+
+    # create the parser for the "asn" command
+    asn_parser_main=subparsers.add_parser('asn', help='Show and update configuration data associated with Autonomous System Number value for the Intranet Interface.')
+    # create a subparser for asn sub-commands
+    asn_parser_subs = asn_parser_main.add_subparsers(help='asn sub-command help')
+
+    # create individual parsers for each sub-command
+    asn_show_parser = asn_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show the currently configured value for ASN on the Intranet Interface.")
+    asn_show_parser.set_defaults(func = getSDDCBGPAS)
+
+    asn_update_parser = mtu_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the ASN on the Intranet Interface.")
+    asn_update_parser.add_argument("-asn", help = "new ASN value for the Direct Connect / Intranet Interface.")
+    asn_update_parser.set_defaults(func = setSDDCBGPAS)
+
+# ============================
+# NSX-T - Route Preference - DX or VPN
+# ============================
+
+    # create the parser for the "dx-admin-cost" command
+    dx_admin_cost=subparsers.add_parser('dx-admin-cost', help='Use to view currently configured routing preference / admin cost - VPN or DX.')
+    # create a subparser for asn sub-commands
+    dx_admin_cost_parser_subs = dx_admin_cost.add_subparsers(help='admin cost sub-command help')
+
+    # create individual parsers for each sub-command
+    dx_admin_cost_show = asn_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show currently configured routing preference / admin cost - VPN or DX.")
+    dx_admin_cost_show.set_defaults(func = getSDDCBGPVPN)
+
+
+# ============================
+# NSX-T - Interfaces, Egress counters
+# ============================
+
     show_egress_interface_counters_parser=subparsers.add_parser('show-egress-interface-counters', parents = [nsx_url_flag], help = 'show current Internet interface egress counters')
-    show_sddc_bgp_as_parser=subparsers.add_parser('show-sddc-bgp-as', parents = [nsx_url_flag], help = 'show the BGP AS number')
-    show_sddc_bgp_vpn_parser=subparsers.add_parser('show-sddc-bgp-vpn', parents = [nsx_url_flag], help = 'show whether DX is preferred over VPN')
-    show_t0_bgp_neighbors_parser=subparsers.add_parser('show-t0-bgp-neighbors', parents = [nsx_url_flag], help = 'show T0 BGP neighbors')
-    show_t0_prefix_lists_parser=subparsers.add_parser('show-t0-prefix-lists', parents = [nsx_url_flag], help = 'show T0 prefix lists')
+    show_egress_interface_counters_parser.set_defaults(func = getSDDCEgressInterfaceCtrs)
+
+# ============================
+# NSX-T - Show Routes
+# ============================
 
     show_routes_parser=subparsers.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
     show_routes_parser.add_argument('-rt', '--route-type', choices = ['t0', 'bgp', 'static', 'tgw'], required= True, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
@@ -3650,6 +3947,7 @@ def main():
 # ============================
 # NSX-T - Segments
 # ============================
+
     """ Parent Parser for NSX Segment functions """
     parent_segment_parser = argparse.ArgumentParser(add_help=False)
     parent_segment_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
@@ -3661,33 +3959,47 @@ def main():
     parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
     parent_segment_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
 
+    # create the parser for the "segment" command
+    segment_parser = subparsers.add_parser('segment', help='Create, delete, update, and show Virtual Machine network segments.')
+    # create a subparser for segment sub-commands
+    segment_parser_subs = segment_parser.add_subparsers(help='segment sub-command help')
+
+    # create individual parsers for each sub-command
+    segment_create_parser = segment_parser_subs.add_parser("create", parents=[nsx_url_flag, parent_segment_parser], help = "Create a new virtual machine network segment.")
+    segment_create_parser.set_defaults(func = new_segment)
+
+    segment_delete_parser = segment_parser_subs.add_parser("delete", parents=[nsx_url_flag, parent_segment_parser], help = "Delete a virtual machine network segment.")
+    segment_delete_parser.set_defaults(func = remove_segment)
+
+    segment_show_parser = segment_parser_subs.add_parser("show", parents=[nsx_url_flag, parent_segment_parser], help = "Show the current virtual machine network segments.")
+    segment_show_parser.set_defaults(func = getSDDCnetworks)
+
+    segment_update_parser = segment_parser_subs.add_parser("update", parents=[nsx_url_flag, parent_segment_parser], help = "Update the configuration of a virtual machine network segment.")
+    segment_update_parser.set_defaults(func = configure_segment)
+
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
-
-    """ Subparser for NSX Segment function - new-segment """
-    new_segment_parser = subparsers.add_parser('new-segment', formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=[nsx_url_flag, parent_segment_parser],help='Creates a new virtual machine network segment.')
-    new_segment_parser.set_defaults(func=new_segment)
-
-    """ Subparser for NSX Segment function - configure-segment """
-    configure_segment_parser = subparsers.add_parser("configure-segment", parents=[nsx_url_flag, parent_segment_parser], help='Configures a virtual machine network segment.')
-    configure_segment_parser.set_defaults(func=configure_segment)
-
-    """ Subparser for NSX Segment function - remove-segment """
-    remove_segment_parser= subparsers.add_parser('remove-segment',parents=[nsx_url_flag, parent_segment_parser], help='Deletes a virtual machine network segment.')
-    remove_segment_parser.set_defaults(func=remove_segment)
 
 # ============================
 # NSX-T - T1
 # ============================
-    """ Subparser for Tier1 Gateway function - configure-t1 """
-    configure_t1_parser = subparsers.add_parser('configure-t1', parents = [nsx_url_flag], help='Creates or configures a secondary T1 router.')
-    configure_t1_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway.")
-    configure_t1_parser.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")    
-    configure_t1_parser.set_defaults(func=configure_t1)
 
-    """ Subparser for Tier1 Gateway function - remove-t1 """
-    remove_t1_parser=subparsers.add_parser('remove-t1', parents = [nsx_url_flag], help='Removes a secondary T1 router.')
-    remove_t1_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
-    remove_t1_parser.set_defaults(func=remove_t1)
+    # create the parser for the "t1" command
+    t1_parser = subparsers.add_parser('t1', help='Create, delete, update, and show secondary T1 gateways.')
+    # create a subparser for t1 sub-commands
+    t1_parser_subs = t1_parser.add_subparsers(help='t1 sub-command help')
+
+    # create individual parsers for each sub-command
+    t1_create_parser = t1_parser_subs.add_parser("create", parents=[nsx_url_flag], help = "Create a new, secondary T1 gateway.")
+    t1_create_parser.set_defaults(func = t1_create)
+
+    t1_delete_parser = t1_parser_subs.add_parser("delete", parents=[nsx_url_flag], help = "Delete a secondary T1 gateway.")
+    t1_delete_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
+    t1_delete_parser.set_defaults(func = t1_remove)
+
+    t1_update_parser = t1_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration of a secondary T1 gateway.")
+    t1_update_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway.")
+    t1_update_parser.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")    
+    t1_update_parser.set_defaults(func = t1_configure)
 
 # ============================
 # NSX-T - VPN
@@ -3717,61 +4029,71 @@ def main():
     show_vpn_ipsec_endpoints_parser=subparsers.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
 
 # ============================
-# VCDR - Cloud File System
+# VCDR
 # ============================
-    parent_vcdr_parser = argparse.ArgumentParser(add_help=False)
-    parent_vcdr_parser.add_argument("-cfsid","--cloud_fs_id", required=False, help= "ID of the Cloud File System")
-    parent_vcdr_parser.add_argument("-pgid", "--protection_group_id", required=False, help = "ID of the protection group")
-    parent_vcdr_parser.add_argument("-snapid", "--protection_group_snap_id", required=False, help = "ID of the protection group snapshot")
-    parent_vcdr_parser.add_argument("-siteid", "--site_id", required=False, help = "ID of the protected site")
-    parent_vcdr_parser.add_argument("-rsddcid", "--recovery_sddc_id", required=False, help = "ID of the recovery SDDC")
 
-    show_vcdr_fs_parser = subparsers.add_parser('show-vcdr-fs', parents=[vcdr_url_flag, parent_vcdr_parser], help="Show VMware Cloud DR Filesystems.")
-    show_vcdr_fs_parser.set_defaults(func=getVCDRCloudFS)
-    show_vcdr_fs_details_parser = subparsers.add_parser('show-vcdr-fs-details', parents=[vcdr_url_flag, parent_vcdr_parser], help="Show VCDR File System details.")
-    show_vcdr_fs_details_parser.set_defaults(func=getVCDRCloudFSDetails)
+    # create the parser for the "vcdr" command
+    vcdr_parser = subparsers.add_parser('vcdr', help='Create, delete, update, and show information about VMware Cloud Disaster Recovery.')
+    # create a subparser for vcdr sub-commands
+    vcdr_parser_subs = vcdr_parser.add_subparsers(help='vcdr sub-command help')
 
-# ============================
-# VCDR - Protection Groups
-# ============================
-    show_vcdr_pg_parser = subparsers.add_parser('show-vcdr-pg', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show VCDR protection groups for the file system.")
-    show_vcdr_pg_parser.set_defaults(func=getVCDRPG)
+    # create sub-parser for Scale-out File System sub-command
+    vcdr_scfs_parser = vcdr_parser_subs.add_parser("scfs", help = "VCDR cloud file system - use '-h' for help.")
+    vcdr_scfs_parser_subs = vcdr_scfs_parser.add_subparsers(help='vcdr scfs sub-command help')
 
-    show_vcdr_pg_dets_parser = subparsers.add_parser('show-vcdr-pg-details', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show VCDR protection group details.")
-    show_vcdr_pg_dets_parser.set_defaults(func=getVCDRPGDetails)
+    # create individual parsers for each SCFS sub-sub-command(s)
+    vcdr_scfs_show_parser = vcdr_scfs_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Scale-out file System(s).")
+    vcdr_scfs_show_parser.add_argument("-cfsid","--cloud_fs_id", required=False, help= "ID of the Cloud File System")
+    vcdr_scfs_show_parser.set_defaults(func = getVCDRCloudFS)
 
-# ============================
-# VCDR - Protection Group Snapshots
-# ============================
-    show_vcdr_pg_snaps_parser = subparsers.add_parser('show-vcdr-pg-snaps', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show VCDR snapshots for the Protection Group.")
-    show_vcdr_pg_snaps_parser.set_defaults(func=getVCDRPGSnaps)
+    # create sub-parser for Protection Group sub-command
+    vcdr_pg_parser = vcdr_parser_subs.add_parser("pg", help = "VCDR Protection Groups - use '-h' for help.")
+    vcdr_pg_parser_subs = vcdr_pg_parser.add_subparsers(help='vcdr pg sub-command help')
 
-    show_vcdr_pg_snap_dets_parser = subparsers.add_parser('show-vcdr-pg-snap-details', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show snapshot details for the VCDR Protection Group.")
-    show_vcdr_pg_snap_dets_parser.set_defaults(func=getVCDRSnapDetails)
+    # create individual parsers for each PG sub-sub-command(s)
+    vcdr_pg_show_parser = vcdr_pg_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Protection Group(s).")
+    vcdr_pg_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
+    vcdr_pg_show_parser.add_argument("-pgid", "--protection_group_id", required=False, help = "ID of the protection group")
+    vcdr_pg_show_parser.set_defaults(func = getVCDRPG)
 
-# ============================
-# VCDR - Recovery SDDC
-# ============================
-    show_vcdr_sddcs_parser = subparsers.add_parser('show-vcdr-sddcs', parents = [vcdr_url_flag, parent_vcdr_parser], help = "Show VCDR Recovery SDDCs for file system.")
-    show_vcdr_sddcs_parser.set_defaults(func=getVCDRSDDCs)
+    # create sub-parser for Snapshots sub-command
+    vcdr_snaps_parser = vcdr_parser_subs.add_parser("snaps", help = "VCDR Snapshots - use '-h' for help.")
+    vcdr_snaps_parser_subs = vcdr_snaps_parser.add_subparsers(help='vcdr snaps sub-command help')
 
-    show_vcdr_sddc_dets_parser = subparsers.add_parser('show-vcdr-sddc-details', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show details for VCDR Recovery SDDC.")
-    show_vcdr_sddc_dets_parser.set_defaults(func=getVCDRSDDCDetails)
- 
-# ============================
-# VCDR - Protected Sites
-# ============================
-    show_vcdr_sites_parser = subparsers.add_parser('show-vcdr-sites', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show VCDR protected sites for File System.")
-    show_vcdr_sites_parser.set_defaults(func=getVCDRSites)
+    # create individual parsers for each Snapshot sub-sub-command(s)
+    vcdr_snaps_show_parser = vcdr_snaps_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Snapshot(s).")
+    vcdr_snaps_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
+    vcdr_snaps_show_parser.add_argument("-pgid", "--protection_group_id", required=True, help = "ID of the protection group")
+    vcdr_snaps_show_parser.add_argument("-snapid", "--protection_group_snap_id", required=False, help = "ID of the protection group snapshot")
+    vcdr_snaps_show_parser.set_defaults(func = getVCDRPGSnaps)
 
-    show_vcdr_site_dets_parser = subparsers.add_parser('show-vcdr-site-details', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show details for VCDR protected site.")
-    show_vcdr_site_dets_parser.set_defaults(func=getVCDRSiteDetails)
+    # create sub-parser for Recovery SDDC sub-command
+    vcdr_rsddc_parser = vcdr_parser_subs.add_parser("rsddc", help = "VCDR Recovery SDDC - use '-h' for help.")
+    vcdr_rsddc_parser_subs = vcdr_rsddc_parser.add_subparsers(help='vcdr rsddc sub-command help')
 
-# ============================
-# VCDR - Protected VM
-# ============================
-    show_vcdr_vm_parser = subparsers.add_parser('show-vcdr-vm', parents=[vcdr_url_flag, parent_vcdr_parser], help = "Show protected virtual machines for VCDR file system.")
-    show_vcdr_vm_parser.set_defaults(func=getVCDRVM)
+    # create individual parsers for each Recovery SDDC sub-sub-command(s)
+    vcdr_rsddc_show_parser = vcdr_rsddc_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Recovery SDDC(s).")
+    vcdr_rsddc_show_parser.add_argument("-rsddcid", "--recovery_sddc_id", required=False, help = "ID of the recovery SDDC")
+    vcdr_rsddc_show_parser.set_defaults(func = getVCDRSDDCs)
+
+    # create sub-parser for Protected Site sub-command
+    vcdr_psite_parser = vcdr_parser_subs.add_parser("psite", help = "VCDR Protected Site - use '-h' for help.")
+    vcdr_psite_parser_subs = vcdr_psite_parser.add_subparsers(help='vcdr psite sub-command help')
+
+    # create individual parsers for each Protected Site sub-sub-command(s)
+    vcdr_psite_show_parser = vcdr_psite_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Protected Site(s).")
+    vcdr_psite_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
+    vcdr_psite_show_parser.add_argument("-siteid", "--site_id", required=False, help = "ID of the protected site")
+    vcdr_psite_show_parser.set_defaults(func = getVCDRSites)
+
+    # create sub-parser for protected VM sub-command
+    vcdr_vms_parser = vcdr_parser_subs.add_parser("vms", help = "VCDR cloud file system - use '-h' for help.")
+    vcdr_vms_parser_subs = vcdr_vms_parser.add_subparsers(help='vcdr scfs sub-command help')
+
+    # create individual parsers for each Protected VM sub-sub-command(s)
+    vcdr_vms_show_parser = vcdr_vms_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR protected VM(s).")
+    vcdr_vms_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
+    vcdr_vms_show_parser.set_defaults(func = getVCDRVM)
 
 # ============================
 # Read CONFIG.INI file
@@ -3802,9 +4124,17 @@ def main():
         else:
             print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
 
-        if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0:
+        if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
+            print()
             print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
+            print()
             sys.exit(1)
+        if "x-x-x-x" in strVCDRProdURL or " " in strVCDRProdURL:
+            print()
+            print("Please correct the entry for strVCDRProdURL in config.ini before proceeding.")
+            print()
+            sys.exit(1)
+
     except:
         print(
             '''There are problems with your config.ini file.  
@@ -3814,6 +4144,7 @@ def main():
             - Refresh_Token  - this should be a properly scoped refresh refresh token from the VMware Cloud Services Console.
             - ORG_ID         - this should be the ID of your VMware Cloud Organization, found in the VMware Cloud Services Portal.
             - SDDC_ID        - if applicable, this should be the ID of the VMware Cloud SDDC (Software Defined Datacenter) you wish to work with.
+            - strVCDRProdURL - if applicable, this should be the URL of your VMware Cloud DR Orchestrator.
             ''')
         sys.exit(1)
 
@@ -4183,38 +4514,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
 #             get_task_status(task_id, ORG_ID, session_token)
 
-#     # ============================
-#     # NSX-T - Search
-#     # ============================
-
-
-#     elif intent_name == "search-nsx":
-#         if len(sys.argv) == 4:
-#             object_type = sys.argv[2]
-#             object_id = sys.argv[3]
-#             search_nsx(proxy, session_token, object_type, object_id)
-#         elif len(sys.argv) == 3:
-#             object_type = sys.argv[2]
-#             object_id = "NULL"
-#             search_nsx(proxy, session_token, object_type, object_id)
-#         else:
-#             print("Invalid syntax.  Please provide object type to search by as an argument; optionally provide the object id / display name.")
-#             print("Currently supported object types are as follows:")
-#             print("    BgpNeighborConfig")
-#             print("    BgpRoutingConfig")
-#             print("    Group")
-#             print("    IdsSignature")
-#             print("    PrefixList")
-#             print("    RouteBasedIPSecVPNSession")
-#             print("    Segment")
-#             print("    Service")
-#             print("    StaticRoute")
-#             print("    Tier0")
-#             print("    Tier1")
-#             print("    VirtualMachine")
-#             print("    VirtualNetworkInterface")
-#             print("")
-#             print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
 
 #     # ============================
 #     # NSX-T - Advanced Firewall
@@ -4277,88 +4576,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #     elif intent_name == "delete-ids-rule":
 #         delete_ids_rule(**vars(args))
         
-
-#     # ============================
-#     # NSX-T - BGP and Routing
-#     # ============================
-
-
-#     elif intent_name == "attach-t0-prefix-list":
-#         neighbor_id = sys.argv[2]
-#         attachT0BGPprefixlist(proxy, session_token, neighbor_id)
-#     elif intent_name == "detach-t0-prefix-lists":
-#         neighbor_id = sys.argv[2]
-#         detachT0BGPprefixlists(proxy, session_token, neighbor_id)
-#     elif intent_name == "new-t0-prefix-list":
-#         newBGPprefixlist(proxy, session_token)
-#     elif intent_name == "remove-t0-prefix-list":
-#         prefixlists = getSDDCT0PrefixLists(proxy, session_token)
-#         prefix_list_id = sys.argv[2]
-#         remove_bgp_prefix_list_json(proxy, session_token, prefix_list_id)
-#         print("The BGP prefix list " + prefix_list_id + " has been deleted")
-#     elif intent_name == "set-sddc-bgp-as":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax.")
-#         else:
-#             asn = sys.argv[2]
-#             setSDDCBGPAS(proxy,session_token,asn)
-#     elif intent_name == "set-mtu":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax.")
-#         mtu = sys.argv[2]
-#         if int(mtu) < 1500 or int(mtu) > 8900:
-#             print("Incorrect syntax. The MTU should be between 1500 and 8900 bytes.")
-#         else:
-#             setSDDCMTU(proxy,session_token,mtu)
-#     elif intent_name == "show-egress-interface-counters":
-#         edge_cluster_id = getSDDCEdgeCluster(proxy, session_token)
-#         edge_path_0 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 0)
-#         edge_path_1 = getSDDCEdgeNodes(proxy, session_token, edge_cluster_id, 1)
-#         stat_0 = getSDDCInternetStats(proxy,session_token, edge_path_0)
-#         stat_1 = getSDDCInternetStats(proxy,session_token, edge_path_1)
-#         total_stat = stat_0 + stat_1
-#         print("Current Total Bytes count on Internet interface is " + str(total_stat) + " Bytes.")
-#     elif intent_name == "show-mtu":
-#         getSDDCMTU(proxy,session_token)
-#     elif intent_name == "show-sddc-bgp-as":
-#         getSDDCBGPAS(proxy,session_token)
-#     elif intent_name == "show-sddc-bgp-vpn":
-#         print(getSDDCBGPVPN(proxy,session_token))
-#     elif intent_name == "show-t0-bgp-neighbors":
-#         getSDDCT0BGPneighbors(proxy, session_token)
-#     elif intent_name == "show-t0-bgp-routes":
-#         getSDDCT0BGPRoutes(proxy, session_token)
-#     elif intent_name == "show-t0-prefix-lists":
-#         getSDDCT0PrefixLists(proxy, session_token)
-#     elif intent_name == "show-t0-routes":
-#         getSDDCT0routes(proxy,session_token)
-#     elif intent_name == "show-t0-static-routes":
-#         getSDDCT0staticroutes(proxy,session_token)
-
-
-#     # ============================
-#     # NSX-T - DNS
-#     # ============================
-
-
-#     elif intent_name == "show-dns-services":
-#         if len(sys.argv) == 2:
-#             mgw_dns_services = getSDDCDNS_Services(proxy, session_token, "mgw")
-#             print("\nHere are the Management DNS Services:")
-#             print(mgw_dns_services)
-#             cgw_dns_services = getSDDCDNS_Services(proxy, session_token, "cgw")
-#             print("\nHere are the Compute DNS Services:")
-#             print(cgw_dns_services)
-#         elif len(sys.argv) == 3:
-#             gw = sys.argv[2].lower()
-#             sddc_dns_services = getSDDCDNS_Services(proxy, session_token, gw)
-#             print(sddc_dns_services)
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")
-#     elif intent_name == "show-dns-zones":
-#         print(getSDDCDNS_Zones(proxy,session_token))
-
-
 #     # ============================
 #     # NSX-T - Firewall - Gateway
 #     # ============================
@@ -4907,80 +5124,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #     elif intent_name == "show-sddc-public-ip":
 #         print(getSDDCPublicIP(proxy,session_token))
 
-
-#     # ============================
-#     # NSX-T - Segments
-#     # ============================
-
-#     elif intent_name == "configure-t1":
-#         configure_t1(**vars(args))
-#     elif intent_name == "remove-t1":
-#         remove_t1(**vars(args))
-#     elif intent_name == "new-segment":
-#         new_segment(**vars(args))
-#     elif intent_name == "configure-segment":
-#         configure_segment(**vars(args))
-#     elif intent_name == "remove-segment":
-#         remove_segment(**vars(args))
-#     elif intent_name == "new-network":
-#         if sys.argv[3].lower() == "routed" and len(sys.argv) == 7:
-#             # DHCP-Enabled Network
-#             display_name = sys.argv[2]
-#             routing_type = "ROUTED"
-#             gateway_address = sys.argv[4]
-#             dhcp_range = sys.argv[5]
-#             domain_name = sys.argv[6]
-#         elif sys.argv[3].lower() == "disconnected" :
-#             # Disconnected Network
-#             display_name = sys.argv[2]
-#             routing_type = "DISCONNECTED"
-#             gateway_address = sys.argv[4]
-#             dhcp_range = ""
-#             domain_name = ""
-#         elif sys.argv[3].lower() == "routed" and len(sys.argv) == 5:
-#             # Static Network
-#             display_name = sys.argv[2]
-#             gateway_address = sys.argv[4]
-#             dhcp_range = ""
-#             domain_name = ""
-#             routing_type = "ROUTED"
-#         elif sys.argv[3].lower() == "extended":
-#             display_name = sys.argv[2]
-#             tunnel_id = sys.argv[4]
-#             l2vpn_path = getSDDCL2VPNSessionPath(proxy,session_token)
-#             print(newSDDCStretchednetworks(proxy,session_token,display_name,tunnel_id, l2vpn_path))
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")
-#         newSDDC = newSDDCnetworks(proxy, session_token, display_name, gateway_address, dhcp_range, domain_name, routing_type)
-#         print(newSDDC)
-#     elif intent_name == "remove-network":
-#         network_id = sys.argv[2]
-#         removeSDDCNetworks(proxy, session_token,network_id)
-#     elif intent_name == "show-network":
-#         getSDDCnetworks(proxy, session_token)
-#     elif intent_name == "connect-segment":
-#         network_id = sys.argv[2]
-#         if len(sys.argv) == 6:
-#             # DHCP-Enabled Network
-#             gateway_address = sys.argv[3]
-#             dhcp_range = sys.argv[4]
-#             domain_name = sys.argv[5]
-#         elif len(sys.argv) == 4:
-#             # Static Network
-#             gateway_address = sys.argv[3]
-#             dhcp_range = ""
-#             domain_name = ""
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")    
-#         connect_segment(proxy, session_token, network_id, gateway_address, dhcp_range, domain_name)
-#     elif intent_name == "disconnect-segment":
-#         network_id = sys.argv[2]
-#         disconnect_segment(proxy, session_token, network_id)
-#     elif intent_name == "create-lots-networks":
-#         number = int(sys.argv[2])
-#         createLotsNetworks(proxy,session_token,number)
-
-
 #     # ============================
 #     # NSX-T - VPN
 #     # ============================
@@ -5066,87 +5209,3 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 
 #     # elif intent_name == "new-service-entry":
 #     #    print("This is WIP")
-
-#     # ============================
-#     # VCDR - Cloud File System
-#     # ============================
-#     elif intent_name == "show-vcdr-fs":
-#         """Get a list of all deployed cloud file systems in your VMware Cloud DR organization."""
-#         getVCDRCloudFS(strVCDRProdURL, session_token)
-
-#     elif intent_name == "show-vcdr-fs-details":
-#         """Get details for an individual cloud file system."""
-#         cloud_fs_id = sys.argv[2]
-#         getVCDRCloudFSDetails(strVCDRProdURL, cloud_fs_id, session_token)
-
-#     # ============================
-#     # VCDR - Protected Sites
-#     # ============================
-#     elif intent_name == "show-vcdr-sites":
-#         """Get a list of all protected sites associated with an individual cloud file system."""
-#         cloud_fs_id = sys.argv[2]
-#         getVCDRSites(strVCDRProdURL, cloud_fs_id, session_token)
-
-#     elif intent_name == "show-vcdr-site-details":
-#         """Get details about an individual protected site."""
-#         cloud_fs_id = sys.argv[2]
-#         site_id = sys.argv[3]
-#         getVCDRSiteDetails(strVCDRProdURL, cloud_fs_id, site_id, session_token)
-
-#     # ============================
-#     # VCDR - Protected VM
-#     # ============================
-#     elif intent_name == "show-vcdr-vm":
-#         """Get a list of all protected VMs currently being replicated to the specified cloud file system."""
-#         cloud_fs_id = sys.argv[2]
-#         getVCDRVM(strVCDRProdURL, cloud_fs_id, session_token)
-
-#     # ============================
-#     # VCDR - Protection Groups
-#     # ============================
-#     elif intent_name == "show-vcdr-pgs":
-#         """Get a list of all protection groups associated with an individual cloud file system."""
-#         cloud_fs_id = sys.argv[2]
-#         getVCDRPG(strVCDRProdURL, cloud_fs_id, session_token)
-
-#     elif intent_name == "show-vcdr-pg-details":
-#         """Get details for the requested protection group."""
-#         cloud_fs_id = sys.argv[2]
-#         pg_id = sys.argv[3]
-#         getVCDRPGDetails(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
-
-#     # ============================
-#     # VCDR - Protection Group Snapshots
-#     # ============================
-#     elif intent_name == "show-vcdr-pg-snaps":
-#         """Get a list of all snapshots in a specific protection group."""
-#         cloud_fs_id = sys.argv[2]
-#         pg_id = sys.argv[3]
-#         getVCDRPGSnaps(strVCDRProdURL, cloud_fs_id, pg_id, session_token)
-
-#     elif intent_name == "show-vcdr-pg-snap-details":
-#         """Get a list of all snapshots in a specific protection group."""
-#         cloud_fs_id = sys.argv[2]
-#         pg_id = sys.argv[3]
-#         snap_id = sys.argv[4]
-#         getVCDRSnapDetails(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token)
-
-#     # ============================
-#     # VCDR - Recovery SDDC
-#     # ============================
-#     elif intent_name == "show-vcdr-sddcs":
-#         """List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs)."""
-#         getVCDRSDDCs(strVCDRProdURL, session_token)
-
-#     elif intent_name == "show-vcdr-sddc-details":
-#         """Get details of a specific Recovery SDDC."""
-#         sddc_id = sys.argv[2]
-#         getVCDRSDDCDetails(strVCDRProdURL, sddc_id, session_token)
-
-#     # ============================
-#     # Help
-#     # ============================
-#     elif intent_name == "help":
-#         getHelp()
-#     else:
-#         getHelp()
