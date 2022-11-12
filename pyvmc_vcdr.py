@@ -23,6 +23,7 @@ def get_vcdr_cloud_fs_json(strVCDRProdURL, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
         
 
 def get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, session_token):
@@ -36,6 +37,7 @@ def get_vcdr_cloud_fs_details_json(strVCDRProdURL, cloud_fs_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 # ============================
 # Protected Site
@@ -52,6 +54,7 @@ def get_vcdr_sites_json(strVCDRProdURL, cloud_fs_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 def get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, session_token):
     """Get Protected Site Details - Get details about an individual protected site."""
@@ -64,6 +67,7 @@ def get_vcdr_site_details_json(strVCDRProdURL, cloud_fs_id, site_id, session_tok
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 # ============================
 # Protected VM
@@ -80,6 +84,7 @@ def get_vcdr_vm_json(strVCDRProdURL, cloud_fs_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 # ============================
 # Protection Group
@@ -96,6 +101,7 @@ def get_vcdr_pg_json(strVCDRProdURL, cloud_fs_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 def get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, session_token):
     """Get Protection Group Details - Get details for the requested protection group."""
@@ -108,6 +114,7 @@ def get_vcdr_pg_details_json(strVCDRProdURL, cloud_fs_id, pg_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
 
 # ============================
 # Protection Group Snapshot
@@ -124,6 +131,7 @@ def get_vcdr_pg_snaps_json(strVCDRProdURL, cloud_fs_id, pg_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
  
 def get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, session_token):
     """Get Protection Group Snapshot Details - Get detailed information for a protection group snapshot."""
@@ -136,6 +144,7 @@ def get_vcdr_pg_snap_details_json(strVCDRProdURL, cloud_fs_id, pg_id, snap_id, s
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
  
 # ============================
 # Recovery SDDC
@@ -153,6 +162,7 @@ def get_vcdr_sddcs_json(strVCDRProdURL, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
  
 def get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, session_token):
     """Get Recovery SDDC Details - Get details of a specific Recovery SDDC. """
@@ -165,4 +175,5 @@ def get_vcdr_sddc_details_json(strVCDRProdURL, sddc_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        return False
  
