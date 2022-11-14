@@ -1,0 +1,9 @@
+usage:  tkg [-h] {enable-tkg,disable-tkg} ...
+
+positional arguments:
+  {enable-tkg,disable-tkg}  sddc sub-command help
+    enable-tkg              Enable Tanzu Kubernetes Grid on an SDDC
+    disable-tkg             Disable Tanzu Kubernetes Grid on an SDDC
+
+optional arguments:
+  -h, --help                show this help message and exit

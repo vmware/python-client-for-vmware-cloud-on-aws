@@ -1,0 +1,24 @@
+usage:  sddc [-h]
+             {show-compatible-subnets,show-connected-accounts,set-sddc-connected-services,show-sddc-connected-vpc,show-shadow-account,show-sddc-state,show-sddc-hosts,show-sddcs,show-vms}
+             ...
+
+positional arguments:
+  {show-compatible-subnets,show-connected-accounts,set-sddc-connected-services,show-sddc-connected-vpc,show-shadow-account,show-sddc-state,show-sddc-hosts,show-sddcs,show-vms}
+                                        sddc sub-command help
+    show-compatible-subnets             show compatible native AWS subnets
+                                        connected to the SDDC
+    show-connected-accounts             show native AWS accounts connected to
+                                        the SDDC
+    set-sddc-connected-services         change whether to use S3 over the
+                                        Internet(false) or via the ENI(true)
+    show-sddc-connected-vpc             show the VPC connected to the SDDC
+    show-shadow-account                 show the Shadow AWS Account VMC is
+                                        deployed in
+    show-sddc-state                     get a view of your selected SDDC
+    show-sddc-hosts                     display a list of the hosts in your
+                                        SDDC
+    show-sddcs                          display a list of your SDDCs
+    show-vms                            get a list of your VMs
+
+optional arguments:
+  -h, --help                            show this help message and exit

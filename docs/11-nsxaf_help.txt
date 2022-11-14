@@ -1,0 +1,34 @@
+usage:  nsxaf [-h]
+              {show-nsxaf-status,show-ids-cluster-status,enable-cluster-ids,disable-cluster-ids,enable-all-cluster-ids,disable-all-cluster-ids,enable-ids-auto-update,ids-update-signatures,show-ids-signature-versions,show-ids-profiles,search-product-affected,create-ids-profile,show-ids-policies,create-ids-policy,show-ids-rules,create-ids-rule}
+              ...
+
+positional arguments:
+  {show-nsxaf-status,show-ids-cluster-status,enable-cluster-ids,disable-cluster-ids,enable-all-cluster-ids,disable-all-cluster-ids,enable-ids-auto-update,ids-update-signatures,show-ids-signature-versions,show-ids-profiles,search-product-affected,create-ids-profile,show-ids-policies,create-ids-policy,show-ids-rules,create-ids-rule}
+                                        nsxaf sub-command help
+    show-nsxaf-status                   Display the status of the NSX Advanced
+                                        Firewall Add-on
+    show-ids-cluster-status             Show IDS status for each cluster in
+                                        the SDDC
+    enable-cluster-ids                  Enable IDS on cluster
+    disable-cluster-ids                 Disable IDS on cluster
+    enable-all-cluster-ids              Enable IDS on all clusters
+    disable-all-cluster-ids             Disable IDS on all clusters
+    enable-ids-auto-update              Enable IDS signature auto update
+    ids-update-signatures               Force update of IDS signatures
+    show-ids-signature-versions         Show downloaded signature versions
+    show-ids-profiles                   Show all IDS profiles
+    search-product-affected             Search through the active IDS
+                                        signature for specific product
+                                        affected. Useful when building an IDS
+                                        Profile
+    create-ids-profile                  Create an IDS profile with either
+                                        Product Affected, CVSS or both.
+    show-ids-policies                   List all IDS policies
+    create-ids-policy                   Create an IDS policy
+    show-ids-rules                      List all IDS rules
+    create-ids-rule                     Create an IDS rule using previously
+                                        created IDS profile and inventory
+                                        groups
+
+optional arguments:
+  -h, --help                            show this help message and exit

@@ -1,0 +1,11 @@
+usage:  t1 [-h] {create,delete,update} ...
+
+positional arguments:
+  {create,delete,update}
+                        t1 sub-command help
+    create              Create a new, secondary T1 gateway.
+    delete              Delete a secondary T1 gateway.
+    update              Update the configuration of a secondary T1 gateway.
+
+optional arguments:
+  -h, --help            show this help message and exit

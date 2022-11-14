@@ -1,0 +1,11 @@
+usage:  nat [-h] {new-nat-rule,remove-nat-rule,show-nat} ...
+
+positional arguments:
+  {new-nat-rule,remove-nat-rule,show-nat}
+                        nat sub-command help
+    new-nat-rule        To create a new NAT rule
+    remove-nat-rule     remove a NAT rule
+    show-nat            show the configured NAT rules
+
+optional arguments:
+  -h, --help            show this help message and exit

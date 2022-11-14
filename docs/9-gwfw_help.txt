@@ -1,0 +1,16 @@
+usage:  gwfw [-h]
+             {new-cgw-rule,new-mgw-rule,remove-cgw-rule,remove-mgw-rule,show-cgw-rule,show-mgw-rule}
+             ...
+
+positional arguments:
+  {new-cgw-rule,new-mgw-rule,remove-cgw-rule,remove-mgw-rule,show-cgw-rule,show-mgw-rule}
+                        gwfw sub-command help
+    new-cgw-rule        create a new CGW security rule
+    new-mgw-rule        create a new MGW security rule
+    remove-cgw-rule     delete a CGW security rule
+    remove-mgw-rule     delete a MGW security rule
+    show-cgw-rule       show the CGW security rules
+    show-mgw-rule       show the MGW security rules
+
+optional arguments:
+  -h, --help            show this help message and exit

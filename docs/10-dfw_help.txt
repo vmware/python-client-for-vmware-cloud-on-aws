@@ -1,0 +1,17 @@
+usage:  dfw [-h]
+            {new-dfw-rule,new-dfw-section,remove-dfw-rule,remove-dfw-section,show-dfw-section,show-dfw-section-rules}
+            ...
+
+positional arguments:
+  {new-dfw-rule,new-dfw-section,remove-dfw-rule,remove-dfw-section,show-dfw-section,show-dfw-section-rules}
+                        dfw sub-command help
+    new-dfw-rule        create a new DFW security rule
+    new-dfw-section     create a new DFW section
+    remove-dfw-rule     delete a DFW rule
+    remove-dfw-section  delete a DFW section
+    show-dfw-section    show the DFW sections
+    show-dfw-section-rules
+                        show the DFW security rules within a section
+
+optional arguments:
+  -h, --help            show this help message and exit

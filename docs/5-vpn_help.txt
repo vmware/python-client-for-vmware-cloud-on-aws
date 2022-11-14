@@ -1,0 +1,32 @@
+usage:  vpn [-h]
+            {new-l2vpn,remove-l2VPN,remove-vpn,remove-vpn-ike-profile,remove-vpn-ipsec-tunnel-profile,show-l2vpn,show-l2vpn-services,show-vpn,show-vpn-ike-profile,show-vpn-internet-ip,show-vpn-ipsec-tunnel-profile,show-vpn-ipsec-endpoints,rbvpn-prefix-list,rbvpn-neighbors}
+            ...
+
+positional arguments:
+  {new-l2vpn,remove-l2VPN,remove-vpn,remove-vpn-ike-profile,remove-vpn-ipsec-tunnel-profile,show-l2vpn,show-l2vpn-services,show-vpn,show-vpn-ike-profile,show-vpn-internet-ip,show-vpn-ipsec-tunnel-profile,show-vpn-ipsec-endpoints,rbvpn-prefix-list,rbvpn-neighbors}
+                        vpn sub-command help
+    new-l2vpn           create a new L2VPN
+    remove-l2VPN        remove a L2VPN
+    remove-vpn          remove a VPN
+    remove-vpn-ike-profile
+                        remove a VPN IKE profile
+    remove-vpn-ipsec-tunnel-profile
+                        To remove a VPN IPSec Tunnel profile
+    show-l2vpn          show l2 vpn
+    show-l2vpn-services
+                        show l2 vpn services
+    show-vpn            show the configured VPN
+    show-vpn            show the VPN statistics
+    show-vpn-ike-profile
+                        show the VPN IKE profiles
+    show-vpn-internet-ip
+                        show the public IP used for VPN services
+    show-vpn-ipsec-tunnel-profile
+                        show the VPN tunnel profile
+    show-vpn-ipsec-endpoints
+                        show the VPN IPSec endpoints
+    rbvpn-prefix-list   Create and configure route-based VPN prefix lists.
+    rbvpn-neighbors     Show and configure BGP Neighbors for route-based VPN.
+
+optional arguments:
+  -h, --help            show this help message and exit
