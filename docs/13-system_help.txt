@@ -1,0 +1,29 @@
+usage:  system [-h]
+               {show-dns-services,show-dns-zones,new-sddc-public-ip,remove-sddc-public-ip,set-sddc-public-ip,show-sddc-public-ip,mtu,asn,dx-admin-cost,show-egress-interface-counters,show-routes}
+               ...
+
+positional arguments:
+  {show-dns-services,show-dns-zones,new-sddc-public-ip,remove-sddc-public-ip,set-sddc-public-ip,show-sddc-public-ip,mtu,asn,dx-admin-cost,show-egress-interface-counters,show-routes}
+                        system sub-command help
+    show-dns-services   Show currently configured DNS services
+    show-dns-zones      Show currently configured DNS zone services.
+    new-sddc-public-ip  request a new public IP
+    remove-sddc-public-ip
+                        remove an existing public IP
+    set-sddc-public-ip  update the description of an existing public IP
+    show-sddc-public-ip
+                        show the public IPs
+    mtu                 Show and update configuration data associated with
+                        Maximum Transmission Unit value for the Intranet
+                        Interface.
+    asn                 Show and update configuration data associated with
+                        Autonomous System Number value for the Intranet
+                        Interface.
+    dx-admin-cost       Use to view currently configured routing preference /
+                        admin cost - VPN or DX.
+    show-egress-interface-counters
+                        show current Internet interface egress counters
+    show-routes         Show SDDC routes
+
+optional arguments:
+  -h, --help            show this help message and exit

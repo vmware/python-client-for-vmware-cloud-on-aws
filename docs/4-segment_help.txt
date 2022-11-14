@@ -1,0 +1,13 @@
+usage:  segment [-h] {create,delete,show,update} ...
+
+positional arguments:
+  {create,delete,show,update}
+                        segment sub-command help
+    create              Create a new virtual machine network segment.
+    delete              Delete a virtual machine network segment.
+    show                Show the current virtual machine network segments.
+    update              Update the configuration of a virtual machine network
+                        segment.
+
+optional arguments:
+  -h, --help            show this help message and exit

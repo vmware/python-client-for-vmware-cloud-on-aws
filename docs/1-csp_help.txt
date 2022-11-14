@@ -1,0 +1,27 @@
+usage:  csp [-h]
+            {show-csp-services,show-csp-service-roles,get-access-token,add-users-to-csp-group,show-csp-group-diff,show-csp-group-members,show-csp-groups,search-csp-org-users,find-csp-user-by-service-role,show-org-users}
+            ...
+
+positional arguments:
+  {show-csp-services,show-csp-service-roles,get-access-token,add-users-to-csp-group,show-csp-group-diff,show-csp-group-members,show-csp-groups,search-csp-org-users,find-csp-user-by-service-role,show-org-users}
+                                        csp sub-command help
+    show-csp-services                   Show the entitled services in the
+                                        VMware Cloud Service Console.
+    show-csp-service-roles              Show the entitled service roles in the
+                                        VMware Cloud Service Console.
+    get-access-token                    show your access token
+    add-users-to-csp-group              CSP user to a group
+    show-csp-group-diff                 this compares the roles in the
+                                        specified group with every user in the
+                                        org and prints out a user-by-user diff
+    show-csp-group-members              show CSP group members
+    show-csp-groups                     To show CSP groups which contain
+                                        GROUP_SEARCH_TERM string
+    search-csp-org-users                Search for users in the CSP or org.
+    find-csp-user-by-service-role       Search for CSP users with a specific
+                                        service role. First use show-csp-
+                                        service-roles to see entitled roles
+    show-org-users                      Show all organization users
+
+optional arguments:
+  -h, --help                            show this help message and exit

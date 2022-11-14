@@ -1,0 +1,18 @@
+usage:  inventory [-h]
+                  {new-group,remove-group,show-group,show-group-association,new-service,remove-service,show-services}
+                  ...
+
+positional arguments:
+  {new-group,remove-group,show-group,show-group-association,new-service,remove-service,show-services}
+                        inventory sub-command help
+    new-group           create a new group
+    remove-group        remove a group
+    show-group          show existing groups
+    show-group-association
+                        show security rules used by a groups
+    new-service         create a new service
+    remove-service      remove a service
+    show-services       show services
+
+optional arguments:
+  -h, --help            show this help message and exit
