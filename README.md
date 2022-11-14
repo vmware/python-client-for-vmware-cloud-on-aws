@@ -37,27 +37,45 @@ Obtain a refresh token from the VMware Cloud Service Portal, as well as the ORG 
 ### 1.3.5 Do I need to know Python?
 No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (Software-Defined Data Center). 
 
-## 1.4 Support 
+## 1.4 Running the Script
+This is super easy...
+- run ./pyVMC.py to see the current list of supported commands.
+- use '-h' with any super-command or with any subcommand to see the supported arguments / parameters.
 
-### 1.4.1 Is it officially supported by VMware?
+
+For example, to see the supported sub-commands for the 'system' super-command:
+```./pyVMC.py system -h ```
+
+To see the arguments for the show-routes command:
+``` ./pyVMC.py system show-routes -h ```
+
+Try to view the route table for your SDDC:
+``` ./pyVMC.py system show-routes -rt t0 ```
+
+
+## 1.5 Support 
+
+### 1.5.1 Is it officially supported by VMware?
 Sorry but no, this is a community-based effort. Use it at your own risk. It has extensively been tested though and we'll endeavour to fix any bugs.
 
-### 1.4.2 Which version of VMware Cloud on AWS has it been tested against?
+### 1.5.2 Which version of VMware Cloud on AWS has it been tested against?
 Versions 1.9, 1.10, 1.11, 1.12, 1.14... all the way up through 1.20. We don't guarantee support with previous versions. 
 We will, however, endeavour to verify compatibility as we release new versions.
 
-### 1.4.3 What if I find a bug or need a new feature?
+### 1.5.3 What if I find a bug or need a new feature?
 Please raise it on GitHub and we will look into it.
 
-## 1.5 Documentation
+## 1.6 Documentation
 
-### 1.5.1  Where can I find documentation about VMware Cloud on AWS:
+### 1.6.1  Where can I find documentation about VMware Cloud on AWS:
 Please check the online documentation:
 https://docs.vmware.com/en/VMware-Cloud-on-AWS/index.html
 
-### 1.5.2 Where can I find documentation about each pyVMC commands?
+### 1.6.2 Where can I find documentation about each pyVMC commands?
 
+#### 1.6.2.1 Current Commands
 Here are the currently supported 'super' commands:
+```shell
     csp                                 Commands related to the Cloud Service Portal itself.
     sddc                                Commands related to the Software Defined Datacenter (SDDC) itself.
     tkg                                 Commands related to the Tanzu Kubernetes Service (TKG).
@@ -73,9 +91,13 @@ Here are the currently supported 'super' commands:
     system                              Show and update configuration data associated with the NSX-T System (DNS, public IP, etc).
     search-nsx                          Search the NSX Manager inventory.
     vcdr                                Create, delete, update, and show information about VMware Cloud Disaster Recovery.
+```
+
+#### 1.6.2.2 Getting Help
 
 To see the supported commands for any given category / super-command, simply use '-h'... for example:
 
+```shell
 ./pyVMC.py vcdr -h
 usage:  vcdr [-h] {scfs,pg,snaps,rsddc,psite,vms} ...
 
@@ -91,22 +113,37 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+```
+
+Similarly, to see the options for any given command, run the individual command with the -h option:
+
+```shell
+./pyVMC.py vcdr scfs -h               
+usage: vcdr scfs [-h] {show} ...
+
+positional arguments:
+  {show}      vcdr scfs sub-command help
+    show      Show information about the VCDR Scale-out file System(s).
+
+optional arguments:
+  -h, --help  show this help message and exit
+```
 
 
 Check the docs folder for a comprehensive listing of all currently supported commands.
 
-## 1.6 Release Notes:
+## 1.7 Release Notes:
 In this latest release, all commands have been refactored to use a command / sub-command syntax.  This provides for greater ease of use, as commands can be grouped by category.  Furthermore, a comprehensive argument framework has been implemented (argparse) which allows for passing parameters via the command line for better support for scripting. 
 
 For example, in previous versions BGP prefix filters for your route-based VPN could only be created interactively at the command line.  Now, however, prefix lists can be imported as JSON files to make it a lot easier to update your T0 route table via script for specific use cases - e.g. disaster recovery.
 
-New Features:
+### 1.7.1 New Features:
  - all commands refactored to use argument parsing with python argparse module
  - prefix list commands for route based VPN have been renamed to rbvpn-prefix-list, found under the 'system' super command
  - moving forward, all commands will be updated (over time) to use standardized create / update / delete verbs (CrUD) where applicable
  - 
 
-New Commands / options:
+### 1.7.2 New Commands / options:
  - asn: replaces previous ASN commands show-sddc-bgp-as / set-sddc-bgp-as
  - csp: new super-command for all commands related to CSP
  - dfw: new supercommand for distributed firewall sub-commands (use -h to see sub-commands)
@@ -127,16 +164,16 @@ New Commands / options:
  - vpn:  new super command replaces all previous vpn commands (use -h to see sub-commands)
  - vtc: new super-command for all subcommands related to VMware Transit Connect (use -h to see sub-commands)
 
-## 1.7 Known Issues:
+## 1.8 Known Issues:
 
 
-## 1.8 Contributing
+## 1.9 Contributing
 
 The python-client-for-vmware-cloud-on-aws project team welcomes contributions from the community. Before you start working with python-client-for-vmware-cloud-on-aws, please
 read our [Developer Certificate of Origin](https://cla.vmware.com/dco). All contributions to this repository must be
 signed as described on that page. Your signature certifies that you wrote the patch or have the right to pass it on
 as an open-source patch. For more detailed information, refer to [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 1.9 License
+## 2 License
 
 SPDX-License-Identifier: BSD-2-Clause
