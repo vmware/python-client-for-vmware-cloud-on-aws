@@ -140,6 +140,8 @@ Check the docs folder for a comprehensive listing of all currently supported com
 
 ## 1.9 Contributing
 
+For a quick overview of how the project is structured as well as how the files relate to each other, how the argparse module is being used, etc, [please refer to the pyvmc-structure.md](docs/pyvmc-structure.md).
+
 The python-client-for-vmware-cloud-on-aws project team welcomes contributions from the community. Before you start working with python-client-for-vmware-cloud-on-aws, please
 read our [Developer Certificate of Origin](https://cla.vmware.com/dco). All contributions to this repository must be
 signed as described on that page. Your signature certifies that you wrote the patch or have the right to pass it on
