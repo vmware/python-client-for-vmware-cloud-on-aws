@@ -2168,16 +2168,22 @@ def getSDDCT0routes(proxy_url, session_token):
     if t0_routes_json == None:
         print("API Error")
         sys.exit(1)
-
-    t0_routes = t0_routes_json['results'][1]['route_entries']
-    route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
-    for routes in t0_routes:
-        route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
-    print ('T0 Routes')
-    print ('Route Type Legend:')
-    print ('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
-    print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
-
+    t0_routes0 = t0_routes_json['results'][0]['route_entries']
+    t0_routes1 = t0_routes_json['results'][1]['route_entries']
+    t0_routes = t0_routes0 + t0_routes1
+    df = pd.DataFrame(t0_routes)
+    df.drop(['lr_component_id', 'lr_component_type'], axis=1, inplace=True)
+    df.drop_duplicates(inplace = True)
+    # print(df)
+    print('T0 Routes')
+    print('Route Type Legend:')
+    print('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
+    print()
+    print(df.sort_values(by=[ 'route_type', 'network'], ascending=True))
+    # route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
+    # for routes in t0_routes:
+    #     route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
+    # print (route_table.get_string(sort_key = operator.itemgetter(1,0), sortby = "Network", reversesort=True))
 
 def getSDDCT0staticroutes(proxy_url,session_token):
     """Prints static routes configured on T0 edge gateway"""
