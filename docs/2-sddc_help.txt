@@ -19,6 +19,10 @@ positional arguments:
                                         SDDC
     show-sddcs                          display a list of your SDDCs
     show-vms                            get a list of your VMs
-
+    create                              create an SDDC
+    delete                              delete an sddc
+    watch-task                          watch a task for a long running sddc create or delete
+    cancel-task                         cancel a long running task
+    
 optional arguments:
   -h, --help                            show this help message and exit
