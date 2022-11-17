@@ -943,19 +943,48 @@ def get_sddc_public_ip_json(proxy_url, session_token):
 # ============================
 
 
+#
+# https://developer.vmware.com/apis/nsx-vmc-policy/latest/policy/api/v1/infra/realized-state/virtual-machines/get/
+#
+
 def get_vms_json(proxy_url, session_token):
     """Returns list of compute VMs via JSON"""
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/realized-state/enforcement-points/vmc-enforcementpoint/virtual-machines'
     response = requests.get(my_url, headers=my_header)
-    json_response = response.json()
+    json_response = None
+    if response.status_code != 504:
+        # because response is in HTML
+        json_response = response.json()
+
     if response.status_code == 200:
         return json_response
+    elif response.status_code == 400:
+        print('Bad Request')
+    elif response.status_code == 403:
+        print("API Call Forbidden")
+    elif response.status_code == 404:
+        print("API URL Not Found")
+    elif response.status_code == 412:
+        print("API Pre-Condition Failed")
+    elif response.status_code == 500:
+        print("Internal Server Error")
+    elif response.status_code == 503:
+        print("API Server Unavailable")
+    elif response.status_code == 504:
+        print("API Call Unknown Error. Likely an API timeout due to misconfiguration, or a bad SDDC ID in config.ini")
+        print(response.content.decode("utf-8", "ignore") )
+        return None
     else:
         print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
         return None
+    
+    if 'error_message' in json_response:
+        print(json_response['error_message'])
+    print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
+
+    return None
+
 
 
 # ============================

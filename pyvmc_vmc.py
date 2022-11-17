@@ -53,6 +53,202 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
 # SDDC
 # ============================
 
+def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId):
+    myHeader = {'csp-auth-token': sessiontoken}
+
+    #
+    # docs on data structure
+    # https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
+    #
+    call_data = {
+        'name': name,
+        'account_link_sddc_config': [
+            {
+                'customer_subnet_ids': [
+                    subnetId
+                ],
+                'connected_account_id': connectedAccount
+            }
+        ],
+        'provider': 'AWS',   # make sure provider is in upper case
+        'num_hosts': amount,           # 1 host in this case
+        'host_instance_type' : hostType, #host type from Enumerated options.
+        'sddc_type': '1NODE' if amount == 1 else 'SingleAZ',  # Multi-AZ for future work
+        'region': region                # region where we have permissions to deploy.
+    }
+    #
+    # API Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/post/
+    #
+    resp = requests.post(f'{strProdURL}/vmc/api/orgs/{orgID}/sddcs', json=call_data, headers=myHeader)
+    json_response = resp.json()
+    if resp.status_code == 202:
+        print(f"Create SDDC Started. Creation Task is: ")    # pull the task and print it.
+        newTask = json_response['id']
+        print(f'{newTask}')
+        return json_response
+    elif resp.status_code == 200:
+        print("Create Task Complete")
+        return None
+    elif resp.status_code == 400:
+        print(f"Error Code {resp.status_code}: Likely Quota Violation")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif resp.status_code == 401:
+        print(f"Error Code {resp.status_code}: You are unauthorized for this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif resp.status_code == 403:
+        print(f"Error Code {resp.status_code}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    else:
+        print(f'Status code: {resp.status_code}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    
+    print(name + ' SDDC ' + str(json_response['status']))
+    return json_response
+#
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/delete/
+#
+def delete_sddc_json(strProdURL, sessiontoken, orgID, sddcID,force):
+    """Returns task for the delete process, or None if error"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}/"
+    if force:
+        myURL = myURL + "?force=true"
+
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 202:
+        print('Delete task created. Task ID:')
+        newTask = json_response["id"]
+        print(f'{newTask}')
+        return json_response
+    elif response.status_code == 400:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print('The SDDC is not in a state that is valid for deletion')
+        return None
+    elif response.status_code == 401:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print('Current user is unauthorized for this operation.')
+        return None
+    elif response.status_code == 403:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+            print('Access not allowed to the operation for the current user')
+        return None    
+    elif response.status_code == 404:
+        print("Cannot find the SDDC with given identifier")
+        return None
+    else:   
+        print(f'Unexpected response: {response.status_code}')
+        return None
+#
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/tasks/task/get/
+#
+def watch_sddc_task_json(strProdURL, sessiontoken, orgID, taskid):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/tasks/{taskid}"
+    response = requests.get(myURL, headers=myHeader) 
+    json_response = response.json()
+    if response.status_code == 200:
+        # do the right thing
+        return json_response
+    elif response.status_code == 401:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print("User is unauthorized for current operation")
+        return None
+    elif response.status_code == 403:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print("User is forbidden from current action")
+        return None
+    elif response.status_code == 404:
+        print("Cannot find the task with given identifier")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    else:
+        print('Unexpected error')
+        return None
+    return None
+#
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/tasks/task/post/
+#
+def cancel_sddc_task_json(strProdURL, sessiontoken, orgID, taskid):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/tasks/{taskid}?action=cancel"
+    response = requests.post(myURL, headers=myHeader) 
+    json_response = response.json()
+    if response.status_code == 200:
+        print(f'Task {taskid} has been successfully cancelled.')
+        return json_response
+    elif response.status_code == 400:
+        print("Invalid Action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 401:
+        print("Unauthorized for current action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 403:
+        print("Forbidden Action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 404:
+        print("Cannot find the task with given identifier")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    else:
+        print(f'unexpected response {response.status_code}')
+        return None
+
+def get_sddcs_json(strProdURL, orgID, sessiontoken):
+    """Returns list of all SDDCs in an Org via json"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+        return None
+
+
+def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
+    """Returns SDDC info in JSON format"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+        return None
+
+
 
 def get_sddcs_json(strProdURL, orgID, sessiontoken):
     """Returns list of all SDDCs in an Org via json"""

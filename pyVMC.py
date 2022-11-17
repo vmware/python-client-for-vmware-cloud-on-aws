@@ -47,7 +47,7 @@ from os.path import exists
 from os import makedirs
 from prettytable import PrettyTable
 from requests.sessions import session
-from datetime import datetime
+from datetime import datetime, timezone
 from requests.auth import HTTPBasicAuth
 from re import search
 from pyvmc_csp import *
@@ -330,7 +330,104 @@ def showORGusers(**kwargs):
         table.add_row([i['user']['firstName'],i['user']['lastName'],i['user']['username']])
     print (table.get_string(sortby="Last Name"))
 
+# ============================
+# SDDC - Create/Delete/Task
+# ============================
 
+def printTask(event_name: str, task) -> None:
+    taskid = task['id']
+    print(f'{event_name} Task Started: {taskid}')
+    print(f'Created: {task["created"]}')
+    print(f'Updated: {task["updated"]}')
+    print(f'Updated by User ID: {task["updated_by_user_id"]}')
+    print(f'User ID: {task["user_id"]}')
+    print(f'User Name: {task["user_name"]}')
+    print(f'Version: {task["version"]}')
+    print(f'Updated by User Name: {task["updated_by_user_name"]}')
+    #
+    # Now the inline parts: 
+    #
+    
+    print(f"Status: {task['status']}")
+    print(f"Sub-Status: {task['sub_status']}") 
+    print(f"Resource: {task['resource_type']}")
+    print(f"Resource ID: {task['resource_id']}")
+    print(f"Task Type: {task['task_type']}")
+    print(f"Error Message: {task['error_message']}")
+
+    return
+
+def createSDDC(**kwargs) -> None:
+    """Creates an SDDC based on the parameters. The caller should have permissions to do this."""
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    name = kwargs["name"]
+    linkedAccountId = kwargs["linked-account-guid"]
+    region = kwargs["region"]
+    strProdURL = kwargs["strProdURL"]
+    amount = kwargs["amount"]
+    hostType = kwargs["host-type"]
+    subnetId = kwargs["subnet-id"]
+
+    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId)
+    if json_response == None:
+        sys.exit(1)
+    #
+    # Process the json, print the SDDC ID if we have it. HERE
+ 
+    printTask("SDDC Creation", json_response)
+    
+    return
+#
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/delete/
+# 
+def deleteSDDC(**kwargs) -> None:
+    """deletes an SDDC based on the parameters. The caller should have permissions to do this."""
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    strProdURL = kwargs["strProdURL"]
+    sddcID = kwargs["SDDCtoDelete"]  #command line argument takes precedence over file, and -- arg.
+    force=kwargs['force']
+
+    json_response = delete_sddc_json(strProdURL, sessiontoken, orgID, sddcID,force)
+    if (json_response == None):
+        sys.exit(1)
+    
+    printTask("SDDC Deletion", json_response)
+
+    return None
+
+def watchSDDCTask(**kwargs):
+    """watch task and print out status"""
+    strProdURL = kwargs['strProdURL']
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    taskID = kwargs["taskID"]
+
+    json_response = watch_sddc_task_json(strProdURL, sessiontoken, orgID, taskID)
+    if json_response == None:
+        sys.exit(1)
+    # else, print out the task
+    task = json_response['id']
+    now_utc = datetime.now(timezone.utc)
+    print(f'Information on Task {task} @ {now_utc.isoformat().replace("+00:00", "Z")}')
+    printTask("Watch Task", json_response)
+    
+    return None
+
+def cancelSDDCTask(**kwargs):
+    """cancel a task"""
+    strProdURL = kwargs['strProdURL']
+    orgID = kwargs["ORG_ID"]
+    sessiontoken = kwargs["sessiontoken"]
+    taskID = kwargs["taskID"]
+
+    json_response = cancel_sddc_task_json(strProdURL, sessiontoken, orgID, taskID)
+    if json_response == None:
+        sys.exit(1)
+    
+    printTask("Cancel Task",json_response)
+    return None
 # ============================
 # SDDC - AWS Account and VPC
 # ============================
@@ -444,14 +541,35 @@ def getSDDCShadowAccount(**kwargs):
     print(sddc_shadow_account)
 
 
+#
+#  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
+#
 def getAccessToken(myKey):
     """ Gets the Access Token using the Refresh Token """
     params = {'api_token': myKey}
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+    if response.status_code != 200:
+        print(f'Error received on api token: {response.status_code}.')
+        if response.status_code == 400:
+            print("Invalid request body | In case of expired refresh_token or bad token in config.ini")
+        elif response.status_code == 404:
+            print("The requested resource could not be found")
+        elif response.status_code == 409:
+            print("The request could not be processed due to a conflict")
+        elif response.status_code == 429:
+            print("The user has sent too many requests")
+        elif response.status_code == 500:
+            print("An unexpected error has occurred while processing the request")
+        else:
+            print(f"Unexpected error code {response.status_code}")
+        return None
+
     jsonResponse = response.json()
     access_token = jsonResponse['access_token']
     return access_token
+
+
 
 
 # ============================
@@ -3651,6 +3769,34 @@ def main():
     show_vms_parser=sddc_parser_subs.add_parser('show-vms', parents = [nsx_url_flag], help = 'get a list of your VMs')
     show_vms_parser.set_defaults(func = getVMs)
 
+  # Create-sddc
+    create_sddc_parser=sddc_parser_subs.add_parser('create', parents = [vmc_url_flag,org_id_flag], help = 'Create an SDDC')
+    create_sddc_parser.add_argument('name', help= 'name for newly created SDDC')
+    create_sddc_parser.add_argument('linked-account-guid', help='GUID for linked/connected account')
+    # add link to list of possibilities?
+    create_sddc_parser.add_argument('region', help='string literal for AWS region')
+    create_sddc_parser.add_argument('amount',type=int, help="number of hosts in new region")
+    # where to get the canonical list https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
+    create_sddc_parser.add_argument('host-type', choices=['i3.metal','i3en.metal','i4i.metal'], help="string literal for host type")
+    create_sddc_parser.add_argument('subnet-id', help='subnet ID for the apropriate subnet for new SDDC in subnet format, eg subnet-xxxxxx')
+    
+    create_sddc_parser.set_defaults(func = createSDDC)
+    
+    delete_sddc_parser=sddc_parser_subs.add_parser('delete', parents = [vmc_url_flag,org_id_flag], help = 'Delete an SDDC')
+    delete_sddc_parser.add_argument("SDDCtoDelete", help = "The object id of the sddc to delete")
+    delete_sddc_parser.add_argument("--force",action='store_true', help="(optional) Force the deletion of an SDDC")
+    delete_sddc_parser.set_defaults(func = deleteSDDC)
+
+# ============================
+# SDDC - SDDC Tasks
+# ============================
+    watch_task_parser=sddc_parser_subs.add_parser('watch-task', parents = [vmc_url_flag,org_id_flag], help = 'Poll a tasks until completion') 
+    watch_task_parser.set_defaults(func = watchSDDCTask )
+    watch_task_parser.add_argument("taskID",help="GUID for task you want info on") 
+    cancel_task_parser=sddc_parser_subs.add_parser('cancel-task', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'Cancel a task, if possible') 
+    cancel_task_parser.add_argument("taskID", help="GUID for task you want to cancel")
+    cancel_task_parser.set_defaults(func = cancelSDDCTask)
+
 # ============================
 # SDDC - TKG
 # ============================
@@ -4255,7 +4401,7 @@ def main():
     # If no arguments are provided, print the help
     if len(sys.argv)==1:
         ap.print_help(sys.stderr)
-        sys.exit(1)
+        sys.exit(0) # help is not an error
 
     # Parse the arguments.
     args = ap.parse_args()
@@ -4263,7 +4409,9 @@ def main():
     # Extract arguments into a dictionary
     params = vars(args)
     sessiontoken = getAccessToken(Refresh_Token)
-
+    if sessiontoken == None:
+        sys.exit(1)
+        
     # Update the dictionary with the session token
     params.update({"sessiontoken": sessiontoken})
 
@@ -4295,7 +4443,7 @@ def main():
     except:
         pass
 
- # If flags are present for ORG_ID, add the ORG_ID to the parameters payload.
+ # If flags are present for SDDC_ID, add the SDDC_ID to the parameters payload.
     try:
         args.SDDC_ID
         params.update({"SDDC_ID": SDDC_ID})
