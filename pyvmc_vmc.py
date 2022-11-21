@@ -53,7 +53,7 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
 # SDDC
 # ============================
 
-def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId):
+def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId,validate_only):
     myHeader = {'csp-auth-token': sessiontoken}
 
     #
@@ -79,18 +79,26 @@ def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region
     #
     # API Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/post/
     #
-    resp = requests.post(f'{strProdURL}/vmc/api/orgs/{orgID}/sddcs', json=call_data, headers=myHeader)
-    json_response = resp.json()
+    my_url = f'{strProdURL}/vmc/api/orgs/{orgID}/sddcs'
+    if validate_only:
+        my_url = my_url + "?validateOnly=true"
+
+    resp = requests.post(my_url, json=call_data, headers=myHeader)
+    
+    if resp.status_code != 200:
+        json_response = resp.json()
+
     if resp.status_code == 202:
         print(f"Create SDDC Started. Creation Task is: ")    # pull the task and print it.
         newTask = json_response['id']
         print(f'{newTask}')
         return json_response
     elif resp.status_code == 200:
-        print("Create Task Complete")
-        return None
+        print("Create Task Complete: Input Validated")
+        validated = "{'input_validated' : True}"
+        return eval(validated)
     elif resp.status_code == 400:
-        print(f"Error Code {resp.status_code}: Likely Quota Violation")
+        print(f"Error Code {resp.status_code}: Bad Request, Bad URL or Quota Violation")
         if 'error_messages' in json_response:
             print(json_response['error_messages'][0])
         return None

@@ -368,14 +368,17 @@ def createSDDC(**kwargs) -> None:
     amount = kwargs["amount"]
     hostType = kwargs["host-type"]
     subnetId = kwargs["subnet-id"]
+    validate_only = kwargs["validate_only"]
 
-    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId)
+    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,validate_only)
     if json_response == None:
-        sys.exit(1)
-    #
-    # Process the json, print the SDDC ID if we have it. HERE
- 
-    printTask("SDDC Creation", json_response)
+        sys.exit(1) # an error
+
+    if 'input_validated' in json_response:
+        return
+        
+    if not validate_only:
+        printTask("SDDC Creation", json_response)
     
     return
 #
@@ -3779,7 +3782,7 @@ def main():
     # where to get the canonical list https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
     create_sddc_parser.add_argument('host-type', choices=['i3.metal','i3en.metal','i4i.metal'], help="string literal for host type")
     create_sddc_parser.add_argument('subnet-id', help='subnet ID for the apropriate subnet for new SDDC in subnet format, eg subnet-xxxxxx')
-    
+    create_sddc_parser.add_argument('--validate-only', action='store_true',  help="(optional) Validate the input parameters but do not create the SDDC")
     create_sddc_parser.set_defaults(func = createSDDC)
     
     delete_sddc_parser=sddc_parser_subs.add_parser('delete', parents = [vmc_url_flag,org_id_flag], help = 'Delete an SDDC')
