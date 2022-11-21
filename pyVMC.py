@@ -3842,7 +3842,7 @@ def main():
     csp_service_parser.set_defaults(func = getServiceDefinitions)
     csp_service_role_parser = csp_parser_subs.add_parser('show-csp-service-roles', parents=[csp_url_flag, org_id_flag] , help='Show the entitled service roles in the VMware Cloud Service Console.')
     csp_service_role_parser.set_defaults(func = getCSPServiceRoles)
-    get_access_token_parser=csp_parser_subs.add_parser('get-access-token', parents = [csp_url_flag, nsx_url_flag], help = 'show your access token')
+    # get_access_token_parser=csp_parser_subs.add_parser('get-access-token', parents = [csp_url_flag, nsx_url_flag], help = 'show your access token')
 
 # ============================
 # CSP - User and Group Management
@@ -3950,8 +3950,8 @@ def main():
     tkg_parser_subs = tkg_parser.add_subparsers(help='sddc sub-command help')
 
     # create parsers for each of the inidividual subcommands
-    enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents = [], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
-    disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents = [], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    # enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents = [], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
+    # disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents = [], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
 
 # ============================
 # NSX-T - Segments
@@ -3992,14 +3992,6 @@ def main():
 # NSX-T - VPN
 # ============================
     parent_vpn_parser = argparse.ArgumentParser(add_help=False)
-    #     l2vpn remote peer
-    #     local endpoint
-    #     vpn_name
-    # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
-    #     l2vpn id
-    #     vpn id
-    #     ike id
-    #     ipsec id
 
     # create the parser for the "vpn" command
     vpn_parser = subparsers.add_parser('vpn', help='Create, delete, update, and show virtual private network (VPN) settings.')
@@ -4007,19 +3999,19 @@ def main():
     vpn_parser_subs = vpn_parser.add_subparsers(help='vpn sub-command help')
 
     # create individual parsers for each sub-command
-    new_l2vpn_parser=vpn_parser_subs.add_parser('new-l2vpn', parents = [nsx_url_flag], help = 'create a new L2VPN')
-    remove_l2VPN_parser=vpn_parser_subs.add_parser('remove-l2VPN', parents = [nsx_url_flag], help = 'remove a L2VPN')
-    remove_vpn_parser=vpn_parser_subs.add_parser('remove-vpn', parents = [nsx_url_flag], help = 'remove a VPN')
-    remove_vpn_ike_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents = [nsx_url_flag], help = 'remove a VPN IKE profile')
-    remove_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'To remove a VPN IPSec Tunnel profile')
-    show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
-    show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
-    show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
+    # new_l2vpn_parser=vpn_parser_subs.add_parser('new-l2vpn', parents = [nsx_url_flag], help = 'create a new L2VPN')
+    # remove_l2VPN_parser=vpn_parser_subs.add_parser('remove-l2VPN', parents = [nsx_url_flag], help = 'remove a L2VPN')
+    # remove_vpn_parser=vpn_parser_subs.add_parser('remove-vpn', parents = [nsx_url_flag], help = 'remove a VPN')
+    # remove_vpn_ike_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents = [nsx_url_flag], help = 'remove a VPN IKE profile')
+    # remove_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'To remove a VPN IPSec Tunnel profile')
+    # show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
+    # show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
+    # show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
     # show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
-    show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
-    show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
-    show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
-    show_vpn_ipsec_endpoints_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
+    # show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
+    # show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
+    # show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
+    # show_vpn_ipsec_endpoints_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
@@ -4070,16 +4062,6 @@ def main():
 # NSX-T - NAT
 # ============================
     parent_nat_parser = argparse.ArgumentParser(add_help=False)
-    #     nat translated net (single IP address or comma separated list of single IP addresses or CIDR)
-    #     logging (true, false)
-    # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
-    #     name
-    #     nat action (SNAT, DNAT, REFLEXIVE, NO_SNAT, NO_DNAT, NAT64)
-    #     nat service name/path
-    #     nat source net
-    #     nat translated port
-    #     status
-    #     nat rule id
 
     # create the parser for the "nat" command
     nat_parser_main=subparsers.add_parser('nat', help='Show and update Network Address Translation (NAT) rules.')
@@ -4087,9 +4069,9 @@ def main():
     nat_parser_subs = nat_parser_main.add_subparsers(help='nat sub-command help')
 
     # create individual parsers for each sub-command
-    new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents = [nsx_url_flag], help = 'To create a new NAT rule')
-    remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents = [nsx_url_flag], help = 'remove a NAT rule')
-    show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the configured NAT rules')
+    # new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents = [nsx_url_flag], help = 'To create a new NAT rule')
+    # remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents = [nsx_url_flag], help = 'remove a NAT rule')
+    # show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the configured NAT rules')
     # show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the statistics for a specific NAT rule')
 
 
@@ -4131,40 +4113,40 @@ def main():
     parent_vtc_parser = argparse.ArgumentParser(add_help=False)
     #     name
 
-    connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents = [], help = 'Connect an vTGW to an AWS account')
-    disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents = [], help = 'Disconnect a vTGW from an AWS account')
+    # connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents = [], help = 'Connect an vTGW to an AWS account')
+    # disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents = [], help = 'Disconnect a vTGW from an AWS account')
 
 # ============================
 # VTC - DXGW Operations
 # ============================
 
-    attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents = [], help = 'Attach a Direct Connect Gateway to a vTGW')
-    detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents = [], help = 'Detach a Direct Connect Gateway from a vTGW')
+    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents = [], help = 'Attach a Direct Connect Gateway to a vTGW')
+    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents = [], help = 'Detach a Direct Connect Gateway from a vTGW')
 
 # ============================
 # VTC - SDDC Operations
 # ============================
 
-    get_sddc_info_parser=vtc_parser_subs.add_parser('get-sddc-info', parents = [], help = 'Display a list of all SDDCs')
-    get_nsx_info_parser=vtc_parser_subs.add_parser('get-nsx-info', parents = [], help = 'Display NSX credentials and URLs')
-    attach_sddc_parser=vtc_parser_subs.add_parser('attach-sddc', parents = [], help = 'Attach an SDDC to a vTGW')
-    detach_sddc_parser=vtc_parser_subs.add_parser('detach-sddc', parents = [], help = 'Detach an SDDC from a vTGW')
+    # get_sddc_info_parser=vtc_parser_subs.add_parser('get-sddc-info', parents = [], help = 'Display a list of all SDDCs')
+    # get_nsx_info_parser=vtc_parser_subs.add_parser('get-nsx-info', parents = [], help = 'Display NSX credentials and URLs')
+    # attach_sddc_parser=vtc_parser_subs.add_parser('attach-sddc', parents = [], help = 'Attach an SDDC to a vTGW')
+    # detach_sddc_parser=vtc_parser_subs.add_parser('detach-sddc', parents = [], help = 'Detach an SDDC from a vTGW')
 
 # ============================
 # VTC - SDDC-Group Operations
 # ============================
 
-    create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [], help = 'Create an SDDC group')
-    delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [], help = 'Delete an SDDC group')
-    get_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents = [], help = 'Display details for an SDDC group')
+    # create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [], help = 'Create an SDDC group')
+    # delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [], help = 'Delete an SDDC group')
+    # get_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents = [], help = 'Display details for an SDDC group')
 
 # ============================
 # VTC - VPC Operations
 # ============================
 
-    attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents = [], help = 'Attach a VPC to a vTGW')
-    detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents = [], help = 'Detach VPC from a vTGW')
-    vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents = [], help = 'Add or remove vTGW static routes')
+    # attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents = [], help = 'Attach a VPC to a vTGW')
+    # detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents = [], help = 'Detach VPC from a vTGW')
+    # vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents = [], help = 'Add or remove vTGW static routes')
 
 # ============================
 # NSX-T - Firewall - Gateway
@@ -4259,18 +4241,6 @@ def main():
 # NSX-T - Firewall - Distributed
 # ============================
     parent_dfw_parser = argparse.ArgumentParser(add_help=False)
-    #     dest group
-    #     dfw section name
-    #     fw action (ALLOW, DROP, REJECT)
-    #     rule_name
-    #     rule sequence num
-    #     service name
-    #     source group
-    #     dfw category
-    #     dfw section_name
-    #     dfw section id
-    #     rule id
-    # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
 
     # create the parser for the "dfw" command
     dfw_parser_main=subparsers.add_parser('dfw', help='Show and update policies and rules associated with NSX Distributed Firewall.')
@@ -4278,42 +4248,40 @@ def main():
     dfw_parser_subs = dfw_parser_main.add_subparsers(help='dfw sub-command help')
 
     # create individual parsers for each sub-command
-    new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents = [nsx_url_flag], help = 'create a new DFW security rule')
-    new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents = [nsx_url_flag], help = 'create a new DFW section')
-    remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents = [nsx_url_flag], help = 'delete a DFW rule')
-    remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents = [nsx_url_flag], help = 'delete a DFW section')
-    show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents = [nsx_url_flag], help = 'show the DFW sections')
-    show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents = [nsx_url_flag], help = 'show the DFW security rules within a section')
+    # new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents = [nsx_url_flag], help = 'create a new DFW security rule')
+    # new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents = [nsx_url_flag], help = 'create a new DFW section')
+    # remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents = [nsx_url_flag], help = 'delete a DFW rule')
+    # remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents = [nsx_url_flag], help = 'delete a DFW section')
+    # show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents = [nsx_url_flag], help = 'show the DFW sections')
+    # show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents = [nsx_url_flag], help = 'show the DFW security rules within a section')
 
 # ============================
 # NSX-T - Advanced Firewall
 # ============================
     parent_adv_firewall_parser = argparse.ArgumentParser(add_help=False)
-    #     cluster_id
-    #     policy_name
-
+ 
     # create the parser for the "nsxaf" command
     nsxaf_parser=subparsers.add_parser('nsxaf' , formatter_class=MyFormatter, help='Commands related to the NSX Advanced Firewall - e.g. IDS.')
     # create a subparser for nsxaf sub-commands
     nsxaf_parser_subs = nsxaf_parser.add_subparsers(help='nsxaf sub-command help')
 
-    show_nsxaf_status_parser=nsxaf_parser_subs.add_parser('show-nsxaf-status', parents = [nsx_url_flag], help = 'Display the status of the NSX Advanced Firewall Add-on')
+    # show_nsxaf_status_parser=nsxaf_parser_subs.add_parser('show-nsxaf-status', parents = [nsx_url_flag], help = 'Display the status of the NSX Advanced Firewall Add-on')
 
-    show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
-    enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on cluster')
-    disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on cluster')
-    enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on all clusters')
-    disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on all clusters')
-    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents = [nsx_url_flag], help = 'Enable IDS signature auto update')
-    ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents = [nsx_url_flag], help = 'Force update of IDS signatures')
-    show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents = [nsx_url_flag], help = 'Show downloaded signature versions')
-    show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents = [nsx_url_flag], help = 'Show all IDS profiles')
-    search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents = [nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
-    create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
-    show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
-    create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
-    show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
-    create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
+    # show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
+    # enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on cluster')
+    # disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on cluster')
+    # enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on all clusters')
+    # disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on all clusters')
+    # enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents = [nsx_url_flag], help = 'Enable IDS signature auto update')
+    # ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents = [nsx_url_flag], help = 'Force update of IDS signatures')
+    # show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents = [nsx_url_flag], help = 'Show downloaded signature versions')
+    # show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents = [nsx_url_flag], help = 'Show all IDS profiles')
+    # search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents = [nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
+    # create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
+    # show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
+    # create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
+    # show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
+    # create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
 
     # idsprofilegrp = ap.add_argument_group('IDS Profile Creation', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
     # idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
@@ -4340,9 +4308,6 @@ def main():
 # NSX-T - Inventory Groups
 # ============================
     parent_inventory_groups_parser = argparse.ArgumentParser(add_help=False)
-    #     net group id
-    #     T1 scope (MGW, CGW)
-    # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
 
     # new_group_parser=inventory_parser_subs.add_parser('new-group', parents = [nsx_url_flag], help = 'create a new group')
     # new_group_parser.add_argument("-i", "--interactive", nargs = '?', default = False, const = True, help = "Used to specify interactive mode.  If not specified, pyVMC assumes scripted mode.")
@@ -4357,11 +4322,13 @@ def main():
     # new_group_parser.add_argument("--value")
     # new_group_parser.set_defaults(func = )
 
-    remove_group_parser=inventory_parser_subs.add_parser('remove-group', parents = [nsx_url_flag], help = 'remove a group')
+    # remove_group_parser=inventory_parser_subs.add_parser('remove-group', parents = [nsx_url_flag], help = 'remove a group')
+
     show_group_parser=inventory_parser_subs.add_parser('show-group', parents = [nsx_url_flag], help = 'show existing groups')
     show_group_parser.add_argument("-gw", "--gateway", choices = ["cgw", "mgw", "both"], default = "both", required = False, help = "Show the inventory groups associated with the MGW or CGW gateways.")
     show_group_parser.set_defaults(func = getSDDCGroups)
-    show_group_association_parser=inventory_parser_subs.add_parser('show-group-association', parents = [nsx_url_flag], help = 'show security rules used by a groups')
+
+    # show_group_association_parser=inventory_parser_subs.add_parser('show-group-association', parents = [nsx_url_flag], help = 'show security rules used by a groups')
 
 # ============================
 # NSX-T - Inventory Services
@@ -4611,13 +4578,15 @@ def main():
 # ============================
 # Parsing arguments and calling function(s)
 # ============================
-    # If no arguments are provided, print the help
-    if len(sys.argv)==1:
-        ap.print_help(sys.stderr)
-        sys.exit(0) # help is not an error
-
     # Parse the arguments.
     args = ap.parse_args()
+
+    # If no arguments given, or no subcommands given with a function defined, return help:
+    if 'func' not in args:
+        ap.print_help(sys.stderr)
+        sys.exit(0)
+    else:
+        pass
 
     # Extract arguments into a dictionary
     params = vars(args)
