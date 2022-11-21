@@ -3107,33 +3107,68 @@ def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
 # NSX-T - Public IP Addressing
 # ============================
 
-
-def newSDDCPublicIP(proxy_url, session_token, ip_id):
+def newSDDCPublicIP(**kwargs):
     """ Gets a new public IP for compute workloads. Requires a description to be added to the public IP."""
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    ip_id = kwargs['ip_id']
     json_data = {
-    "display_name" : ip_id
+    "display_name" : ip_id, 
     }
-    json_response_status_code = put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data)
-    return json_response_status_code
+    json_response_status_code = put_sddc_public_ip_json(proxy, sessiontoken, ip_id, json_data)
+    if json_response_status_code == 200:
+        print(f'Public IP {ip_id} successfully updated.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+        getSDDCPublicIP(**params)
+    else:
+        print("Issues updating the IP - please check your syntax and try again.")
+        sys.exit(1)
 
 
-def setSDDCPublicIP(proxy_url, session_token, notes, ip_id):
+def deleteSDDCPublicIP(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    ip_id = kwargs['ip_id']
+    json_response_status_code = delete_sddc_public_ip_json(proxy, sessiontoken, ip_id)
+    if json_response_status_code == 200:
+        print(f'Public IP {ip_id} successfully deleted.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+        getSDDCPublicIP(**params)
+    else :
+        print("Issues deleting the Public IP. Check the syntax.")
+
+def setSDDCPublicIP(**kwargs):
     """ Update the description of an existing  public IP for compute workloads."""
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    ip_id = kwargs['ip_id']
+    notes = kwargs['notes']
     json_data = {
     "display_name" : notes
     }
-    json_response_status_code = put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data)
-    return json_response_status_code
+    json_response_status_code = put_sddc_public_ip_json(proxy, sessiontoken, ip_id, json_data)
+    if json_response_status_code == 200:
+        print(f'Public IP {ip_id} successfully updated.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+        getSDDCPublicIP(**params)
+    else:
+        print("Issues updating the IP - please check your syntax and try again.")
+        sys.exit(1)
 
 
-def getSDDCPublicIP(proxy_url, sessiontoken):
-    json_response = get_sddc_public_ip_json(proxy_url, sessiontoken)
-    sddc_public_ips = json_response['results']
-    table = PrettyTable(['IP', 'id', 'Notes'])
-    for i in sddc_public_ips:
-        table.add_row([i['ip'], i['id'], i['display_name']])
-    return table
-
+def getSDDCPublicIP(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = get_sddc_public_ip_json(proxy, sessiontoken)
+    if json_response is not None:
+        sddc_public_ips = json_response['results']
+        table = PrettyTable(['IP', 'id', 'Notes'])
+        for i in sddc_public_ips:
+            table.add_row([i['ip'], i['id'], i['display_name']])
+        print(table)
+    else:
+        print("Something went wrong.  Please check your syntax.")
+        sys.exit(1)
 
 # ============================
 # NSX-T - T1 Gateways
@@ -4365,13 +4400,23 @@ def main():
 # ============================
 # NSX-T - Public IP Addressing
 # ============================
-    parent_pub_ip_parser = argparse.ArgumentParser(add_help=False)
 
     # create individual parsers for each sub-command
     new_sddc_public_ip_parser=system_parser_subs.add_parser('new-sddc-public-ip', parents = [nsx_url_flag], help = 'request a new public IP')
+    new_sddc_public_ip_parser.add_argument("ip_id", help = "The name / description of the public IP address; spaces are not allowed.")
+    new_sddc_public_ip_parser.set_defaults(func = newSDDCPublicIP)
+
     remove_sddc_public_ip_parser=system_parser_subs.add_parser('remove-sddc-public-ip', parents = [nsx_url_flag], help = 'remove an existing public IP')
+    remove_sddc_public_ip_parser.add_argument("ip_id", help = "The name / description of the public IP address; spaces are not allowed.")
+    remove_sddc_public_ip_parser.set_defaults(func = deleteSDDCPublicIP)
+
     set_sddc_public_ip_parser=system_parser_subs.add_parser('set-sddc-public-ip', parents = [nsx_url_flag], help = 'update the description of an existing public IP')
+    set_sddc_public_ip_parser.add_argument("ip_id", help = "The current ID of the public IP address to update.  Use './pyVMC.py system show-sddc-public-ip to see a list.")
+    set_sddc_public_ip_parser.add_argument("notes", help = "The NEW name / description of the public IP address to update; spaces are not allowed.")
+    set_sddc_public_ip_parser.set_defaults(func = setSDDCPublicIP)
+
     show_sddc_public_ip_parser=system_parser_subs.add_parser('show-sddc-public-ip', parents = [nsx_url_flag], help = 'show the public IPs')
+    show_sddc_public_ip_parser.set_defaults(func = getSDDCPublicIP)
 
 # ============================
 # NSX-T - MTU
@@ -4658,35 +4703,6 @@ if __name__ == "__main__":
 This section has been retained for review purposes during the refactor effort.  
 Once your section has been updated to use argparse and keword arguments (kwargs), delete the corresponding if / elif statements below
 """
-# ============================
-#     # CSP - Services
-#     # ============================
-
-
-#     if intent_name == "show-csp-services":
-#         getServiceDefinitions(strCSPProdURL, ORG_ID, session_token)
-
-#     # ============================
-#     # CSP - User and Group Management
-#     # ============================
-
-#     elif intent_name == "add-users-to-csp-group":
-#         addUsersToCSPGroup(strCSPProdURL,session_token)
-#     elif intent_name == "show-csp-group-diff":
-#         getCSPGroupDiff(strCSPProdURL,session_token)
-#     elif intent_name == "show-csp-groups":
-#         getCSPGroups(strCSPProdURL,session_token)
-#     elif intent_name == "show-csp-group-members":
-#         getCSPGroupMembers(strCSPProdURL,session_token)
-#     elif intent_name == "show-csp-org-users":
-#         getCSPOrgUsers(strCSPProdURL,session_token)
-#     elif intent_name == "show-csp-service-roles":
-#         getCSPServiceRoles(strCSPProdURL,session_token)
-#     elif intent_name == "find-csp-user-by-service-role":
-#         findCSPUserByServiceRole(strCSPProdURL,session_token)
-#     elif intent_name == "show-org-users":
-#         showORGusers(ORG_ID, session_token)
-
 
 #     # ============================
 #     # SDDC - AWS Account and VPC
@@ -5380,43 +5396,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             print(NATStats)
 #         else:
 #             print("Incorrect syntax. Try again or check the help.")
-
-
-#     # ============================
-#     # NSX-T - Public IP Addressing
-#     # ============================
-
-
-#     elif intent_name == "new-sddc-public-ip":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. Please add a description of the public IP address.")
-#         else :
-#             notes = sys.argv[2]
-#             if newSDDCPublicIP(proxy, session_token, notes) == 200:
-#                 print(getSDDCPublicIP(proxy,session_token))
-#             else :
-#                 print("Issues creating a Public IP.")
-#     elif intent_name == "remove-sddc-public-ip":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. ")
-#         else:
-#             public_ip = sys.argv[2]
-#             if delete_sddc_public_ip_json(proxy, session_token, public_ip) == 200:
-#                 print(getSDDCPublicIP(proxy,session_token))
-#             else :
-#                 print("Issues deleting the Public IP. Check the syntax.")
-#     elif intent_name == "set-sddc-public-ip":
-#         if len(sys.argv) != 4:
-#             print("Incorrect syntax. Please add the new description of the public IP address.")
-#         else:
-#             public_ip = sys.argv[2]
-#             notes = sys.argv[3]
-#             if setSDDCPublicIP(proxy, session_token, notes, public_ip) == 200:
-#                 print(getSDDCPublicIP(proxy,session_token))
-#             else :
-#                 print("Issues updating a Public IP. Check the syntax.")
-#     elif intent_name == "show-sddc-public-ip":
-#         print(getSDDCPublicIP(proxy,session_token))
 
 #     # ============================
 #     # NSX-T - VPN
