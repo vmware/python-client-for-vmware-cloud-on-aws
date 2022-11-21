@@ -612,6 +612,93 @@ def get_sddc_dns_zones_json(proxy_url,sessiontoken):
 # Firewall - Gateway
 # ============================
 
+def create_gwfw_rule(proxy, sessiontoken, gw, display_name, json_data):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f'{proxy}/policy/api/v1/infra/domains/{gw}/gateway-policies/default/rules/{display_name}'
+    response = requests.put(myURL, headers=myHeader, json=json_data)
+    json_response = response.json()
+    status = response.status_code
+    if status == 200:
+        return status
+    elif status == 400:
+        print(f"Error Code {status}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif status == 403:
+        print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif status == 503:
+        print(f"Error Code {status}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    else:
+        print(f'Status code: {status}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
+def delete_gwfw_rule(proxy_url, sessiontoken, gw, rule_id):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/gateway-policies/default/rules/{rule_id}'
+    response = requests.delete(myURL, headers=myHeader)
+    status = response.status_code
+    if status == 200:
+        return status
+    elif status == 400:
+        print(f"Error Code {status}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif status == 403:
+        print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif status == 503:
+        print(f"Error Code {status}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    else:
+        print(f'Status code: {status}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
+def get_gwfw_rules(proxy, sessiontoken, gw):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f'{proxy}/policy/api/v1/infra/domains/{gw}/gateway-policies/default/rules'
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    status = response.status_code
+    if status == 200:
+        return json_response
+    elif status == 400:
+        print(f"Error Code {status}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif status == 403:
+        print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif status == 503:
+        print(f"Error Code {status}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    else:
+        print(f'Status code: {status}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
+
 # ============================
 # Firewall - Distributed
 # ============================
@@ -725,11 +812,26 @@ def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
     json_response = response.json()
     if response.status_code == 200:
         return json_response
+    elif response.status_code == 400:
+        print(f"Error Code {response.status_code}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif response.status_code == 403:
+        print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif response.status_code == 503:
+        print(f"Error Code {response.status_code}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
-
+        print(f'Status code: {response.status_code}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
 
 def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
     myHeader = {'csp-auth-token': session_token}

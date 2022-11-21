@@ -1160,27 +1160,7 @@ def add_vpc_prefixes(routes, att_id, resource_id, org_id, account, session_token
 def search_nsx(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    if kwargs['object_type'] is None:
-        print("Invalid syntax.  Please provide object type to search by as an argument; optionally provide the object id / display name.")
-        print("Currently supported object types are as follows:")
-        print("    BgpNeighborConfig")
-        print("    BgpRoutingConfig")
-        print("    Group")
-        print("    IdsSignature")
-        print("    PrefixList")
-        print("    RouteBasedIPSecVPNSession")
-        print("    Segment")
-        print("    Service")
-        print("    StaticRoute")
-        print("    Tier0")
-        print("    Tier1")
-        print("    VirtualMachine")
-        print("    VirtualNetworkInterface")
-        print("")
-        print("A full list may be found in the NSX-T API documentation here: https://developer.vmware.com/apis/1248/nsx-t")
-        sys.exit(1)
-    else:
-        object_type = kwargs['object_type']
+    object_type = kwargs['object_type']
     if kwargs['object_id'] is None:
         object_id = "NULL"
     else:
@@ -2392,10 +2372,70 @@ def getSDDCDNS_Zones(**kwargs):
 # NSX-T - Firewall - Gateway
 # ============================
 
+def newSDDCCGWRule(**kwargs):
+    proxy = kwargs["proxy"]
+    sessiontoken = kwargs["sessiontoken"]
+    display_name = kwargs["display_name"]
 
-def newSDDCCGWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, scope, sequence_number):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/" + display_name)
+    action = kwargs["action"]
+    sequence_number = kwargs["sequence"]
+
+    # define scope (list of interfaces) to apply rule to
+    scope_string = kwargs["scope"]
+    scope_index = '/infra/labels/cgw-'
+    scope = [scope_index + x for x in scope_string]
+
+    # define list of services for rule
+    list_index = '/infra/services/'
+    services_string = kwargs["services"]
+    services = []
+    if len(services_string) == 1 and str.lower(services_string[0]) == "any":
+        services = ["any"]
+    else:
+        for i in services_string:
+            if str.lower(i) == "any":
+                print("Service definition error: 'ANY' may not be used in conjuction with other services.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            service = f'{list_index}{i}'
+            services.append(service)
+
+    # group index to be used for both source and dest group definitions
+    predefined_grp = ["connected_vpc", "directConnect_prefixes", "s3_prefixes", "deployment_group_dgw_prefixes", "deployment_group_tgw_prefixes", "deployment_group_vpc_prefixes", "deployment_group_sddc_prefixes"]
+    group_index = '/infra/domains/cgw/groups/'
+
+    # define source groups for rule
+    sg_string = kwargs["source"]
+    source_groups = []
+
+    if len(sg_string) == 1 and str.lower(sg_string[0]) == "any":
+        source_groups = ["any"]
+    else:
+        for i in sg_string:
+            if str.lower(i) == "any":
+                print("Source definition error: 'ANY' should not be used in conjuction with other sources.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            elif i in predefined_grp:
+                source = f'/infra/tier-0s/vmc/groups/{i}'
+            else:
+                source = f'{group_index}{i}'
+            source_groups.append(source)
+
+    # define destination groups for rule
+    dg_string = kwargs["dest"]
+    destination_groups = []
+    if len(dg_string) == 1 and str.lower(dg_string[0]) == "any":
+        destination_groups = ["any"]
+    else:
+        for i in dg_string:
+            if str.lower(i) == "any":
+                print("Destination definition error: 'ANY' should not be used in conjuction with other sources.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            elif i in predefined_grp:
+                dest = f'/infra/tier-0s/vmc/groups/{i}'
+            else:
+                dest = f'{group_index}{i}'
+            destination_groups.append(dest)
+
     json_data = {
     "action": action,
     "destination_groups": destination_groups,
@@ -2412,14 +2452,79 @@ def newSDDCCGWRule(proxy_url, sessiontoken, display_name, source_groups, destina
     "source_groups": source_groups,
     "sequence_number": sequence_number
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    new_rule = create_gwfw_rule(proxy, sessiontoken, "cgw", display_name, json_data)
+    if new_rule == 200:
+        print("\n The rule has been created.")
+        params = {"proxy":proxy, "sessiontoken":sessiontoken}
+        getSDDCCGWRule(**params)
+    else:
+        print("Something went wrong. Try again.")
+        exit(1)
 
 
-def newSDDCMGWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, sequence_number):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/mgw/gateway-policies/default/rules/" + display_name)
+def newSDDCMGWRule(**kwargs):
+    proxy = kwargs["proxy"]
+    sessiontoken = kwargs["sessiontoken"]
+    display_name = kwargs["display_name"]
+
+    action = kwargs["action"]
+    sequence_number = kwargs["sequence"]
+
+    # define list of services for rule
+    list_index = '/infra/services/'
+    services_string = kwargs["services"]
+    services = []
+    for i in services_string:
+        if str.lower(i) == "any":
+            print("Service definition error: 'ANY' may not be usedfor MGW gateway firewall rules.  Please list your services explicitly (i.e. HTTPS).")
+            sys.exit(1)
+        service = f'{list_index}{i}'
+        services.append(service)
+
+    # group index to be used for both source and dest group definitions
+    group_index = '/infra/domains/mgw/groups/'
+
+    # set up comparison list for mgt groups
+    mgw_groups_json = get_sddc_inventory_groups_json(proxy, sessiontoken, "mgw")
+    mgw_groups = mgw_groups_json['results']
+    string_compare = []
+    for item in mgw_groups:
+        string_compare.append(item["id"])
+
+    # define source groups for rule
+    sg_string = kwargs["source"]
+    source_groups = []
+    if str.lower("any") in sg_string:
+        source_groups = ["any"]
+    else:
+        for item in sg_string:
+            if item not in string_compare:
+                print(f'Invalid group:{item} - must be an existing Management Group in the Inventory.')
+                params = {"proxy":proxy, "sessiontoken":sessiontoken, "gateway": "mgw"}
+                print()
+                getSDDCGroups(**params)
+                exit(1)
+            else:
+                item = f'{group_index}{item}'
+                source_groups.append(item)
+ 
+    # define destination groups for rule
+    dg_string = kwargs["dest"]
+    if len(dg_string) > 1:
+        print("Invalid selection - there may be only one destination group for a MGW firewall rule.")
+        exit(1)
+    else:
+        if dg_string[0] not in string_compare:
+            print("Invalid destination group - must be an existing Management Group in the Inventory.")
+            params = {"proxy":proxy, "sessiontoken":sessiontoken, "gateway": "mgw"}
+            getSDDCGroups(**params)
+            exit(1)
+        else:
+            destination_groups = []
+            for item in dg_string:
+                item = f'{group_index}{item}'
+                destination_groups.append(item)
+
     json_data = {
     "action": action,
     "destination_groups": destination_groups,
@@ -2436,36 +2541,53 @@ def newSDDCMGWRule(proxy_url, sessiontoken, display_name, source_groups, destina
     "source_groups": source_groups,
     "sequence_number": sequence_number
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    if json_response_status_code != 200:
-        print(response.text)
-    return json_response_status_code
+    new_rule = create_gwfw_rule(proxy, sessiontoken, "mgw", display_name, json_data)
+    if new_rule == 200:
+        print("\n The rule has been created.")
+        params = {"proxy":proxy, "sessiontoken":sessiontoken}
+        getSDDCMGWRule(**params)
+    else:
+        print("Incorrect syntax. Try again.")
+        exit(1)
 
 
-def removeSDDCCGWRule(proxy_url, sessiontoken, rule_id):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/" + rule_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+def removeSDDCCGWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    gw = "cgw"
+    rule_id = kwargs['rule_id']
+    response = delete_gwfw_rule(proxy, sessiontoken, gw, rule_id)
+    if response == 200:
+        print("\n The rule has been deleted.")
+        params = {"proxy":proxy, "sessiontoken":sessiontoken}
+        getSDDCCGWRule(**params)
+    else:
+        print("Incorrect syntax. Try again.")
+        exit(1)
 
 
-def removeSDDCMGWRule(proxy_url, sessiontoken, rule_id):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/mgw/gateway-policies/default/rules/" + rule_id)
-    response = requests.delete(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+def removeSDDCMGWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    gw = "mgw"
+    rule_id = kwargs['rule_id']
+    response = delete_gwfw_rule(proxy, sessiontoken, gw, rule_id)
+    if response == 200:
+        print("\n The rule has been deleted.")
+        params = {"proxy":proxy, "sessiontoken":sessiontoken}
+        getSDDCMGWRule(**params)
+    else:
+        print("Incorrect syntax. Try again.")
+        exit(1)
 
 
-def getSDDCCGWRule(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+def getSDDCCGWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    gw = "cgw"
+    json_response = get_gwfw_rules(proxy, sessiontoken, gw)
     sddc_CGWrules = json_response['results']
-    table = PrettyTable(['id', 'Name','Source','Destination', 'Action', 'Applied To', 'Sequence Number'])
+    table = PrettyTable(['id', 'Name','Source','Destination', 'Services','Action', 'Applied To', 'Sequence Number'])
     for i in sddc_CGWrules:
         # a, b and c are used to strip the infra/domain/cgw terms from the strings for clarity.
         a = i['source_groups']
@@ -2474,17 +2596,19 @@ def getSDDCCGWRule(proxy_url, sessiontoken):
         b= i['destination_groups']
         b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
         b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
-        c= i['scope']
-        c = [z.replace('/infra/labels/cgw-','') for z in c]
-        table.add_row([i['id'], i['display_name'], a, b, i['action'], c, i['sequence_number']])
-    return table
+        c = i['services']
+        c = [z.replace('/infra/services/','') for z in c]
+        d= i['scope']
+        d = [z.replace('/infra/labels/cgw-','') for z in d]
+        table.add_row([i['id'], i['display_name'], a, b, c,i['action'], d, i['sequence_number']])
+    print(table)
 
 
-def getSDDCMGWRule(proxy_url, sessiontoken):
-    myHeader = {'csp-auth-token': sessiontoken}
-    myURL = (proxy_url + "/policy/api/v1/infra/domains/mgw/gateway-policies/default/rules")
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
+def getSDDCMGWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    gw = "mgw"
+    json_response = get_gwfw_rules(proxy, sessiontoken, gw)
     sddc_MGWrules = json_response['results']
     table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
     for i in sddc_MGWrules:
@@ -2496,7 +2620,7 @@ def getSDDCMGWRule(proxy_url, sessiontoken):
         c = i['services']
         c = [z.replace('/infra/services/','') for z in c]
         table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
-    return table
+    print(table)
 
 
 # ============================
@@ -2749,14 +2873,29 @@ def getVMExternalID(proxy_url,sessiontoken,vm_name):
     return extracted_VM_external_id
 
 
-def getSDDCGroups(proxy_url, session_token, gw):
+def getSDDCGroups(**kwargs):
     """ Gets the SDDC Groups. Use 'mgw' or 'cgw' as the parameter """
-    json_response = get_sddc_inventory_groups_json(proxy_url, session_token, gw)
-    sddc_group = json_response['results']
-    table = PrettyTable(['ID', 'Name'])
-    for i in sddc_group:
-        table.add_row([i['id'], i['display_name']])
-    return table
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    gw = kwargs['gateway']
+    if gw == "both":
+        gw = ["mgw", "cgw"]
+        for item in gw:
+            json_response = get_sddc_inventory_groups_json(proxy, sessiontoken, item)
+            gw_group = json_response['results']
+            gw_table = PrettyTable(['ID', 'Name'])
+            for i in gw_group:
+                gw_table.add_row([i['id'], i['display_name']])
+            print(f'Here are the {str.upper(item)} Groups:')
+            print(gw_table)
+    else:
+        json_response = get_sddc_inventory_groups_json(proxy, sessiontoken, gw)
+        gw_group = json_response['results']
+        gw_table = PrettyTable(['ID', 'Name'])
+        for i in gw_group:
+            gw_table.add_row([i['id'], i['display_name']])
+        print(f'Here are the {str.upper(gw)} Groups:')
+        print(gw_table)
 
 
 def getSDDCGroup(proxy_url, session_token, gw, group_id):
@@ -3873,7 +4012,7 @@ def main():
     show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
     show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
     show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
-    show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
+    # show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
     show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
     show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
     show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
@@ -4027,21 +4166,6 @@ def main():
 # ============================
 # NSX-T - Firewall - Gateway
 # ============================
-    parent_gfw_parser = argparse.ArgumentParser(add_help=False)
-    #     dest group
-    #     fw action (ALLOW, DROP, REJECT)
-    #     fw scope
-    #     cgw_rule_name
-    #     cgw_rule sequence num
-    #     service name
-    #     source group
-    #     dest group
-    #     mgw_rule_name
-    #     mgw_rule sequence num
-    #     service name
-    #     source group
-    #     rule_id
-
     # create the parser for the "gwfw" command
     gwfw_parser_main=subparsers.add_parser('gwfw', help='Show and update policies and rules associated with NSX Gateway Firewall (mgw, cgw, etc.).')
     # create a subparser for gwfw sub-commands
@@ -4049,12 +4173,84 @@ def main():
 
     # create individual parsers for each sub-command
 
-    new_cgw_rule_parser=gwfw_parser_subs.add_parser('new-cgw-rule', parents = [nsx_url_flag], help = 'create a new CGW security rule')
-    new_mgw_rule_parser=gwfw_parser_subs.add_parser('new-mgw-rule', parents = [nsx_url_flag], help = 'create a new MGW security rule')
+    new_cgw_rule_parser=gwfw_parser_subs.add_parser('new-cgw-rule', parents = [nsx_url_flag], formatter_class=argparse.RawTextHelpFormatter, help = "Create a new CGW security rule.  When specifying source or destination groups, note you may specify multiple simply by listing them, separated by spaces.")
+    new_cgw_rule_parser.add_argument("-name", "--display_name", required= True, help = "The name of the rule")
+    new_cgw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
+    new_cgw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
+    new_cgw_rule_parser.add_argument("--sequence", default= "0", required = False, help = "The sequence number for rule processing. (Optional)")
+    new_cgw_rule_parser.add_argument("--scope", choices = ["all", "public", "direct-connect", "cross-vpc", "vpn"], nargs='+', required= True,  help = "The interface(s) in the SDDC to apply the rule to. You may select more than one by simply adding them separated by spaces.")
+    new_cgw_rule_parser.add_argument("--source", required= True, nargs = '+', help = '''
+    The source group(s) for the Compute Gateway firewall rule.  When specifying source groups, note you may specify multiple simply by listing them, separated by spaces.
+    This value may be one or more of the (case sensitive) predefined groups on the VMC Tier 0:
+        connected_vpc
+        directConnect_prefixes
+        s3_prefixes
+        deployment_group_dgw_prefixes
+        deployment_group_tgw_prefixes
+        deployment_group_vpc_prefixes
+        deployment_group_sddc_prefixes
+        
+    ... or a custom defined group.  If you choose to use custom groups, be sure to specify the correct group ID.
+    Use './pyVMC.py inventory show-group cgw' or to display currently configured groups for the Compute Gateway.
+    '''
+    )
+    new_cgw_rule_parser.add_argument("--dest", required= True, nargs = '+', help = '''
+    The destination group(s) for the Compute Gateway firewall rule.  When specifying destination groups, note you may specify multiple simply by listing them, separated by spaces.
+    This value may be one or more of the (case sensitive) predefined groups on the VMC Tier 0:
+        connected_vpc
+        directConnect_prefixes
+        s3_prefixes
+        deployment_group_dgw_prefixes
+        deployment_group_tgw_prefixes
+        deployment_group_vpc_prefixes
+        deployment_group_sddc_prefixes
+        
+    ... or a custom defined group.  If you choose to use custom groups, be sure to specify the correct group ID.
+    Use './pyVMC.py inventory show-group cgw' to display currently configured groups for the Compute Gateway.
+    '''
+    )
+    new_cgw_rule_parser.set_defaults(func = newSDDCCGWRule)
+
+    new_mgw_rule_parser=gwfw_parser_subs.add_parser('new-mgw-rule', parents = [nsx_url_flag], help = 'Create a new MGW security rule.')
+    new_mgw_rule_parser.add_argument("-name", "--display_name", required= True, help = "The name of the rule")
+    new_mgw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
+    new_mgw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
+    new_mgw_rule_parser.add_argument("--sequence", default= "0", required = False, help = "The sequence number for rule processing. (Optional)")
+    new_mgw_rule_parser.add_argument("--source", required= True, nargs = '+', help = '''
+    The source group(s) for the Management Gateway firewall rule.  When specifying source groups, note you may specify multiple simply by listing them, separated by spaces.
+    This value may be one or more of the (case sensitive) predefined "Management" groups for the SDDC:
+        ESXI
+        HCX
+        VCENTER
+        NSX-MANAGER
+    ... or a custom defined group.  If you choose to use custom groups, be sure to specify the correct group ID.
+    Use './pyVMC.py inventory show-group mgw' to display currently configured groups for the Management Gateway.
+    '''
+    )
+    new_mgw_rule_parser.add_argument("--dest", required= True, nargs = '+', help = '''
+    The destination group(s) for the Management Gateway firewall rule.  When specifying destination groups, note you may ONLY ONE (case sensitive) predefined Management Group, as follows:
+        ESXI
+        HCX
+        VCENTER
+        NSX-MANAGER
+    Based on your SDDC configuration and services, there may be additional groups.  Use './pyVMC.py inventory show-group cgw' to display currently configured groups for the Compute Gateway.
+    '''
+    )
+    new_mgw_rule_parser.set_defaults(func = newSDDCMGWRule)
+
     remove_cgw_rule_parser=gwfw_parser_subs.add_parser('remove-cgw-rule', parents = [nsx_url_flag], help = 'delete a CGW security rule')
+    remove_cgw_rule_parser.add_argument("rule_id", help = "The ID of the rule you wish to delete.  Use './pyVMC.py gwfw show-cgw-rule for a list.")
+    remove_cgw_rule_parser.set_defaults(func = removeSDDCCGWRule)
+
     remove_mgw_rule_parser=gwfw_parser_subs.add_parser('remove-mgw-rule', parents = [nsx_url_flag], help = 'delete a MGW security rule')
+    remove_mgw_rule_parser.add_argument("rule_id", help = "The ID of the rule you wish to delete.  Use './pyVMC.py gwfw show-mgw-rule for a list.")
+    remove_mgw_rule_parser.set_defaults(func = removeSDDCMGWRule)
+
     show_cgw_rule_parser=gwfw_parser_subs.add_parser('show-cgw-rule', parents = [nsx_url_flag], help = 'show the CGW security rules')
+    show_cgw_rule_parser.set_defaults(func = getSDDCCGWRule)
+
     show_mgw_rule_parser=gwfw_parser_subs.add_parser('show-mgw-rule', parents = [nsx_url_flag], help = 'show the MGW security rules')
+    show_mgw_rule_parser.set_defaults(func= getSDDCMGWRule)
 
 # ============================
 # NSX-T - Firewall - Distributed
@@ -4145,9 +4341,23 @@ def main():
     #     T1 scope (MGW, CGW)
     # ??.add_argument("-n","--objectname", required=False, help= "The name of the object.  May not include spaces or hypens.")
 
-    new_group_parser=inventory_parser_subs.add_parser('new-group', parents = [nsx_url_flag], help = 'create a new group')
+    # new_group_parser=inventory_parser_subs.add_parser('new-group', parents = [nsx_url_flag], help = 'create a new group')
+    # new_group_parser.add_argument("-i", "--interactive", nargs = '?', default = False, const = True, help = "Used to specify interactive mode.  If not specified, pyVMC assumes scripted mode.")
+
+    # # gw (scope),group_id,member_type,key,operator,value
+    # new_group_parser.add_argument("--scope", choices = ["CGW", "MGW"], help = "Select either the default CGW of MGW to associate to this group.")
+    # new_group_parser.add_argument("--group-id", help = "Provide a unique name / ID for this group")
+    # new_group_parser.add_argument("--member-type", choices=["ip-based", "member-based", "criteria-based", "group-based"], help = "The type of membership to assign to the group: ip-based, member-based, criteria-based, or group-based.")
+
+    # new_group_parser.add_argument("--key")
+    # new_group_parser.add_argument("--operator")
+    # new_group_parser.add_argument("--value")
+    # new_group_parser.set_defaults(func = )
+
     remove_group_parser=inventory_parser_subs.add_parser('remove-group', parents = [nsx_url_flag], help = 'remove a group')
     show_group_parser=inventory_parser_subs.add_parser('show-group', parents = [nsx_url_flag], help = 'show existing groups')
+    show_group_parser.add_argument("-gw", "--gateway", choices = ["cgw", "mgw", "both"], default = "both", required = False, help = "Show the inventory groups associated with the MGW or CGW gateways.")
+    show_group_parser.set_defaults(func = getSDDCGroups)
     show_group_association_parser=inventory_parser_subs.add_parser('show-group-association', parents = [nsx_url_flag], help = 'show security rules used by a groups')
 
 # ============================
@@ -4223,7 +4433,7 @@ def main():
     asn_show_parser = asn_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show the currently configured value for ASN on the Intranet Interface.")
     asn_show_parser.set_defaults(func = getSDDCBGPAS)
 
-    asn_update_parser = mtu_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the ASN on the Intranet Interface.")
+    asn_update_parser = asn_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the ASN on the Intranet Interface.")
     asn_update_parser.add_argument("-asn", help = "new ASN value for the Direct Connect / Intranet Interface.")
     asn_update_parser.set_defaults(func = setSDDCBGPAS)
 
@@ -4253,7 +4463,7 @@ def main():
 # ============================
 
     show_routes_parser= system_parser_subs.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
-    show_routes_parser.add_argument('-rt', '--route-type', choices = ['t0', 'bgp', 'static', 'tgw'], required= True, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
+    show_routes_parser.add_argument('route-type', choices = ['t0', 'bgp', 'static', 'tgw'], help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
     show_routes_parser.add_argument('--search-name', help = "Optionally, enter the name of the SDDC group you wish to view the route table for.")
     show_routes_parser.set_defaults(func = getSDDCroutes)
 
@@ -4263,7 +4473,7 @@ def main():
 # ============================
     """ Subparser for NSX Search functions """
     search_nsx_parser = subparsers.add_parser('search-nsx', parents = [nsx_url_flag],formatter_class=MyFormatter, help='Search the NSX Manager inventory.')
-    search_nsx_parser.add_argument("-ot","--object_type", required=False, choices=["BgpNeighborConfig","BgpRoutingConfig","Group","IdsSignature","PrefixList","RouteBasedIPSecVPNSession","Segment","Service","StaticRoute","Tier0","Tier1","VirtualMachine","VirtualNetworkInterface"], help="The type of object to search for.")
+    search_nsx_parser.add_argument("object_type", choices=["BgpNeighborConfig","BgpRoutingConfig","Group","IdsSignature","PrefixList","RouteBasedIPSecVPNSession","Segment","Service","StaticRoute","Tier0","Tier1","VirtualMachine","VirtualNetworkInterface"], help="The type of object to search for.")
     search_nsx_parser.add_argument("-oid","--object_id", required=False, help="The name of the object you are searching for.")
     search_nsx_parser.set_defaults(func=search_nsx)
 
@@ -4817,135 +5027,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #     elif intent_name == "delete-ids-rule":
 #         delete_ids_rule(**vars(args))
         
-#     # ============================
-#     # NSX-T - Firewall - Gateway
-#     # ============================
-
-
-#     elif intent_name == "new-cgw-rule":
-#         sequence_number = 0
-#         display_name = sys.argv[2]
-#         sg_string = sys.argv[3]
-#         dg_string = sys.argv[4]
-#         group_index = '/infra/domains/cgw/groups/'
-#         scope_index = '/infra/labels/cgw-'
-#         list_index = '/infra/services/'
-#         if sg_string.lower() == "connected_vpc":
-#             source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-#         elif sg_string.lower() == "directconnect_prefixes":
-#             source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-#         elif sg_string.lower() == "s3_prefixes":
-#             source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-#         elif sg_string.lower() == "any":
-#             source_groups = ["ANY"]
-#         else:
-#             sg_list = sg_string.split(",")
-#             source_groups = [group_index + x for x in sg_list]
-#         if dg_string.lower() == "connected_vpc":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-#         elif dg_string.lower() == "directconnect_prefixes":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-#         elif dg_string.lower() == "s3_prefixes":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-#         elif dg_string.lower() == "any":
-#             destination_groups = ["ANY"]
-#         else:
-#             dg_list = dg_string.split(",")
-#             destination_groups= [group_index + x for x in dg_list]
-#         services_string = sys.argv[5]
-#         if services_string.lower() == "any":
-#             services = ["ANY"]
-#         else:
-#             services_list = services_string.split(",")
-#             services = [list_index + x for x in services_list]
-#         action = sys.argv[6].upper()
-#         scope_string = sys.argv[7].lower()
-#         scope_list = scope_string.split(",")
-#         scope = [scope_index + x for x in scope_list]
-#         if len(sys.argv) == 9:
-#             sequence_number = sys.argv[8]
-#             new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
-#         else:
-#             new_rule = newSDDCCGWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, scope, sequence_number)
-#         if new_rule == 200:
-#             print("\n The rule has been created.")
-#             print(getSDDCCGWRule(proxy,session_token))
-#         else:
-#             print("Incorrect syntax. Try again.")
-#     elif intent_name == "new-mgw-rule":
-#         sequence_number = 0
-#         display_name = sys.argv[2]
-#         # String and List Manipulation:
-#         sg_string = sys.argv[3]
-#         dg_string = sys.argv[4]
-#         group_index = '/infra/domains/mgw/groups/'
-#         list_index = '/infra/services/'
-#         if sg_string.lower() == "any":
-#             source_groups = ["ANY"]
-#         else:
-#             # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
-#             # sg_string = sg_string.upper()
-#             sg_list = sg_string.split(",")
-#             source_groups = [group_index + x for x in sg_list]
-
-#         # String and List Manipulation:
-#         # We take the input argument (NSX-MANAGER or VCENTER or ESXI nodes)
-
-#         if dg_string.lower() == "any":
-#             destination_groups = ["ANY"]
-#         else:
-#             # Commented out 2022-01-03 - unclear why the upper() function is used here, but it breaks for any rule with a group that is in lowercase.
-#             # dg_string = dg_string.upper()
-#             dg_list = dg_string.split(",")
-#             destination_groups = [group_index + x for x in dg_list]
-
-#         services_string = sys.argv[5]
-#         if services_string.lower() == "any":
-#             services = ["ANY"]
-#         else:
-#             services_list = services_string.split(",")
-#             print(services_list)
-#             services = [list_index + x for x in services_list]
-#         action = sys.argv[6].upper()
-#         if len(sys.argv) == 8:
-#             sequence_number = sys.argv[7]
-#             new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
-#                                     action, sequence_number)
-#             print(new_rule)
-#         else:
-#             new_rule = newSDDCMGWRule(proxy, session_token, display_name, source_groups, destination_groups, services,
-#                                     action, sequence_number)
-#         if new_rule == 200:
-#             print("\n The rule has been created.")
-#             print(getSDDCMGWRule(proxy, session_token))
-#             print(new_rule)
-#         else:
-#             print("Incorrect syntax. Try again.")
-#     elif intent_name == "remove-cgw-rule":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. ")
-#         else:
-#             rule_id = sys.argv[2]
-#             if removeSDDCCGWRule(proxy, session_token, rule_id) == 200:
-#                 print("The rule " + rule_id + " has been deleted")
-#                 print(getSDDCCGWRule(proxy,session_token))
-#             else :
-#                 print("Issues deleting the security rule. Check the syntax.")
-#     elif intent_name == "remove-mgw-rule":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. ")
-#         else:
-#             rule_id = sys.argv[2]
-#             if removeSDDCMGWRule(proxy, session_token, rule_id) == 200:
-#                 print(getSDDCMGWRule(proxy,session_token))
-#             else :
-#                 print("Issues deleting the security rule. Check the syntax.")
-#     elif intent_name == "show-cgw-rule":
-#         print(getSDDCCGWRule(proxy, session_token))
-#     elif intent_name == "show-mgw-rule":
-#         print(getSDDCMGWRule(proxy, session_token))
-
-
 #     # ============================
 #     # NSX-T - Firewall - Distributed
 #     # ============================
