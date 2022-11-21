@@ -1972,7 +1972,8 @@ def setSDDCMTU(**kwargs):
     response = set_sddc_mtu_json(proxy,sessiontoken,json_data)
     if response!= False:
         print("The MTU has been updated:")
-        getSDDCMTU(proxy,sessiontoken)
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+        getSDDCMTU(**params)
     else:
         print("Something went wrong, please try again.")
         sys.exit(1)
@@ -3269,7 +3270,8 @@ def new_segment(**kwargs):
     if kwargs['connectivity'] == "ON":
         json_data["advanced_config"]["connectivity"] = "ON"
     if kwargs['routing_type'] is not None:
-        json_data["type"] = f'{kwargs["routing_type"]}'
+        print(kwargs['routing_type'])
+        json_data["type"] = kwargs["routing_type"]
     if kwargs['tier1_id'] is not None:
         if segment_type == "fixed":
             json_data["connectivity_path"] = "/infra/tier-1s/cgw"
@@ -3995,11 +3997,11 @@ def main():
     """ Parent Parser for NSX Segment functions """
     parent_segment_parser = argparse.ArgumentParser(add_help=False)
     parent_segment_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
-    parent_segment_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment - by default this is 'OFF'")
+    parent_segment_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment.")
     parent_segment_parser.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
     parent_segment_parser.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
     parent_segment_parser.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
-    parent_segment_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], required=False, help= "Routing type - by default this is set to 'ROUTED'")
+    parent_segment_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], type = str.upper, required=False, help= "Routing type - by default this is set to 'ROUTED'")
     parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
     parent_segment_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
 
@@ -4432,7 +4434,7 @@ def main():
     mtu_show_parser.set_defaults(func = getSDDCMTU)
 
     mtu_update_parser = mtu_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the MTU on the Intranet Interface.")
-    mtu_update_parser.add_argument("-mtu", help = "new MTU value for the Direct Connect / Intranet Interface.")
+    mtu_update_parser.add_argument("mtu", help = "new MTU value for the Direct Connect / Intranet Interface.")
     mtu_update_parser.set_defaults(func = setSDDCMTU)
 
 # ============================
