@@ -398,6 +398,10 @@ def get_sddc_mtu_json(proxy_url,sessiontoken):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f'{proxy_url}/cloud-service/api/v1/infra/external/config'
     response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 504:
+        print("Error Code 504: Gateway Timeout: Likely an SDDC ID misconfiguration")
+        return False
+        
     json_response = response.json()
     if response.status_code != 200:
         print("There was an error. Check the syntax.")
