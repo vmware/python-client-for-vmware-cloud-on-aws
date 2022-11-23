@@ -3114,7 +3114,7 @@ def newSDDCPublicIP(**kwargs):
     proxy = kwargs['proxy']
     ip_id = kwargs['ip_id']
     json_data = {
-    "display_name" : ip_id, 
+    "display_name" : ip_id 
     }
     json_response_status_code = put_sddc_public_ip_json(proxy, sessiontoken, ip_id, json_data)
     if json_response_status_code == 200:
@@ -3270,7 +3270,6 @@ def new_segment(**kwargs):
     if kwargs['connectivity'] == "ON":
         json_data["advanced_config"]["connectivity"] = "ON"
     if kwargs['routing_type'] is not None:
-        print(kwargs['routing_type'])
         json_data["type"] = kwargs["routing_type"]
     if kwargs['tier1_id'] is not None:
         if segment_type == "fixed":
