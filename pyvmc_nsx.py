@@ -1006,29 +1006,59 @@ def remove_sddc_nat_json(proxy_url, session_token, nat_id):
 
 def put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data):
     myHeader = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
-    # proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
     myURL = f'{proxy_url}/cloud-service/api/v1/infra/public-ips/{ip_id}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response = response.json()
+    # json_response = response.json()
     if response.status_code == 200:
         return response.status_code
+    elif response.status_code == 400:
+        print(f"Error Code {response.status_code}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif response.status_code == 403:
+        print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif response.status_code == 503:
+        print(f"Error Code {response.status_code}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-
+        print(f'Status code: {response.status_code}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
 
 def delete_sddc_public_ip_json(proxy_url, session_token, ip_id):
     myHeader = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
     myURL = f'{proxy_url}/cloud-service/api/v1/infra/public-ips/{ip_id}'
     response = requests.delete(myURL, headers=myHeader)
-    json_response = response.json()
     if response.status_code == 200:
         return response.status_code
+    elif response.status_code == 400:
+        print(f"Error Code {response.status_code}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif response.status_code == 403:
+        print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif response.status_code == 503:
+        print(f"Error Code {response.status_code}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        print(f'Status code: {response.status_code}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
 
 
 def get_sddc_public_ip_json(proxy_url, session_token):
@@ -1038,10 +1068,27 @@ def get_sddc_public_ip_json(proxy_url, session_token):
     json_response = response.json()
     if response.status_code == 200:
         return json_response
+    elif response.status_code == 400:
+        print(f"Error Code {response.status_code}: Bad Request.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        return None
+    elif response.status_code == 403:
+        print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+    elif response.status_code == 503:
+        print(f"Error Code {response.status_code}: Service Unavailable.")
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        print(f'Status code: {response.status_code}: Unknown error')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
 
 
 # ============================
