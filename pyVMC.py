@@ -3246,9 +3246,12 @@ def new_segment(**kwargs):
     if kwargs['segment_type'] == "flexible" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR segment type as 'flexible' as well as the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
         sys.exit(1)
+    if kwargs['segment_type'] == "fixed" and kwargs['tier1_id'] is not None:
+        print("Invalid configuration - 'fixed' segments may only be connected to the default CGW.  To attach to a customer Tier1, please create a 'flexible' segment.")
+        sys.exit(1)
     rt_set = [None, "ROUTED", "DISCONNECTED"]
     if kwargs['segment_type'] == "fixed" and kwargs['routing_type'] not in rt_set:
-        print("Invalid configuration. For a 'fixed' segment, the routing type must be left blank or set explicityl to 'ROUTED' or 'DISCONNECTED.'")
+        print("Invalid configuration. For a 'fixed' segment, the routing type must be left blank or set explicitly to 'ROUTED' or 'DISCONNECTED.'")
         sys.exit(1)
 
     segment_name = kwargs["objectname"]
