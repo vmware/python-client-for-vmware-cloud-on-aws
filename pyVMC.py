@@ -3241,41 +3241,58 @@ def new_segment(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
-        print("Please specify a name for the segment, and the gateway/network.")
+        print("Please specify a name for the segment, and the gateway/networ`k.")
         sys.exit(1)
     if kwargs['segment_type'] == "flexible" and kwargs['tier1_id'] is None:
-        print("Please specify either the segment type as 'fixed' (-st fixed) OR the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
+        print("Please specify either the segment type as 'fixed' (-st fixed) OR segment type as 'flexible' as well as the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
         sys.exit(1)
+    rt_set = [None, "ROUTED", "DISCONNECTED"]
+    if kwargs['segment_type'] == "fixed" and kwargs['routing_type'] not in rt_set:
+        print("Invalid configuration. For a 'fixed' segment, the routing type must be left blank or set explicityl to 'ROUTED' or 'DISCONNECTED.'")
+        sys.exit(1)
+
     segment_name = kwargs["objectname"]
+    gateway = kwargs['gateway']
+
+    # Search for segment to determine if it already exists
     segment=search_nsx_json(proxy, sessiontoken, "Segment", segment_name)
     if len(segment['results']) > 0:
         print("The segment already appears to exist.")
         sys.exit(1)
-    segment_type = kwargs['segment_type']
+
+
+    # Establish baseline json payload
     json_data = {
-        "display_name":f'{segment_name}',
-        "id":f'{segment_name}',
+        "display_name":segment_name,
+        "id":segment_name,
         "advanced_config":{"connectivity":"ON"},
-        "type": "ROUTED",
         "subnets":[
             {
-                "gateway_address": f'{kwargs["gateway"]}'
+                "gateway_address": gateway
             }
         ]
         }
+    #set segment type as either "fixed" or "flexible"
+    segment_type = kwargs['segment_type']
+    tier1_id = kwargs['tier1_id']
+
+    if segment_type == "fixed":
+        json_data["connectivity_path"] = "/infra/tier-1s/cgw"
+        if kwargs['routing_type'] == "DISCONNECTED":
+            json_data["advanced_config"]["connectivity"] = "OFF"
+        else:
+            json_data["advanced_config"]["connectivity"] = "ON"
+    elif segment_type == "flexible" and tier1_id is not None:
+        json_data["connectivity_path"] = f'/infra/tier-1s/{tier1_id}'
+    else:
+        print("Please specify either the segment type as 'fixed' (-st fixed) OR segment type as 'flexible' as well as the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")
     if kwargs['dhcp_range'] is not None:
         json_data["subnets"][0]["dhcp_ranges"] = [f'{kwargs["dhcp_range"]}']
     if kwargs['domain_name'] is not None:
-        json_data["domain_name"] = f'[{kwargs["domain_name"]}]'
-    if kwargs['connectivity'] == "ON":
-        json_data["advanced_config"]["connectivity"] = "ON"
-    if kwargs['routing_type'] is not None:
-        json_data["type"] = kwargs["routing_type"]
-    if kwargs['tier1_id'] is not None:
-        if segment_type == "fixed":
-            json_data["connectivity_path"] = "/infra/tier-1s/cgw"
-        else:
-            json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
+        json_data["domain_name"] = kwargs["domain_name"]
+
+    print(json.dumps(json_data, indent = 2))
+
     status = new_segment_json(proxy, sessiontoken, segment_name, segment_type, json_data)
     if status == 200:
         print(f'The following network has been created: {segment_name}')
@@ -3312,10 +3329,10 @@ def configure_segment(**kwargs):
     if kwargs['connectivity'] is not None:
         json_data["advanced_config"]["connectivity"] = f'{kwargs["connectivity"]}'
     if kwargs['routing_type'] is not None:
-        json_data["type"] = f'{kwargs["routing_type"]}'
+        json_data["type"] = str.upper(kwargs["routing_type"])
     if kwargs['tier1_id'] is not None:
         if segment_path == "/infra/tier-1s/cgw":
-            print("This is a fixed segment - you may not alter the connectivity path.  Plese create a 'flexible' segment.")
+            print("This is a fixed segment - you may not alter the connectivity path.  Please create a 'flexible' segment.")
         else:
             json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
     # make the call to the API
