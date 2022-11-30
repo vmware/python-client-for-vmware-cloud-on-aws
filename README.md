@@ -32,6 +32,8 @@ On Windows, use
 ### 1.3.4 Update config.ini
 Obtain a refresh token from the VMware Cloud Service Portal, as well as the ORG ID and SDDC  ID of the environment you wish to interact with .  Copy config.ini.example to config.ini and edit the config.ini with your own SDDC ID, Organization (Org) ID and your access token.
 
+> Note: The token must be scoped as either `Org Member` or `Org Owner`. It must be given the VMware Cloud on AWS roles of `NSX Cloud Admin` and `Administrator`.  API calls with a role of `Administrator (Delete Restricted)` do not work. If you are using the VCDR components of PyVMC, the token must also have a role with full administrative rights to VCDR.
+
 ### 1.3.5 Do I need to know Python?
 No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (Software-Defined Data Center). 
 
