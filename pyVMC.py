@@ -2785,6 +2785,13 @@ def newSDDCDFWSection(**kwargs):
     proxy = kwargs['proxy']
     sessiontoken = kwargs['sessiontoken']
     display_name = kwargs['display_name']
+
+    # Check to see if section already exists
+    section_names = getSDDCDFWSectionlist(proxy, sessiontoken)
+    if display_name in section_names:
+        print('Section already exists.  No action taken.')
+        sys.exit(1)
+
     if kwargs['category'] is not None:
         category = kwargs['category']
     else:
