@@ -2673,6 +2673,19 @@ def newSDDCDFWRule(**kwargs):
     action = kwargs['action']
     section_id = kwargs['section_id']
 
+    # Check if section exists - error if not.
+    sections_response = get_sddc_dfw_section_json(proxy, sessiontoken)
+    if sections_response is not None:
+        sections = sections_response['results']
+        section_names = []
+        for i in sections:
+            section_names.append(i['id'])
+        if section_id not in section_names:
+            print('Section does not exist.  No action taken.')
+            sys.exit(1)
+    else:
+        pass
+
     # Check if rule already exists with same ID.
     rule_check = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
     if rule_check is not None:
@@ -2683,6 +2696,7 @@ def newSDDCDFWRule(**kwargs):
     if display_name in rule_names:
         print('Rule already exists.  No action taken.')
         sys.exit(1)
+    
 
     if kwargs['sequence'] is not None:
         sequence_number = kwargs['sequence']
