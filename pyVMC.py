@@ -2674,17 +2674,10 @@ def newSDDCDFWRule(**kwargs):
     section_id = kwargs['section_id']
 
     # Check if section exists - error if not.
-    sections_response = get_sddc_dfw_section_json(proxy, sessiontoken)
-    if sections_response is not None:
-        sections = sections_response['results']
-        section_names = []
-        for i in sections:
-            section_names.append(i['id'])
-        if section_id not in section_names:
-            print('Section does not exist.  No action taken.')
-            sys.exit(1)
-    else:
-        pass
+    section_names = getSDDCDFWSectionlist(proxy, sessiontoken)
+    if section_id not in section_names:
+        print('Section does not exist.  No action taken.')
+        sys.exit(1)
 
     # Check if rule already exists with same ID.
     rule_check = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
@@ -2812,44 +2805,49 @@ def newSDDCDFWSection(**kwargs):
         print("There was an error. Check the syntax.")
         sys.exit(1)
 
-
-def getSDDCDFWRule(**kwargs):
-    proxy = kwargs['proxy']
-    sessiontoken = kwargs['sessiontoken']
-    section_id = kwargs['section_id']
-
-    # Check if section exists - if the section doesn't exist we get a 400 "Bad Request"
+def getSDDCDFWSectionlist(proxy, sessiontoken):
     sections_response = get_sddc_dfw_section_json(proxy, sessiontoken)
     if sections_response is not None:
         sections = sections_response['results']
         section_names = []
         for i in sections:
             section_names.append(i['id'])
-        if section_id not in section_names:
-            print('Section does not exist.  No action taken.')
-            sys.exit(1)
+        return section_names
     else:
         print("Something went wrong.  No sections returned")
         sys.exit(1)
 
-    rules_response = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
-    if rules_response is not None:
-        sddc_DFWrules = rules_response['results']
-        table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
-        for i in sddc_DFWrules:
-            # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
-            a = i['source_groups']
-            a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
-            a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
-            b= i['destination_groups']
-            b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
-            b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
-            c = i['services']
-            c = [z.replace('/infra/services/','') for z in c]
-            table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
-        print(table)
+def getSDDCDFWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    section_id = kwargs['section_id']
+    # Check if section exists - if the section doesn't exist we get a 400 "Bad Request"
+    section_names = getSDDCDFWSectionlist(proxy, sessiontoken)
+    if section_id not in section_names:
+        print('Section does not exist.  No action taken.')
+        sys.exit(1)
+    elif section_id in section_names:
+        rules_response = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
+        if rules_response is not None:
+            sddc_DFWrules = rules_response['results']
+            table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
+            for i in sddc_DFWrules:
+                # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
+                a = i['source_groups']
+                a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
+                a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
+                b= i['destination_groups']
+                b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
+                b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
+                c = i['services']
+                c = [z.replace('/infra/services/','') for z in c]
+                table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
+            print(table)
+        else:
+            print("Something went wrong.  Please try again.")
+            sys.exit(1)            
     else:
-        print("Something went wrong.  Please try again.")
+        print("Something went wrong.  No sections returned")
         sys.exit(1)
 
 
@@ -2872,6 +2870,11 @@ def removeSDDCDFWRule(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     section_id = kwargs['section_id']
     rule_id = kwargs['rule_id']
+    section_names = getSDDCDFWSectionlist(proxy, sessiontoken)
+    if section_id not in section_names:
+        print('Section does not exist.  No action taken.')
+        sys.exit(1)
+
     status = delete_sddc_dfw_rule_json(proxy, sessiontoken, section_id, rule_id)
     if status == 200:
         print(f'The rule {rule_id} has been deleted.')
