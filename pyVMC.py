@@ -1320,8 +1320,10 @@ def getNSXAFAddOn(org_id, sddc_id, session_token):
     print(nsxAFTable)
 
 
-def getNsxIdsEnabledClusters(proxy, session_token):
-    json_response = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+def getNsxIdsEnabledClusters(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
     clustersTable = PrettyTable(['Cluster ID', 'Distributed IDS Enabled'])
     clusterArray = json_response['results']
     for i in clusterArray:
@@ -1331,32 +1333,41 @@ def getNsxIdsEnabledClusters(proxy, session_token):
     print(clustersTable)
 
 
-def enableNsxIdsCluster(proxy, session_token, targetID):
+def enableNsxIdsCluster(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    targetID = kwargs['cluster_id']
     json_data = {
         "ids_enabled": True,
         "cluster": {
             "target_id": targetID
         }
     }
-    response = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    response = enable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_data)
     if response.statuscode == 200:
         print(f"IDS enabled on cluster {targetID}")
 
 
-def disableNsxIdsCluster(proxy, session_token, targetID):
+def disableNsxIdsCluster(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    targetID = kwargs['cluster_id']
+
     json_data = {
         "ids_enabled": False,
         "cluster": {
             "target_id": targetID
         }
     }
-    response = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data)
+    response = disable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_data)
     if response.statuscode == 200:
         print("IDS disabled on cluster {}".format(targetID))
 
 
-def enableNsxIdsAll(proxy, session_token):
-    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+def enableNsxIdsAll(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
     clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
     clusterResults = cluster_json['results']
     for i in clusterResults:
@@ -1368,7 +1379,7 @@ def enableNsxIdsAll(proxy, session_token):
                     "target_id": targetID
                 }
             }
-            response = enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
+            response = enable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
             if response.status_code == 200:
                 clusterTable.add_row([targetID, "True"])
         else:
@@ -1376,8 +1387,10 @@ def enableNsxIdsAll(proxy, session_token):
     print(clusterTable)
 
 
-def disableNsxIdsAll(proxy, session_token):
-    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, session_token)
+def disableNsxIdsAll(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
     clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
     clusterResults = cluster_json['results']
     for i in clusterResults:
@@ -1389,7 +1402,7 @@ def disableNsxIdsAll(proxy, session_token):
                     "target_id": targetID
                 }
             }
-            response, myURL = disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_body)
+            response, myURL = disable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
             if response.status_code == 200:
                 clusterTable.add_row([targetID, "False"])
         else:
@@ -1397,23 +1410,29 @@ def disableNsxIdsAll(proxy, session_token):
     print(clusterTable)
 
 
-def enableNsxIdsAutoUpdate(proxy, session_token):
+def enableNsxIdsAutoUpdate(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
     json_data = {
         "auto_update": True
     }
-    response = enable_nsx_ids_auto_update_json(proxy, session_token, json_data)
+    response = enable_nsx_ids_auto_update_json(proxy, sessiontoken, json_data)
     if response.status_code == 202:
         print("IDS Signature auto-update enabled")
 
 
-def NsxIdsUpdateSignatures(proxy, session_token):
-    response, myURL = nsx_ids_update_signatures_json(proxy, session_token)
+def NsxIdsUpdateSignatures(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    response, myURL = nsx_ids_update_signatures_json(proxy, sessiontoken)
     if response.status_code == 202:
         print("Signature update started")
 
 
-def getNsxIdsSigVersions(proxy, session_token):
-    response = get_ids_signature_versions_json(proxy, session_token)
+def getNsxIdsSigVersions(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    response = get_ids_signature_versions_json(proxy, sessiontoken)
     sigTable = PrettyTable(['Signature Version', 'State', 'Status', 'Update Time (UTC)'])
     sigResponse = response['results']
     for i in sigResponse:
@@ -1428,8 +1447,10 @@ def getNsxIdsSigVersions(proxy, session_token):
     print(sigTable)
 
 
-def getIdsProfiles(proxy, session_token):
-    response = get_ids_profiles_json(proxy, session_token)
+def getIdsProfiles(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    response = get_ids_profiles_json(proxy, sessiontoken)
     profileTable = PrettyTable(['Name', 'Severity', 'Filter Name', 'Filter Value'])
     profileResponse = response['results']
     for i in range(len(profileResponse)):
@@ -1451,14 +1472,16 @@ def getIdsProfiles(proxy, session_token):
     print(profileTable)
 
 
-def search_ids_signatures_product_affected(proxy_url, session_token):
+def search_ids_signatures_product_affected(**kwargs):
     """Returns a table consisting of the IDS Signature Product Affected based on the search term for assistance
     in building the IDS Profile"""
-    json_response = search_nsx_json(proxy_url, session_token, "IdsSignature", "NULL")
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = search_nsx_json(proxy, sessiontoken, "IdsSignature", "NULL")
     idsSigs = json_response['results']
     print("Loading Signatures....")
     while 'cursor' in json_response:
-        json_response = search_nsx_json_cursor(proxy, session_token, "IdsSignature", "NULL", json_response['cursor'])
+        json_response = search_nsx_json_cursor(proxy, sessiontoken, "IdsSignature", "NULL", json_response['cursor'])
         idsSigs2 = json_response['results']
         idsSigs.extend(idsSigs2)
     df = pd.DataFrame(idsSigs)
@@ -1477,8 +1500,10 @@ def search_ids_signatures_product_affected(proxy_url, session_token):
     print(ids_table)
 
 
-def listIdsPolicies(proxy, session_token):
-    json_response = get_ids_policies_json(proxy, session_token)
+def listIdsPolicies(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = get_ids_policies_json(proxy, sessiontoken)
     policyTable = PrettyTable(['Policy Name', 'Stateful', 'Locked'])
     policyResponse = json_response['results']
     for i in range(len(policyResponse)):
@@ -1490,6 +1515,8 @@ def listIdsPolicies(proxy, session_token):
 
 
 def create_ids_profile(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
     """Create an IDS Profile"""
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
@@ -1567,7 +1594,7 @@ def create_ids_profile(**kwargs):
             "display_name": display_name,
             "id": display_name
         }
-    response_code = patch_ips_profile_json(proxy, session_token, json_data, display_name)
+    response_code = patch_ips_profile_json(proxy, sessiontoken, json_data, display_name)
     if response_code == 200:
         print(f'The IDS Profile {display_name} has been created successfully')
     else:
@@ -1576,6 +1603,8 @@ def create_ids_profile(**kwargs):
 
 
 def create_ids_policy(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
         sys.exit(1)
@@ -1585,7 +1614,7 @@ def create_ids_policy(**kwargs):
         "display_name": display_name,
         "id": display_name
     }
-    response_code = put_ids_policy_json(proxy, session_token, json_data, display_name)
+    response_code = put_ids_policy_json(proxy, sessiontoken, json_data, display_name)
     if response_code == 200:
         print(f'The IDS policy {display_name} has been created successfully')
     else:
@@ -1593,8 +1622,10 @@ def create_ids_policy(**kwargs):
         sys.exit(1)
 
 
-def get_ids_rules():
-    ids_policies_json = get_ids_policies_json(proxy, session_token)
+def get_ids_rules(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    ids_policies_json = get_ids_policies_json(proxy, sessiontoken)
     ids_policies_json = ids_policies_json['results']
     for i in ids_policies_json:
         ids_policy_name = i['display_name']
@@ -1609,6 +1640,8 @@ def get_ids_rules():
 
 
 def create_ids_rule(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
     if kwargs['objectname'] is None:
         print("Please use -n to specify the name of the IDS Rule to be configured.  Consult the help for additional options.")
         sys.exit(1)
@@ -1672,7 +1705,7 @@ def create_ids_rule(**kwargs):
         "logged": False
     }
 
-    json_response_code = put_ids_rule_json(proxy, session_token, display_name, idspol, json_data)
+    json_response_code = put_ids_rule_json(proxy, sessiontoken, display_name, idspol, json_data)
     if json_response_code == 200:
         print(f'IDS Rule {display_name} was successfully created under IDS Policy {idspol}')
     else:
@@ -2245,13 +2278,13 @@ def getSDDCroutes(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
     strProdURL = kwargs['strProdURL']
-    if kwargs['route_type'] == 't0':
+    if kwargs['route-type'] == 't0':
         getSDDCT0routes(proxy_url, sessiontoken)
-    elif kwargs['route_type'] == 'bgp':
+    elif kwargs['route-type'] == 'bgp':
         getSDDCT0BGPRoutes(proxy_url, sessiontoken)
-    elif kwargs['route_type'] == 'static':
+    elif kwargs['route-type'] == 'static':
         getSDDCT0staticroutes(proxy_url,sessiontoken)
-    elif kwargs['route_type'] == 'tgw':
+    elif kwargs['route-type'] == 'tgw':
         params = {}
         params.update({"ORG_ID": ORG_ID})
         params.update({"sessiontoken": sessiontoken})
@@ -2632,7 +2665,90 @@ def getSDDCMGWRule(**kwargs):
 # ============================
 
 
-def newSDDCDFWRule(proxy_url, sessiontoken, display_name, source_groups, destination_groups, services, action, section, sequence_number):
+def newSDDCDFWRule(**kwargs):
+    """Creating a new DFW rule"""
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    action = kwargs['action']
+    section_id = kwargs['section_id']
+
+    # Check if rule already exists with same ID.
+    rule_check = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
+    if rule_check is not None:
+        dfwrules = rule_check['results']
+        rule_names = []
+        for i in dfwrules:
+            rule_names.append(i['id'])
+    if display_name in rule_names:
+        print('Rule already exists.  No action taken.')
+        sys.exit(1)
+
+    if kwargs['sequence'] is not None:
+        sequence_number = kwargs['sequence']
+    else:
+        sequence_number = 0
+
+    # group index to be used for both source and dest group definitions
+    predefined_grp = ["connected_vpc", "directConnect_prefixes", "s3_prefixes", "deployment_group_dgw_prefixes", "deployment_group_tgw_prefixes", "deployment_group_vpc_prefixes", "deployment_group_sddc_prefixes"]
+    group_index = '/infra/domains/cgw/groups/'
+    sg_string = kwargs["source"]
+    dg_string = kwargs["dest"]
+
+    # define source groups for rule
+    source_groups = []
+    if len(sg_string) == 1 and str.lower(sg_string[0]) == "any":
+        source_groups = ["any"]
+    else:
+        for i in sg_string:
+            if str.lower(i) == "any":
+                print("Source definition error: 'ANY' should not be used in conjuction with other sources.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            elif i in predefined_grp:
+                source = f'/infra/tier-0s/vmc/groups/{i}'
+            else:
+                source = f'{group_index}{i}'
+            source_groups.append(source)
+
+    # define destination groups for rule
+    destination_groups = []
+    if len(dg_string) == 1 and str.lower(dg_string[0]) == "any":
+        destination_groups = ["any"]
+    else:
+        for i in dg_string:
+            if str.lower(i) == "any":
+                print("Destination definition error: 'ANY' should not be used in conjuction with other sources.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            elif i in predefined_grp:
+                dest = f'/infra/tier-0s/vmc/groups/{i}'
+            else:
+                dest = f'{group_index}{i}'
+            destination_groups.append(dest)
+
+    if source_groups == ["any"] and destination_groups == ["any"]:
+        print('''
+        For DFW, it is not permitted for both SOURCE and DEST to be set to 'ANY'. 
+        Either source or destination should have groups that are configured for CGW.
+        Use './pyVMC.py inventory show-group cgw' to display currently configured groups for the Compute Gateway.
+        ''')
+        sys.exit(1)
+    else:
+        pass
+
+    # Defining aervice entries
+    services_string = kwargs['services']
+    list_index = '/infra/services/'
+    services = []
+    if len(services_string) == 1 and str.lower(services_string[0]) == "any":
+        services = ["ANY"]
+    else:
+        for i in services_string:
+            if str.lower(i) == "any":
+                print("Service definition error: 'ANY' may not be used in conjuction with other services.  Either list them individually, or use 'ANY' alone.")
+                sys.exit(1)
+            service = f'{list_index}{i}'
+            services.append(service)
+
     json_data = {
     "action": action,
     "destination_groups": destination_groups,
@@ -2648,46 +2764,105 @@ def newSDDCDFWRule(proxy_url, sessiontoken, display_name, source_groups, destina
     "source_groups": source_groups,
     "sequence_number": sequence_number
     }
-    json_response_status_code = put_sddc_dfw_rule_json(proxy_url, sessiontoken, section, display_name, json_data)
-    return json_response_status_code
+    json_response_status_code = put_sddc_dfw_rule_json(proxy, sessiontoken, section_id, display_name, json_data)
+    if json_response_status_code == 200:
+        print("\n The rule has been created.")
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'section_id':section_id}
+        getSDDCDFWRule(**params)
+    else:
+        print("Incorrect syntax. Try again.")
+        sys.exit(1)
 
 
-def newSDDCDFWSection(proxy_url, sessiontoken, display_name, category):
+def newSDDCDFWSection(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    if kwargs['category'] is not None:
+        category = kwargs['category']
+    else:
+        category = "Application"
     json_data = {
     "resource_type":"SecurityPolicy",
     "display_name": display_name,
     "id": display_name,
     "category": category,
     }
-    json_response_status_code = put_sddc_dfw_section_json(proxy_url, sessiontoken, display_name, json_data)
-    return json_response_status_code
+    status_code = put_sddc_dfw_section_json(proxy, sessiontoken, display_name, json_data)
+    if status_code == 200:
+        print("Success:")
+        print(f'\nThe section {display_name} has been created in the {category} category.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+        getSDDCDFWSection(**params)
+    else:
+        print("There was an error. Check the syntax.")
+        sys.exit(1)
 
 
-def getSDDCDFWRule(proxy_url, sessiontoken, section):
-    json_response = get_sddc_dfw_rule_json(proxy_url, sessiontoken, section)
-    sddc_DFWrules = json_response['results']
-    table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
-    for i in sddc_DFWrules:
-        # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
-        a = i['source_groups']
-        a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
-        a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
-        b= i['destination_groups']
-        b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
-        b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
-        c = i['services']
-        c = [z.replace('/infra/services/','') for z in c]
-        table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
-    return table
+def getSDDCDFWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    section_id = kwargs['section_id']
+    json_response = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
+    if json_response is not None:
+        sddc_DFWrules = json_response['results']
+        table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
+        for i in sddc_DFWrules:
+            # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
+            a = i['source_groups']
+            a = [z.replace('/infra/domains/cgw/groups/','') for z in a]
+            a = [z.replace('/infra/tier-0s/vmc/groups/','') for z in a]
+            b= i['destination_groups']
+            b = [z.replace('/infra/domains/cgw/groups/','') for z in b]
+            b = [z.replace('/infra/tier-0s/vmc/groups/','') for z in b]
+            c = i['services']
+            c = [z.replace('/infra/services/','') for z in c]
+            table.add_row([i['id'], i['display_name'], a, b, c, i['action'], i['sequence_number']])
+        print(table)
+    else:
+        print("Something went wrong.  Please try again.")
+        sys.exit(1)
 
 
-def getSDDCDFWSection(proxy_url, sessiontoken):
-    json_response = get_sddc_dfw_section_json(proxy_url, sessiontoken)
-    sddc_DFWsection = json_response['results']
-    table = PrettyTable(['id', 'Name', 'Category', 'Sequence Number'])
-    for i in sddc_DFWsection:
-        table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
-    return table
+def getSDDCDFWSection(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    json_response = get_sddc_dfw_section_json(proxy, sessiontoken)
+    if json_response is not None:
+        sddc_DFWsection = json_response['results']
+        # print(json.dumps(sddc_DFWsection, indent = 4))
+        table = PrettyTable(['id', 'Name', 'Category', 'Sequence Number'])
+        for i in sddc_DFWsection:
+            table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
+        print(table)
+    else:
+        print("Somtehing went wrong.  Please try again.")
+        sys.exit(1)
+
+def removeSDDCDFWRule(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    section_id = kwargs['section_id']
+    rule_id = kwargs['rule_id']
+    status = delete_sddc_dfw_rule_json(proxy, sessiontoken, section_id, rule_id)
+    if status == 200:
+        print(f'The rule {rule_id} has been deleted.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'section_id':section_id}
+        getSDDCDFWRule(**params)
+    else :
+        print("Issues deleting the security rule. Check the syntax.")
+
+def removeSDDCDFWSection(**kwargs):
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    section_id = kwargs['section_id']
+    status = delete_sddc_dfw_section_json(proxy, sessiontoken, section_id)
+    if status == 200:
+        print(f'The section {section_id} has been deleted.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'section_id':section_id}
+        getSDDCDFWSection(**params)
+    else :
+        print("Issues deleting the DFW section. Check the syntax.")
 
 
 # ============================
@@ -4299,22 +4474,80 @@ def main():
     parent_dfw_parser = argparse.ArgumentParser(add_help=False)
 
     # create the parser for the "dfw" command
-    dfw_parser_main=subparsers.add_parser('dfw', help='Show and update policies and rules associated with NSX Distributed Firewall.')
+    dfw_parser_main=subparsers.add_parser('dfw', formatter_class=MyFormatter, help='Show and update policies and rules associated with NSX Distributed Firewall.')
     # create a subparser for gwfw sub-commands
     dfw_parser_subs = dfw_parser_main.add_subparsers(help='dfw sub-command help')
 
     # create individual parsers for each sub-command
-    # new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents = [nsx_url_flag], help = 'create a new DFW security rule')
-    # new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents = [nsx_url_flag], help = 'create a new DFW section')
-    # remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents = [nsx_url_flag], help = 'delete a DFW rule')
-    # remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents = [nsx_url_flag], help = 'delete a DFW section')
-    # show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents = [nsx_url_flag], help = 'show the DFW sections')
-    # show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents = [nsx_url_flag], help = 'show the DFW security rules within a section')
+    new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents = [nsx_url_flag], help = 'create a new DFW security rule')
+    new_dfw_rule_parser.add_argument("display_name", help = "The name of the rule")
+    new_dfw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
+    new_dfw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
+    new_dfw_rule_parser.add_argument("--sequence", default= "0", required = False, help = "The sequence number for rule processing.")
+    new_dfw_rule_parser.add_argument("--section_id", required = True, help = "The section to addd the new rule to.  Use './pyVMC.py dfw show-dfw-section' for a list.")
+    new_dfw_rule_parser.add_argument("--source", required= True, nargs = '+', help = '''
+    The source group(s) for the DFW rule.  When specifying source groups, note you may specify multiple simply by listing them, separated by spaces.
+    This value may be one or more of the (case sensitive) predefined groups on the VMC Tier 0:
+        connected_vpc
+        directConnect_prefixes
+        s3_prefixes
+        deployment_group_dgw_prefixes
+        deployment_group_tgw_prefixes
+        deployment_group_vpc_prefixes
+        deployment_group_sddc_prefixes
+        
+    ... or a custom defined group.  If you choose to use custom groups, be sure to specify the correct group ID.
+    Use './pyVMC.py inventory show-group cgw' or to display currently configured groups for the Compute Gateway.
+    '''
+    )
+    new_dfw_rule_parser.add_argument("--dest", required= True, nargs = '+', help = '''
+    The destination group(s) for the DFW rule.  When specifying destination groups, note you may specify multiple simply by listing them, separated by spaces.
+    This value may be one or more of the (case sensitive) predefined groups on the VMC Tier 0:
+        connected_vpc
+        directConnect_prefixes
+        s3_prefixes
+        deployment_group_dgw_prefixes
+        deployment_group_tgw_prefixes
+        deployment_group_vpc_prefixes
+        deployment_group_sddc_prefixes
+        
+    ... or a custom defined group.  If you choose to use custom groups, be sure to specify the correct group ID.
+    Use './pyVMC.py inventory show-group cgw' to display currently configured groups for the Compute Gateway.
+    '''
+    )
+    new_dfw_rule_parser.set_defaults(func = newSDDCDFWRule)
+
+    new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents = [nsx_url_flag], help = 'create a new DFW section')
+    new_dfw_section_parser.add_argument("display_name", help = "The name of the section you wish to create.")
+    new_dfw_section_parser.add_argument("--category", choices= ["Ethernet","Emergency", "Infrastructure", "Environment","Application"], required= False, help ='''
+    Policy framework provides five pre-defined categories for classifying a security policy. They are "Ethernet","Emergency", "Infrastructure", "Environment" and "Application". 
+    There is a pre-determined order in which the policy framework manages the priority of these security policies. Ethernet category is for supporting layer 2 firewall rules.
+    The other four categories are applicable for layer 3 rules. Amongst them, the Emergency category has the highest priority followed by Infrastructure, Environment and then Application rules. 
+    Administrator can choose to categorize a security policy into the above categories or can choose to leave it empty. If empty it will have the least precedence w.r.t the above four categories.
+    '''
+    )
+    new_dfw_section_parser.set_defaults(func = newSDDCDFWSection)
+
+    remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents = [nsx_url_flag], help = 'delete a DFW rule')
+    remove_dfw_rule_parser.add_argument('section_id', help = "The section ID containing the rule you wish to delete.  Use './pyVMC.py dfw show-dfw-section' for a list.")
+    remove_dfw_rule_parser.add_argument('rule_id', help = "The ID of the rule you wish to delete.  Use './pyVMC.py dfw show-dfw-section-rules' for a list.")
+    remove_dfw_rule_parser.set_defaults(func = removeSDDCDFWRule)
+
+    remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents = [nsx_url_flag], help = 'delete a DFW section')
+    remove_dfw_section_parser.add_argument('section_id', help = "The name of the section you wish to remove.  Use './pyVMC.py dfw show-dfw-section' for a list.")
+    remove_dfw_section_parser.set_defaults(func = removeSDDCDFWSection)
+
+    show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents = [nsx_url_flag], help = 'show the DFW sections')
+    show_dfw_section_parser.set_defaults(func = getSDDCDFWSection)
+
+    show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents = [nsx_url_flag], help = 'show the DFW security rules within a section')
+    show_dfw_section_rules_parser.add_argument('section_id', help = "The name of the section you wish to retrieve.  Use './pyVMC.py dfw show-dfw-section' for a list.")
+    show_dfw_section_rules_parser.set_defaults(func = getSDDCDFWRule)
+
 
 # ============================
 # NSX-T - Advanced Firewall
 # ============================
-    parent_adv_firewall_parser = argparse.ArgumentParser(add_help=False)
  
     # create the parser for the "nsxaf" command
     nsxaf_parser=subparsers.add_parser('nsxaf' , formatter_class=MyFormatter, help='Commands related to the NSX Advanced Firewall - e.g. IDS.')
@@ -4323,34 +4556,64 @@ def main():
 
     # show_nsxaf_status_parser=nsxaf_parser_subs.add_parser('show-nsxaf-status', parents = [nsx_url_flag], help = 'Display the status of the NSX Advanced Firewall Add-on')
 
-    # show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
-    # enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on cluster')
-    # disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on cluster')
-    # enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on all clusters')
-    # disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on all clusters')
-    # enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents = [nsx_url_flag], help = 'Enable IDS signature auto update')
-    # ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents = [nsx_url_flag], help = 'Force update of IDS signatures')
-    # show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents = [nsx_url_flag], help = 'Show downloaded signature versions')
-    # show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents = [nsx_url_flag], help = 'Show all IDS profiles')
-    # search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents = [nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
-    # create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
-    # show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
-    # create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
-    # show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
-    # create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
+    show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
+    show_ids_cluster_status_parser.set_defaults(func = getNsxIdsEnabledClusters)
+    
+    enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on cluster')
+    enable_cluster_ids_parser.add_argument('cluster_id', help = "The ID of the cluster to enable with Advanced Firewall capabilities.")
+    enable_cluster_ids_parser.set_defaults(func = enableNsxIdsCluster)
+    
+    disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on cluster')
+    disable_cluster_ids_parser.add_argument('cluster_id', help = "The ID of the cluster to enable with Advanced Firewall capabilities.")
+    disable_cluster_ids_parser.set_defaults(func = disableNsxIdsCluster)
+    
+    enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on all clusters')
+    enable_all_cluster_ids_parser.set_defaults(func = enableNsxIdsAll)
+    
+    disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on all clusters')
+    disable_all_cluster_ids_parser.set_defaults(func = disableNsxIdsAll)
+    
+    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents = [nsx_url_flag], help = 'Enable IDS signature auto update')
+    enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
+    
+    ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents = [nsx_url_flag], help = 'Force update of IDS signatures')
+    ids_update_signatures_parser.set_defaults(func = NsxIdsUpdateSignatures)
+    
+    show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents = [nsx_url_flag], help = 'Show downloaded signature versions')
+    show_ids_signature_versions_parser.set_defaults(func = getNsxIdsSigVersions)
+    
+    show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents = [nsx_url_flag], help = 'Show all IDS profiles')
+    show_ids_profiles_parser.set_defaults(func = getIdsProfiles)
+    
+    search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents = [nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
+    search_product_affected_parser.set_defaults(func = search_ids_signatures_product_affected)
+    
+    create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
+    create_ids_profile_parser.add_argument("-n", "--objectname", required= True, help = "The name of the profile to create.")
+    create_ids_profile_parser.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
+    create_ids_profile_parser.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+    create_ids_profile_parser.set_defaults(func = create_ids_profile)
 
-    # idsprofilegrp = ap.add_argument_group('IDS Profile Creation', "Options to buiid and IDS Profile.  The more restrictive the profile the better")
-    # idsprofilegrp.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
-    # idsprofilegrp.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+    show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
+    show_ids_policies_parser.set_defaults(func = listIdsPolicies)
 
-    # idsrulegrp = ap.add_argument_group('IDS Rule Creation', 'Options to build an IDS Rule.  Source and desitination inventory groups as well as IDS Policy are required for this function')
-    # idsrulegrp.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
-    # idsrulegrp.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
-    # idsrulegrp.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
-    # idsrulegrp.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
-    # idsrulegrp.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
-    # idsrulegrp.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
-    # idsrulegrp.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
+    create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
+    create_ids_policy_parser.add_argument("-n", "--objectname", required= True, help = "The name of the policy to create.")
+    create_ids_policy_parser.set_defaults(func = create_ids_policy)
+
+    show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
+    show_ids_rules_parser.set_defaults(func = get_ids_rules)
+
+    create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
+    create_ids_rule_parser.add_argument("-n", "--objectname", required= True, help = "The name of the rule to create.")
+    create_ids_rule_parser.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
+    create_ids_rule_parser.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
+    create_ids_rule_parser.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
+    create_ids_rule_parser.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
+    create_ids_rule_parser.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
+    create_ids_rule_parser.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
+    create_ids_rule_parser.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
+    create_ids_rule_parser.set_defaults(func = create_ids_rule)
 
 # ============================
 # NSX-T - Inventory
@@ -4499,7 +4762,7 @@ def main():
 # ============================
 
     show_routes_parser= system_parser_subs.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
-    show_routes_parser.add_argument('route-type', choices = ['t0', 'bgp', 'static', 'tgw'], help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
+    show_routes_parser.add_argument('route-type', choices = ['t0', 'bgp', 'static', 'tgw'], type = str.lower, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
     show_routes_parser.add_argument('--search-name', help = "Optionally, enter the name of the SDDC group you wish to view the route table for.")
     show_routes_parser.set_defaults(func = getSDDCroutes)
 
@@ -4973,175 +5236,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             user_list = routes.split()
 #             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
 #             get_task_status(task_id, ORG_ID, session_token)
-
-
-#     # ============================
-#     # NSX-T - Advanced Firewall
-#     # ============================
-
-
-#     elif intent_name == "show-nsxaf-status":
-#         getNSXAFAddOn(ORG_ID, SDDC_ID, session_token)
-
-#     elif intent_name == "show-ids-cluster-status":
-#         getNsxIdsEnabledClusters(proxy, session_token)
-
-#     elif intent_name == "enable-cluster-ids":
-#         cluster_id = sys.argv[2]
-#         enableNsxIdsCluster (proxy, session_token, cluster_id)
-
-#     elif intent_name == "disable-cluster-ids":
-#         cluster_id = sys.argv[2]
-#         disableNsxIdsCluster (proxy, session_token, cluster_id)
-
-#     elif intent_name == "enable-all-cluster-ids":
-#         enableNsxIdsAll (proxy, session_token)
-
-#     elif intent_name == "disable-all-cluster-ids":
-#         disableNsxIdsAll (proxy, session_token)
-
-#     elif intent_name == "enable-ids-auto-update":
-#         enableNsxIdsAutoUpdate (proxy, session_token)
-
-#     elif intent_name == "ids-update-signatures":
-#         NsxIdsUpdateSignatures (proxy, session_token)
-
-#     elif intent_name == "show-ids-signature-versions":
-#         getNsxIdsSigVersions (proxy, session_token)
-
-#     elif intent_name == "show-ids-profiles":
-#         getIdsProfiles (proxy, session_token)
-
-#     elif intent_name == "search-product-affected":
-#         search_ids_signatures_product_affected(proxy, session_token)
-
-#     elif intent_name == "show-ids-policies":
-#         listIdsPolicies (proxy, session_token)
-
-#     elif intent_name == "create-ids-profile":
-#         create_ids_profile(**vars(args))
-
-#     elif intent_name == "create-ids-policy":
-#         create_ids_policy(**vars(args))
-
-#     elif intent_name == "show-ids-rules":
-#         get_ids_rules()
-
-#     elif intent_name == "create-ids-rule":
-#         create_ids_rule(**vars(args))
-
-#     elif intent_name == "delete-ids-policy":
-#         delete_ids_policy(**vars(args))
-
-#     elif intent_name == "delete-ids-rule":
-#         delete_ids_rule(**vars(args))
-        
-#     # ============================
-#     # NSX-T - Firewall - Distributed
-#     # ============================
-
-
-#     elif intent_name == "new-dfw-rule":
-#         sequence_number = 0
-#         display_name = sys.argv[2]
-#         sg_string = sys.argv[3]
-#         dg_string = sys.argv[4]
-#         group_index = '/infra/domains/cgw/groups/'
-#         scope_index = '/infra/labels/cgw-'
-#         list_index = '/infra/services/'
-#         if sg_string.lower() == "connected_vpc":
-#             source_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-#         elif sg_string.lower() == "directconnect_prefixes":
-#             source_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-#         elif sg_string.lower() == "s3_prefixes":
-#             source_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-#         elif sg_string.lower() == "any":
-#             source_groups = ["ANY"]
-#         else:
-#             sg_list = sg_string.split(",")
-#             source_groups= [group_index + x for x in sg_list]
-#         if dg_string.lower() == "connected_vpc":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/connected_vpc"]
-#         elif dg_string.lower() == "directconnect_prefixes":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/directConnect_prefixes"]
-#         elif dg_string.lower() == "s3_prefixes":
-#             destination_groups = ["/infra/tier-0s/vmc/groups/s3_prefixes"]
-#         elif dg_string.lower() == "any":
-#             destination_groups = ["ANY"]
-#         else:
-#             dg_list = dg_string.split(",")
-#             destination_groups = [group_index + x for x in dg_list]
-#         services_string = sys.argv[5]
-#         if services_string.lower() == "any":
-#             services = ["ANY"]
-#         else:
-#             services_list = services_string.split(",")
-#             services = [list_index + x for x in services_list]
-#         action = sys.argv[6].upper()
-#         section = sys.argv[7]
-#         if len(sys.argv) == 9:
-#             sequence_number = sys.argv[8]
-#             new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
-#         else:
-#             new_rule = newSDDCDFWRule(proxy, session_token, display_name, source_groups, destination_groups, services, action, section, sequence_number)
-#         if new_rule == 200:
-#             print("\n The rule has been created.")
-#             print(getSDDCDFWRule(proxy,session_token, section))
-#         else:
-#             print("Incorrect syntax. Try again.")
-#     elif intent_name == "new-dfw-section":
-#         if len(sys.argv) >= 5:
-#             print("Wrong syntax, try again.")
-#         if len(sys.argv) == 3:
-#             name = sys.argv[2]
-#             category = "Application"
-#             status_code = newSDDCDFWSection(proxy, session_token, name, category)
-#             if status_code == 200:
-#                 print("Success:")
-#                 print("\nThe section " + name + " has been created in the " + category + " category.")
-#                 print(getSDDCDFWSection(proxy, session_token))
-#             else:
-#                 print("There was an error. Check the syntax.")
-#         if len(sys.argv) == 4:
-#             name = sys.argv[2]
-#             category = sys.argv[3]
-#             status_code = newSDDCDFWSection(proxy, session_token, name, category)
-#             if status_code == 200:
-#                 print("Success:")
-#                 print("\nThe section " + name + " has been created in the " + category + " category.")
-#                 print(getSDDCDFWSection(proxy, session_token))
-#             else:
-#                 print("There was an error. Check the syntax.")
-#     elif intent_name == "remove-dfw-rule":
-#         if len(sys.argv) != 4:
-#             print("Incorrect syntax. ")
-#         else:
-#             section_id = sys.argv[2]
-#             rule_id = sys.argv[3]
-#             if delete_sddc_dfw_rule_json(proxy, session_token, section_id, rule_id) == 200:
-#                 print("The rule " + rule_id + " has been deleted")
-#                 print(getSDDCDFWRule(proxy,session_token, section_id))
-#             else :
-#                 print("Issues deleting the security rule. Check the syntax.")
-#     elif intent_name == "remove-dfw-section":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. ")
-#         else:
-#             section_id = sys.argv[2]
-#             if delete_sddc_dfw_section_json(proxy, session_token, section_id) == 200:
-#                 print("The section " + section_id + " has been deleted.")
-#                 print(getSDDCDFWSection(proxy,session_token))
-#             else :
-#                 print("Issues deleting the DFW section. Check the syntax.")
-#     elif intent_name == "show-dfw-section":
-#         print(getSDDCDFWSection(proxy, session_token))
-#     elif intent_name == "show-dfw-section-rules":
-#         if len(sys.argv) == 2:
-#             print("Incorrect syntax. Specify the section name.")
-#         if len(sys.argv) == 3:
-#             section = sys.argv[2]
-#             print(getSDDCDFWRule(proxy, session_token,section))
-
 
 #     # ============================
 #     # NSX-T - Firewall Services
