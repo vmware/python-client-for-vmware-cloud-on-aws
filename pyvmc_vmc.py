@@ -272,9 +272,9 @@ def get_sddcs_json(strProdURL, orgID, sessiontoken):
         print(json_response['error_message'])
         return None
 
-
+# Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/get/
 def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
-    """Returns SDDC info in JSON format"""
+    """Returns SDDC info in JSON format. Returns None if error"""
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}"
     response = requests.get(myURL, headers=myHeader)
@@ -284,7 +284,8 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
         return None
 
 

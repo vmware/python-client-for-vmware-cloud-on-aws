@@ -4613,14 +4613,6 @@ def main():
             ''')
         sys.exit(1)
 
-    class data():
-        sddc_name       = ""
-        sddc_status     = ""
-        sddc_region     = ""
-        sddc_cluster    = ""
-        sddc_hosts      = 0
-        sddc_type       = ""
-
 # ============================
 # Parsing arguments and calling function(s)
 # ============================
@@ -4684,13 +4676,15 @@ def main():
         params['proxy'] = params.pop('nsxm')
         if params['proxy'] == "proxy":
             sddc_info = get_sddc_info_json(strProdURL, ORG_ID, sessiontoken, SDDC_ID)
+            if sddc_info == None:
+                sys.exit(1)
             proxy_url = sddc_info['resource_config']['nsx_api_public_endpoint_url']
             params.update({"proxy": proxy_url})
         else:
             sddc_info = get_sddc_info_json(strProdURL, ORG_ID, sessiontoken, SDDC_ID)
             nsxm_url = sddc_info['resource_config']['nsx_mgr_url']
             params.update({"proxy": nsxm_url})
-    except:
+    except Exception as inst:
         pass
 
     # Call the appropriate function with the dictionary containing the arguments.
