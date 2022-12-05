@@ -2803,9 +2803,24 @@ def getSDDCDFWRule(**kwargs):
     proxy = kwargs['proxy']
     sessiontoken = kwargs['sessiontoken']
     section_id = kwargs['section_id']
-    json_response = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
-    if json_response is not None:
-        sddc_DFWrules = json_response['results']
+
+    # Check if section exists - if the section doesn't exist we get a 400 "Bad Request"
+    sections_response = get_sddc_dfw_section_json(proxy, sessiontoken)
+    if sections_response is not None:
+        sections = sections_response['results']
+        section_names = []
+        for i in sections:
+            section_names.append(i['id'])
+        if section_id not in section_names:
+            print('Section does not exist.  No action taken.')
+            sys.exit(1)
+    else:
+        print("Something went wrong.  No sections returned")
+        sys.exit(1)
+
+    rules_response = get_sddc_dfw_rule_json(proxy, sessiontoken, section_id)
+    if rules_response is not None:
+        sddc_DFWrules = rules_response['results']
         table = PrettyTable(['ID', 'Name', 'Source', 'Destination', 'Services', 'Action', 'Sequence Number'])
         for i in sddc_DFWrules:
             # a and b are used to strip the infra/domain/mgw terms from the strings for clarity.
@@ -2830,7 +2845,6 @@ def getSDDCDFWSection(**kwargs):
     json_response = get_sddc_dfw_section_json(proxy, sessiontoken)
     if json_response is not None:
         sddc_DFWsection = json_response['results']
-        # print(json.dumps(sddc_DFWsection, indent = 4))
         table = PrettyTable(['id', 'Name', 'Category', 'Sequence Number'])
         for i in sddc_DFWsection:
             table.add_row([i['id'], i['display_name'], i['category'], i['sequence_number']])
