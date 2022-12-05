@@ -1304,22 +1304,6 @@ def search_nsx(**kwargs):
 # NSX-T - Advanced Firewall
 # ============================
 
-
-def getNSXAFAddOn(org_id, sddc_id, session_token):
-    json_response = get_sddc_info_json(strProdURL, org_id, sddc_id, session_token)
-    sddcName = json_response['name']
-    nsxAFTable = PrettyTable(['SDDC Name', 'NSX Advanced Firewall Enabled?'])
-    nsxAFStatus1 = json_response['resource_config']['nsxt_addons']
-    if nsxAFStatus1 is None:
-        nsxAFTable.add_row([sddcName, "False"])
-    else:
-        nsxAFStatus = json_response['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']
-        nsxAFTable.add_row([sddcName, nsxAFStatus])
-    # pretty_data = json.dumps(json_response, indent=4)
-    # print(pretty_data)
-    print(nsxAFTable)
-
-
 def getNsxIdsEnabledClusters(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
