@@ -1308,14 +1308,23 @@ def getNsxIdsEnabledClusters(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
     json_response = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
-    clustersTable = PrettyTable(['Cluster ID', 'Distributed IDS Enabled'])
-    clusterArray = json_response['results']
-    for i in clusterArray:
-        clusterStatus = i['ids_enabled']
-        clusterID = i['cluster']['target_id']
-        clustersTable.add_row([clusterID, clusterStatus])
-    print(clustersTable)
-
+    if json_response is not None:
+        clustersTable = PrettyTable(['Cluster ID', 'Distributed IDS Enabled'])
+        cluster_array = json_response['results']
+        for i in cluster_array:
+            cluster_config = get_nsx_ids_cluster_config_json(proxy, sessiontoken, i['id'])
+            if cluster_config is not None:
+                clusterStatus = cluster_config['ids_enabled']
+                clusterID = cluster_config['id']
+                clustersTable.add_row([clusterID, clusterStatus])
+                print(clustersTable)
+            else:
+                print("Something went wrong.  Please check your syntax and try again.")
+                sys.exit(1)
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
+        sys.exit(1)
+        
 
 def enableNsxIdsCluster(**kwargs):
     sessiontoken = kwargs['sessiontoken']
@@ -1328,7 +1337,7 @@ def enableNsxIdsCluster(**kwargs):
         }
     }
     response = enable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_data)
-    if response.statuscode == 200:
+    if response.status_code == 200:
         print(f"IDS enabled on cluster {targetID}")
 
 
@@ -1344,54 +1353,71 @@ def disableNsxIdsCluster(**kwargs):
         }
     }
     response = disable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_data)
-    if response.statuscode == 200:
+    if response.status_code == 200:
         print("IDS disabled on cluster {}".format(targetID))
 
 
 def enableNsxIdsAll(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
-    clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
-    clusterResults = cluster_json['results']
-    for i in clusterResults:
-        targetID = i['cluster']['target_id']
-        if i['ids_enabled'] == False:
-            json_body = {
-                "ids_enabled": True,
-                "cluster": {
-                    "target_id": targetID
+    clusters_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
+    if clusters_json is not None:
+        cluster_array = clusters_json['results']
+        for i in cluster_array:
+            targetID = i['id']
+            ids_status = i['ids_enabled']
+            if ids_status == False:
+                json_body = {
+                    "ids_enabled": True,
+                    "cluster": {
+                        "target_id": targetID
+                    }
                 }
-            }
-            response = enable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
-            if response.status_code == 200:
-                clusterTable.add_row([targetID, "True"])
-        else:
-            clusterTable.add_row([targetID, "True"])
-    print(clusterTable)
+                response = enable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
+                if response.status_code != 200:
+                    print("Something went wrong.  Please check your syntax and try again.")
+                    sys.exit(1)
+                else:
+                    pass
+            else:
+                pass
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
+        sys.exit(1)
+    params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+    getNsxIdsEnabledClusters(**params)
 
 
 def disableNsxIdsAll(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    cluster_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
-    clusterTable = PrettyTable(["Cluster ID", "Distributed IDS Enabled"])
-    clusterResults = cluster_json['results']
-    for i in clusterResults:
-        targetID = i['cluster']['target_id']
-        if i['ids_enabled'] == True:
-            json_body = {
-                "ids_enabled": False,
-                "cluster": {
-                    "target_id": targetID
+    clusters_json = get_nsx_ids_cluster_enabled_json(proxy, sessiontoken)
+    if clusters_json is not None:
+        clustersTable = PrettyTable(['Cluster ID', 'Distributed IDS Enabled'])
+        cluster_array = clusters_json['results']
+        for i in cluster_array:
+            targetID = i['id']
+            ids_status = i['ids_enabled']
+            if ids_status == True:
+                json_body = {
+                    "ids_enabled": False,
+                    "cluster": {
+                        "target_id": targetID
+                    }
                 }
-            }
-            response, myURL = disable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
-            if response.status_code == 200:
-                clusterTable.add_row([targetID, "False"])
-        else:
-            clusterTable.add_row([targetID, "False"])
-    print(clusterTable)
+                response = disable_nsx_ids_cluster_json(proxy, sessiontoken, targetID, json_body)
+                if response.status_code != 200:
+                    print("Something went wrong.  Please check your syntax and try again.")
+                    sys.exit(1)
+                else:
+                    pass
+            else:
+                pass
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
+        sys.exit(1)
+    params = {'proxy':proxy, 'sessiontoken':sessiontoken}
+    getNsxIdsEnabledClusters(**params)
 
 
 def enableNsxIdsAutoUpdate(**kwargs):
@@ -1401,16 +1427,20 @@ def enableNsxIdsAutoUpdate(**kwargs):
         "auto_update": True
     }
     response = enable_nsx_ids_auto_update_json(proxy, sessiontoken, json_data)
-    if response.status_code == 202:
+    if response == 202:
         print("IDS Signature auto-update enabled")
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
 
 
 def NsxIdsUpdateSignatures(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    response, myURL = nsx_ids_update_signatures_json(proxy, sessiontoken)
+    response = nsx_ids_update_signatures_json(proxy, sessiontoken)
     if response.status_code == 202:
         print("Signature update started")
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
 
 
 def getNsxIdsSigVersions(**kwargs):
@@ -1499,88 +1529,64 @@ def listIdsPolicies(**kwargs):
 
 
 def create_ids_profile(**kwargs):
+    """Create an IDS Profile"""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    """Create an IDS Profile"""
-    if kwargs['objectname'] is None:
-        print("Please use -n to specify the name of the segment to be configured.  Consult the help for additional options.")
-        sys.exit(1)
     display_name = kwargs['objectname']
-    cvss = None
-    pa = None
+    # stage the necessary JSON payload
+    json_data = {
+        "profile_severity": [
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW"
+        ],
+        "criteria": [],
+        "resource_type": "IdsProfile",
+        "display_name": display_name,
+        "id": display_name
+    }
+    # set value for CVSS severity, if configured by user
     if kwargs['cvss'] is not None:
         cvss = kwargs['cvss']
+        cvss_criteria =  {
+            "filter_name": "CVSS",
+            "filter_value": cvss,
+            "resource_type": "IdsProfileFilterCriteria"
+        }
+        filter_operator = {
+                "operator": "AND",
+                "resource_type": "IdsProfileConjunctionOperator"
+            }
+    # update 'criteria' key in json payload
+        json_data['criteria'].append(cvss_criteria)
+        json_data['criteria'].append(filter_operator)
+    # set value(s) for products affected, if configured by user
     if kwargs['product_affected'] is not None:
         pa = kwargs['product_affected']
-    if pa is not None and cvss is not None:
-        json_data = {
-            "profile_severity": [
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW"
-            ],
-            "criteria": [
-                {
-                    "filter_name": "CVSS",
-                    "filter_value": cvss,
-                    "resource_type": "IdsProfileFilterCriteria"
-                },
-                {
-                    "operator": "AND",
-                    "resource_type": "IdsProfileConjunctionOperator"
-                },
-                {
-                    "filter_name": "PRODUCT_AFFECTED",
-                    "filter_value": pa,
-                    "resource_type": "IdsProfileFilterCriteria"
-                }
-            ],
-            "resource_type": "IdsProfile",
-            "display_name": display_name,
-            "id": display_name
+        pa_criteria = {
+            "filter_name": "PRODUCT_AFFECTED",
+            "filter_value": pa,
+            "resource_type": "IdsProfileFilterCriteria"
         }
-    elif pa is not None:
-        json_data = {
-            "profile_severity": [
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW"
-            ],
-            "criteria": [
-                {
-                    "filter_name": "PRODUCT_AFFECTED",
-                    "filter_value": pa,
-                    "resource_type": "IdsProfileFilterCriteria"
-                }
-            ],
-            "resource_type": "IdsProfile",
-            "display_name": display_name,
-            "id": display_name
-        }
-    elif cvss is not None:
-        json_data = {
-            "profile_severity": [
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW"
-            ],
-            "criteria": [
-                {
-                    "filter_name": "CVSS",
-                    "filter_value": cvss,
-                    "resource_type": "IdsProfileFilterCriteria"
-                },
-            ],
-            "resource_type": "IdsProfile",
-            "display_name": display_name,
-            "id": display_name
-        }
+    # update 'criteria' key in json payload
+        json_data['criteria'].append(pa_criteria)
     response_code = patch_ips_profile_json(proxy, sessiontoken, json_data, display_name)
     if response_code == 200:
         print(f'The IDS Profile {display_name} has been created successfully')
+    else:
+        print(f'There was an error, please check your syntax')
+        sys.exit(1)
+
+def delete_ids_profile(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    display_name = kwargs['objectname']
+    response_code = delete_ips_profile_json(proxy, sessiontoken, display_name)
+    if response_code == 200:
+        print(f'The IDS Profile {display_name} has been deleted.')
+        params = {"proxy":proxy, "sessiontoken":sessiontoken}
+        getIdsProfiles(**params)        
     else:
         print(f'There was an error, please check your syntax')
         sys.exit(1)
@@ -1596,8 +1602,9 @@ def create_ids_policy(**kwargs):
     json_data = {
         "resource_type": "IdsSecurityPolicy",
         "display_name": display_name,
-        "id": display_name
+        "id": display_name,
     }
+
     response_code = put_ids_policy_json(proxy, sessiontoken, json_data, display_name)
     if response_code == 200:
         print(f'The IDS policy {display_name} has been created successfully')
@@ -1616,7 +1623,7 @@ def get_ids_rules(**kwargs):
         ids_table = PrettyTable()
         ids_table.title = f'IDS Rules for IDS Policy {ids_policy_name}'
         ids_table.field_names = ['Display Name', 'Source Group', 'Destination Group', 'IDS Profile', 'Services', 'Scope', 'Action', 'Logged']
-        ids_rule_json = get_ids_rule_json(proxy, session_token, ids_policy_name)
+        ids_rule_json = get_ids_rule_json(proxy, sessiontoken, ids_policy_name)
         ids_rule_json = ids_rule_json['results']
         for r in ids_rule_json:
             ids_table.add_row([r['display_name'], r['source_groups'], r['destination_groups'], r['ids_profiles'], r['services'], r['scope'], r['action'], r['logged']])
@@ -1626,69 +1633,94 @@ def get_ids_rules(**kwargs):
 def create_ids_rule(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    if kwargs['objectname'] is None:
-        print("Please use -n to specify the name of the IDS Rule to be configured.  Consult the help for additional options.")
-        sys.exit(1)
 
-#   Load variables from kwargs
+#   Load variables from positional arguments
     display_name = kwargs['objectname']
-    act = kwargs['action']
-    srcgrp = kwargs['source_group']
-    destgrp = kwargs['dest_group']
-    idspol = kwargs['ids_policy'][0]
-    scp = kwargs['scope']
-    srvc = kwargs['services']
-    idspro = kwargs['ids_profile'][0]
+    idspro = kwargs['ids_profile']
+    idspol = kwargs['ids_policy']
+    
+#   Load variables from optional arguments
+    if kwargs['source_group'] is not None:
+        srcgrp = kwargs['source_group']
+    if kwargs['dest_group'] is not None:
+        destgrp = kwargs['dest_group']
+        
+#   Exit if both source and destination are set to ANY (unpermitted configuration)
+    if srcgrp == ["any"] and destgrp == ["any"]:
+        print('''
+        For IDS, it is not permitted for both SOURCE and DEST to be set to 'ANY'. 
+        Either source or destination should have groups that are configured for CGW.
+        Use './pyVMC.py inventory show-group cgw' to display currently configured groups for the Compute Gateway.
+        ''')
+        sys.exit(1)
+    else:
+        pass
+
+#   stage the JSON payload
+    json_data = {
+        "resource_type": "IdsRule",
+        "id": display_name,
+        "display_name": display_name,
+        "direction": "IN_OUT",
+        "ip_protocol": "IPV4_IPV6",
+        "logged": False
+    }
+
+#   Load remaining variables from optional arguments
+    if kwargs['action'] is not None:
+        act = kwargs['action']
+        json_data['action'] = act
+    if kwargs['scope'] is not None:
+        scp = kwargs['scope']
+    if kwargs['services'] is not None:
+        srvc = kwargs['services']
 
 #   Build variables and lists to use in JSON payload
-    idsprolst = [f'/infra/settings/firewall/security/intrusion-services/profiles/{idspro}']
+#   Profile and policy settings
+    idsprolstr = [f'/infra/settings/firewall/security/intrusion-services/profiles/{idspro}']
+    json_data['ids_profiles'] = idsprolstr
     idspolstr = f'/infra/domains/cgw/intrusion-service-policies/{idspol}'
+    json_data["parent_path"] = idspolstr
+
+#   Source group settings
     srcgrplst = []
-    destgrplst = []
-    srvclst = []
-    scplst = []
     if srcgrp == 'ANY':
         srcgrplst = ['ANY']
     else:
         for i in srcgrp:
             srcgrpitem = f'/infra/domains/cgw/groups/{i}'
             srcgrplst.append(srcgrpitem)
+    json_data['source_groups'] = srcgrplst
+
+#   Destination group settings
+    destgrplst = []
     if destgrp == 'ANY':
         destgrplst = ['ANY']
     else:
         for i in destgrp:
             dstgrpitem = f'/infra/domains/cgw/groups/{i}'
             destgrplst.append(dstgrpitem)
+    json_data['destination_groups'] = srcgrplst
+
+    # Services settings
+    srvclst = []
     if srvc == 'ANY':
         srvclst = ['ANY']
     else:
         for i in srvc:
             srvcitem = f'/infra/services/{i}'
             srvclst.append(srvcitem)
+    json_data['services'] = srvclst
+
+#   Scope settings
+    scplst = []
     if scp == 'ANY':
         scplst = ['ANY']
     else:
         for i in scp:
             scpitem = f'/infra/domains/cgw/groups/{i}'
             scplst.append(scpitem)
-
-#   Build the JSON payload
-    json_data = {
-        "action": act,
-        "ids_profiles": idsprolst,
-        "resource_type": "IdsRule",
-        "id": display_name,
-        "display_name": display_name,
-        "parent_path": idspolstr,
-        "source_groups": srcgrplst,
-        "destination_groups": destgrplst,
-        "services": srvclst,
-        "scope": scplst,
-        "direction": "IN_OUT",
-        "ip_protocol": "IPV4_IPV6",
-        "logged": False
-    }
-
+    json_data['scope'] = scplst
     json_response_code = put_ids_rule_json(proxy, sessiontoken, display_name, idspol, json_data)
     if json_response_code == 200:
         print(f'IDS Rule {display_name} was successfully created under IDS Policy {idspol}')
@@ -1697,12 +1729,10 @@ def create_ids_rule(**kwargs):
 
 
 def delete_ids_policy(**kwargs):
-    if kwargs['objectname'] is None:
-        print(
-            "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
-        sys.exit(1)
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
     ids_policy_name = kwargs['objectname']
-    json_response_code = delete_ids_policy_json(proxy, session_token, ids_policy_name)
+    json_response_code = delete_ids_policy_json(proxy, sessiontoken, ids_policy_name)
     if json_response_code == 200:
         print(f'IDS Policy {ids_policy_name} has been deleted')
     else:
@@ -1710,13 +1740,10 @@ def delete_ids_policy(**kwargs):
 
 
 def delete_ids_rule(**kwargs):
-    if kwargs['objectname'] is None:
-        print(
-            "Please use -n to specify the name of the IDS Policy to be delete.  Consult the help for additional options.")
-        sys.exit(1)
-    session_token = kwargs['session_token']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
     ids_rule_name = kwargs['objectname']
-    ids_policy_name = kwargs['ids_policy'][0]
+    ids_policy_name = kwargs['ids_policy']
     json_response_code = delete_ids_rule_json(proxy, session_token, ids_rule_name, ids_policy_name)
     if json_response_code == 200:
         print(f'IDS Rule {ids_rule_name} part of IDS Policy {ids_policy_name} has been deleted')
@@ -4611,31 +4638,45 @@ def main():
     search_product_affected_parser.set_defaults(func = search_ids_signatures_product_affected)
     
     create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
-    create_ids_profile_parser.add_argument("-n", "--objectname", required= True, help = "The name of the profile to create.")
+    create_ids_profile_parser.add_argument("objectname", help = "The name of the profile to create.")
     create_ids_profile_parser.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
-    create_ids_profile_parser.add_argument("-cvss", "--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+    create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
     create_ids_profile_parser.set_defaults(func = create_ids_profile)
+
+    delete_ids_profile_parser=nsxaf_parser_subs.add_parser('delete-ids-profile', parents = [nsx_url_flag], help = 'Delete the specified IDS profile.')
+    delete_ids_profile_parser.add_argument("objectname", help = "The name of the profile to delete.")
+    delete_ids_profile_parser.set_defaults(func = delete_ids_profile)
 
     show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
     show_ids_policies_parser.set_defaults(func = listIdsPolicies)
 
     create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
-    create_ids_policy_parser.add_argument("-n", "--objectname", required= True, help = "The name of the policy to create.")
+    create_ids_policy_parser.add_argument("objectname", help = "The name of the policy to create.")
     create_ids_policy_parser.set_defaults(func = create_ids_policy)
+
+    delete_ids_policy_parser=nsxaf_parser_subs.add_parser('delete-ids-policy', parents = [nsx_url_flag], help = 'Delete the specified IDS policy.')
+    delete_ids_policy_parser.add_argument("objectname", help = "The name of the policy to delete.")
+    delete_ids_policy_parser.set_defaults(func = delete_ids_policy)
 
     show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
     show_ids_rules_parser.set_defaults(func = get_ids_rules)
 
     create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
-    create_ids_rule_parser.add_argument("-n", "--objectname", required= True, help = "The name of the rule to create.")
-    create_ids_rule_parser.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
-    create_ids_rule_parser.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group')
-    create_ids_rule_parser.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group')
-    create_ids_rule_parser.add_argument('-ipol', '--ids-policy', required=False, nargs=1, help='The IDS Policy this rule will be created under')
+    create_ids_rule_parser.add_argument("objectname", help = "The name of the rule to create.")
+    create_ids_rule_parser.add_argument('ids_profile', help='The IDS Profile to evaluate against. Required argument.')
+    create_ids_rule_parser.add_argument('ids_policy', help='The IDS Policy this rule will be created under. Required argument.')
+    create_ids_rule_parser.add_argument("-act", "--action", required=False, choices=['DETECT', 'DETECT_PREVENT'], type = str.upper, default='DETECT', help="Choose whether this rule will just detect the intrusion or prevent the instrusion")
+    create_ids_rule_parser.add_argument("-sg", "--source-group", required=False, default='ANY', nargs='*', help='Source inventory group; default is ANY, however source and destination may not both be ANY')
+    create_ids_rule_parser.add_argument("-dg", "--dest-group", required=False, default='ANY', nargs='*', help='Destination inventory group; default is ANY, however source and destination may not both be ANY')
     create_ids_rule_parser.add_argument('-scp', '--scope', required=False, default='ANY', nargs='*', help='Determines where the IDS rule is applied.  Default is to apply across the entire DFW, but can be specific to a Inventory Group')
     create_ids_rule_parser.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
-    create_ids_rule_parser.add_argument('-ipro', '--ids-profile', required=False, nargs=1, help='The IDS Profile to evaluate against. Required argument.')
     create_ids_rule_parser.set_defaults(func = create_ids_rule)
+
+    delete_ids_rule_parser=nsxaf_parser_subs.add_parser('delete-ids-rule', parents = [nsx_url_flag], help = 'Delete the specified IDS rule.')
+    delete_ids_rule_parser.add_argument("objectname", help = "The name of the rule to delete.")
+    delete_ids_rule_parser.add_argument('ids_policy', help='The IDS Policy this rule exists under. Required argument.')
+    delete_ids_rule_parser.set_defaults(func = delete_ids_rule)
+
 
 # ============================
 # NSX-T - Inventory
