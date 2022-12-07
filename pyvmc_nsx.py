@@ -67,6 +67,21 @@ def get_nsx_ids_cluster_enabled_json(proxy, session_token):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
+
+
+def get_nsx_ids_cluster_config_json(proxy, session_token, cluster_id):
+    myHeader = {'csp-auth-token': session_token}
+    myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{cluster_id}"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        print(json_response['error_message'])
+        return None
 
 
 def enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
@@ -79,6 +94,8 @@ def enable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(response['error_message'])
+        return None
+
 
 
 def disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
@@ -91,31 +108,68 @@ def disable_nsx_ids_cluster_json(proxy, session_token, targetID, json_data):
         print("There was an error. Check the syntax.")
         print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(response['error_message'])
+        return None
 
 
 def enable_nsx_ids_auto_update_json(proxy, session_token, json_data):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services"
     response = requests.patch(myURL, headers=myHeader, json=json_data)
-    if response.status_code == 200:
+    status = response.status_code
+    if status == 202:
         return response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(response['error_message'])
-
+        json_response = response.json()
+        if status == 400:
+            print(f"Error Code {status}: Bad Request.")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        elif status == 403:
+            print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        elif status == 503:
+            print(f"Error Code {status}: Service Unavailable.")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        else:
+            print(f'Status code: {status}: Unknown error')
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
 
 def nsx_ids_update_signatures_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/signatures?action=update_signatures"
     response = requests.post(myURL, headers=myHeader)
-    if response.status_code == 200:
+    status = response.status_code
+    if response.status_code == 202:
         return response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(response['error_message'])
-
+        json_response = response.json()
+        if status == 400:
+            print(f"Error Code {status}: Bad Request.")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        elif status == 403:
+            print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        elif status == 503:
+            print(f"Error Code {status}: Service Unavailable.")
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
+        else:
+            print(f'Status code: {status}: Unknown error')
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            return None
 
 def get_ids_signature_versions_json(proxy, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -171,10 +225,25 @@ def patch_ips_profile_json(proxy, session_token, json_data, display_name):
         print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
         sys.exit(json_response['error_message'])
 
+def delete_ips_profile_json(proxy, session_token, display_name):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles/{display_name}'
+    response = requests.delete(my_url, headers=my_header)
+    if response.status_code == 200:
+        return response.status_code
+    elif response.status_code == 412:
+        print(f'There is an issue in URL: {my_url}')
+        print(f'Please check your syntax')
+    else:
+        json_response = response.json()
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
+        sys.exit(json_response['error_message'])
+
 
 def put_ids_policy_json(proxy, session_token, json_data, display_name):
     my_header = {'csp-auth-token': session_token}
-    my_url = f'{proxy}/policy/api/v1/infra/domains/default/intrusion-service-policies/{display_name}'
+    my_url = f'{proxy}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{display_name}'
     response = requests.put(my_url, headers=my_header, json=json_data)
     if response.status_code == 200:
         return response.status_code
@@ -626,23 +695,23 @@ def create_gwfw_rule(proxy, sessiontoken, gw, display_name, json_data):
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 def delete_gwfw_rule(proxy_url, sessiontoken, gw, rule_id):
@@ -654,23 +723,16 @@ def delete_gwfw_rule(proxy_url, sessiontoken, gw, rule_id):
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
 
 def get_gwfw_rules(proxy, sessiontoken, gw):
@@ -683,23 +745,23 @@ def get_gwfw_rules(proxy, sessiontoken, gw):
         return json_response
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
@@ -718,23 +780,23 @@ def put_sddc_dfw_rule_json(proxy_url, session_token, section, display_name, json
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
@@ -748,23 +810,23 @@ def put_sddc_dfw_section_json(proxy_url, session_token, display_name, json_data)
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
@@ -777,23 +839,15 @@ def delete_sddc_dfw_rule_json(proxy_url, session_token, section, rule_id):
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
 
 def delete_sddc_dfw_section_json(proxy_url, session_token, section_id):
@@ -805,23 +859,15 @@ def delete_sddc_dfw_section_json(proxy_url, session_token, section_id):
         return status
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
         return None
 
 
@@ -835,23 +881,23 @@ def get_sddc_dfw_rule_json(proxy_url, session_token, section):
         return json_response
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 def get_sddc_dfw_section_json(proxy_url, session_token):
@@ -864,23 +910,23 @@ def get_sddc_dfw_section_json(proxy_url, session_token):
         return json_response
     elif status == 400:
         print(f"Error Code {status}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 403:
         print(f"Error Code {status}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif status == 503:
         print(f"Error Code {status}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {status}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
@@ -916,23 +962,23 @@ def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
         return json_response
     elif response.status_code == 400:
         print(f"Error Code {response.status_code}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 403:
         print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 503:
         print(f"Error Code {response.status_code}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {response.status_code}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
@@ -1111,23 +1157,23 @@ def put_sddc_public_ip_json(proxy_url, session_token, ip_id, json_data):
         return response.status_code
     elif response.status_code == 400:
         print(f"Error Code {response.status_code}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 403:
         print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 503:
         print(f"Error Code {response.status_code}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {response.status_code}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 def delete_sddc_public_ip_json(proxy_url, session_token, ip_id):
@@ -1138,23 +1184,23 @@ def delete_sddc_public_ip_json(proxy_url, session_token, ip_id):
         return response.status_code
     elif response.status_code == 400:
         print(f"Error Code {response.status_code}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 403:
         print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 503:
         print(f"Error Code {response.status_code}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {response.status_code}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
@@ -1168,23 +1214,23 @@ def get_sddc_public_ip_json(proxy_url, session_token):
         return json_response
     elif response.status_code == 400:
         print(f"Error Code {response.status_code}: Bad Request.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 403:
         print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     elif response.status_code == 503:
         print(f"Error Code {response.status_code}: Service Unavailable.")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
     else:
         print(f'Status code: {response.status_code}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
         return None
 
 
