@@ -3894,7 +3894,6 @@ def getVCDRCloudFS(**kwargs):
         if json_response == None:
             print("API Error")
             sys.exit(1)
-        # print(json.dumps(json_response, indent = 2))
         cloud_fs = json_response["cloud_file_systems"]
         table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
         for i in cloud_fs:
@@ -4752,7 +4751,6 @@ def main():
     # new_group_parser.add_argument("--scope", choices = ["CGW", "MGW"], help = "Select either the default CGW of MGW to associate to this group.")
     # new_group_parser.add_argument("--group-id", help = "Provide a unique name / ID for this group")
     # new_group_parser.add_argument("--member-type", choices=["ip-based", "member-based", "criteria-based", "group-based"], help = "The type of membership to assign to the group: ip-based, member-based, criteria-based, or group-based.")
-
     # new_group_parser.add_argument("--key")
     # new_group_parser.add_argument("--operator")
     # new_group_parser.add_argument("--value")
@@ -4774,9 +4772,9 @@ def main():
     new_service_parser=inventory_parser_subs.add_parser('new-service', parents = [nsx_url_flag], help = 'create a new service')
     new_service_parser.add_argument("objectname", help = "The name of the inventory service to create.")
     new_service_parser.add_argument("-i", "--interactive", action='store_true', help = "Use to interactively define service entries and ports.  If not used, command expects additional arguments for service entries and ports.")
-    new_service_parser.add_argument("--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
-    new_service_parser.add_argument("--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
-    new_service_parser.add_argument("--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
+    new_service_parser.add_argument("-src", "--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
+    new_service_parser.add_argument("-dest", "--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
+    new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
     new_service_parser.set_defaults(func = newSDDCService)
 
     remove_service_parser=inventory_parser_subs.add_parser('remove-service', parents = [nsx_url_flag], help = 'remove a service')

@@ -30,11 +30,15 @@ def nsx_error_handling(fxn_response):
     elif code ==400:
         print(f'Error {code}: "Bad Request"')
         print("Request was improperly formatted or contained an invalid parameter.")
+    elif code ==401:
+        print(f'Error {code}: "Unauthorized"')
+        print("The client has not authenticated.")
+        print("It's likely your refresh token is out of date or otherwise incorrect.")
     elif code ==403:
         print(f'Error {code}: "Forbidden"')
         print("The client does not have sufficient privileges to execute the request.")
         print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
-        print("It's likely your refresh token is out of date or otherwise incorrect.")
+        print("It's likely your refresh token does not provide sufficient access.")
     elif code ==409:
         print(f'Error {code}: "Temporary Redirect"')
         print("The request can not be performed because it conflicts with configuration on a different entity, or because another client modified the same entity.")

@@ -17,14 +17,12 @@ def csp_error_handling(fxn_response):
         print("Request was improperly formatted or contained an invalid parameter.")
     elif code == 401:
         print(f'Error {code}: "The user is not authorized to use the API"')
-        print("The client does not have sufficient privileges to execute the request.")
-        print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
         print("It's likely your refresh token is out of date or otherwise incorrect.")
     elif code == 403:
         print(f'Error {code}: "The user is forbidden to use the API"')
         print("The client does not have sufficient privileges to execute the request.")
         print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
-        print("It's likely your refresh token is out of date or otherwise incorrect.")
+        print("It's likely your refresh token does not provide sufficient access.")
     elif code == 404:
         print(f'Error {code}: "Organization with this identifier is not found."')
         print("Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
