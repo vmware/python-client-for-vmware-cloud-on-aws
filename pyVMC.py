@@ -2982,11 +2982,10 @@ def newSDDCService(**kwargs):
     "id" : service_id,
     "display_name" : service_id,
     }
-    print(json.dumps(json_data, indent=4))
     response = new_sddc_service_json(proxy,sessiontoken,service_id,json_data)
     if response == 200:
         print(f'Service {service_id} successfully updated.')
-        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'service_id':service_id}
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'objectname':service_id}
         getSDDCService(**params)
     else:
         print("Issues creating the service - please check your syntax and try again.")
