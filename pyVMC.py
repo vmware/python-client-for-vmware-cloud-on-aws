@@ -4766,7 +4766,7 @@ def main():
     remove_service_parser.set_defaults(func = removeSDDCService)
 
     show_services_parser=inventory_parser_subs.add_parser('show-services', parents = [nsx_url_flag], help = 'show services')
-    show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find / show.")
+    show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find, shows just the service entries for that one service.")
     show_services_parser.set_defaults(func = getSDDCService)    
 
 # ============================
