@@ -2982,11 +2982,10 @@ def newSDDCService(**kwargs):
     "id" : service_id,
     "display_name" : service_id,
     }
-    print(json.dumps(json_data, indent=4))
     response = new_sddc_service_json(proxy,sessiontoken,service_id,json_data)
     if response == 200:
         print(f'Service {service_id} successfully updated.')
-        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'service_id':service_id}
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'objectname':service_id}
         getSDDCService(**params)
     else:
         print("Issues creating the service - please check your syntax and try again.")
@@ -4767,7 +4766,7 @@ def main():
     remove_service_parser.set_defaults(func = removeSDDCService)
 
     show_services_parser=inventory_parser_subs.add_parser('show-services', parents = [nsx_url_flag], help = 'show services')
-    show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find / show.")
+    show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find, shows just the service entries for that one service.")
     show_services_parser.set_defaults(func = getSDDCService)    
 
 # ============================
