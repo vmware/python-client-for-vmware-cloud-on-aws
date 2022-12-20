@@ -1010,6 +1010,32 @@ def delete_sddc_service_json(proxy, sessiontoken, service_id):
         nsx_error_handling(response)
         return None
 
+def get_sddc_services_json(proxy_url,sessiontoken):
+    """ Gets the SDDC Services """
+    myHeader = {'csp-auth-token': sessiontoken}
+    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
+    # removing 'sks-nsxt-manager' from proxy url to get correct URL
+    myURL = f'{proxy_url_short}policy/api/v1/infra/services'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        return response
+    else:
+        nsx_error_handling(response)
+        return None
+
+def get_sddc_single_service_json(proxy_url,sessiontoken, service_id):
+    """ Returns a single SDDC Service """
+    myHeader = {'csp-auth-token': sessiontoken}
+    # removing 'sks-nsxt-manager' from proxy url to get correct URL
+    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
+    myURL = f'{proxy_url_short}policy/api/v1/infra/services/{service_id}'
+    response = requests.get(myURL, headers=myHeader)
+    if response.status_code == 200:
+        return response
+    else:
+        nsx_error_handling(response)
+        return None
+
 
 # ============================
 # Inventory Groups
