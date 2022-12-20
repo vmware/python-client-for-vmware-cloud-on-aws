@@ -2919,85 +2919,126 @@ def removeSDDCDFWSection(**kwargs):
 # ============================
 
 
-def newSDDCService(proxy_url,sessiontoken,service_id,service_entries):
+def newSDDCService(**kwargs):
     """ Create a new SDDC Service based on service_entries """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/services/" + service_id
+    # Test for interactive flag - if False, check to ensure additional arguments were give for service entry
+    if kwargs['interactive'] is False and (kwargs['l4_protocol'] is None or kwargs['dest_ports'] is None):
+        print("Error - if not using interactive mode, at least protocol and destination port(s) must be configured. Source port(s) optional, based on your application.")
+        sys.exit(1)
+    elif kwargs['interactive'] is True and (kwargs['l4_protocol'] is not None or kwargs['dest_ports'] is not None or kwargs['source_ports'] is not None):
+        print("Error - if using interactive mode, please only specify the name of the desired service.  All other parameters will be obtained interactively.")
+        sys.exit(1)
+    else:
+        pass
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    service_id = kwargs['objectname']
+    interactive = kwargs['interactive']
+
+    if interactive == True:
+        service_entry_list = []
+            # Start a loop that will run until the user enters 'quit'.
+            # Ask the user for a name.
+        destination_port = ""
+        while destination_port != 'done':
+            destination_port_list = []
+            source_port_list = []
+            service_entry_id = input("Please enter the Service Entry ID:")
+            l4_protocol = input("Please enter the L4 Protocol:")
+            source_port = ""
+            destination_port = ""
+            while source_port != 'done':
+                source_port = input("Plese enter the Source Ports or type 'done' when your list is finished:")
+                if source_port != "done":
+                    source_port_list.append(source_port)
+            while (destination_port != 'next') and (destination_port != "done"):
+                source_port = ""
+                destination_port = input("Plese enter the Destination Ports, type 'next' when you want to define another service entry or 'done' if you have finished:")
+                if (destination_port != 'next') and (destination_port != "done"):
+                    destination_port_list.append(destination_port)
+            service_entry = {
+                "l4_protocol": l4_protocol,
+                "source_ports": source_port_list,
+                "destination_ports" : destination_port_list,
+                "resource_type" : "L4PortSetServiceEntry",
+                "id" : service_entry_id,
+                "display_name" : service_entry_id     }
+            service_entry_list.append(service_entry)
+    else:
+        source_port_list = kwargs['source_ports']
+        destination_port_list = kwargs['dest_ports']
+        l4_protocol = kwargs['l4_protocol']
+        service_entry_list = [
+            {
+            "l4_protocol": l4_protocol,
+            "source_ports": source_port_list,
+            "destination_ports": destination_port_list,
+            "resource_type": "L4PortSetServiceEntry",
+            "display_name": f'{service_id}_svc_entry'
+            }
+            ]
     json_data = {
-    "service_entries":service_entries,
+    "service_entries":service_entry_list,
     "id" : service_id,
     "display_name" : service_id,
     }
-    response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response_status_code = response.status_code
-    return json_response_status_code
+    print(json.dumps(json_data, indent=4))
+    response = new_sddc_service_json(proxy,sessiontoken,service_id,json_data)
+    if response == 200:
+        print(f'Service {service_id} successfully updated.')
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'service_id':service_id}
+        getSDDCService(**params)
+    else:
+        print("Issues creating the service - please check your syntax and try again.")
+        sys.exit(1)
 
 
-def removeSDDCService(proxy_url, sessiontoken,service_id):
+def removeSDDCService(**kwargs):
     """ Remove an SDDC Service """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/services/" + service_id
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.status_code
-    print(json_response)
-    if json_response == 200 :
-        print("The group " + service_id + " has been deleted")
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    service_id = kwargs['objectname']
+    response = delete_sddc_service_json(proxy, sessiontoken, service_id)
+    if response == 200 :
+        print(f'The group {service_id} has been deleted.')
     else :
         print("There was an error. Try again.")
-    return
+        sys.exit(1)
 
 
-def getSDDCServices(proxy_url,sessiontoken):
+def getSDDCService(**kwargs):
     """ Gets the SDDC Services """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/services"
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    sddc_services = json_response['results']
-    table = PrettyTable(['ID', 'Name'])
-    for i in sddc_services:
-        table.add_row([i['id'], i['display_name']])
-    return table
-
-
-def getSDDCService(proxy_url,sessiontoken,service_id):
-    """ Gets the SDDC Services """
-    myHeader = {'csp-auth-token': sessiontoken}
-    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-    myURL = proxy_url_short + "policy/api/v1/infra/services/" + service_id
-    response = requests.get(myURL, headers=myHeader)
-    json_response_status_code = response.status_code
-    if json_response_status_code != 200:
-        print("This service does not exist.")
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    if kwargs['objectname'] is not None:
+        service_id = kwargs['objectname']
+        response = get_sddc_single_service_json(proxy,sessiontoken, service_id)
+        if response is not None:
+            status = response.status_code
+            if status == 200:
+                json_response = response.json()
+                service_entries = json_response['service_entries']
+                table = PrettyTable(['ID', 'Name', 'Protocol', 'Source Ports', 'Destination Ports'])
+                for i in service_entries:
+                    table.add_row([i['id'], i['display_name'], i['l4_protocol'], i['source_ports'], i['destination_ports']])
+                print(table)
+            else:
+                print("No service found by that name.")
+                sys.exit(1)
     else:
-        json_response = response.json()
-        service_entries = json_response['service_entries']
-        table = PrettyTable(['ID', 'Name', 'Protocol', 'Source Ports', 'Destination Ports'])
-        for i in service_entries:
-            table.add_row([i['id'], i['display_name'], i['l4_protocol'], i['source_ports'], i['destination_ports']])
-        return table
-
-
-# def newSDDCServiceEntry(proxy_url,sessiontoken,service_entry_id,source_port,destination_port,l4_protocol):
-#    """ Create a new SDDC Service Entry """
-#    myHeader = {'csp-auth-token': sessiontoken}
-#    proxy_url_short = proxy_url.rstrip("sks-nsxt-manager")
-#    # removing 'sks-nsxt-manager' from proxy url to get correct URL
-#    myURL = proxy_url_short + "policy/api/v1/infra/services/" + service_id
-#    json_data = {
-#    "l4_protocol": l4_protocol,
-#    "source_ports": source_port_list,
-#    "destination_ports" : destination_port_list,
-#    "resource_type" : "L4PortSetServiceEntry",
-#    "id" : service_entry_id,
-#    "display_name" : service_entry_id     }
+        response = get_sddc_services_json(proxy,sessiontoken)
+        if response is not None:
+            status = response.status_code
+            if status == 200:
+                json_response = response.json()
+                sddc_services = json_response['results']
+                table = PrettyTable(['ID', 'Name'])
+                for i in sddc_services:
+                    table.add_row([i['id'], i['display_name']])
+                print(table)
+            else:
+                print("Plese check your syntax and try again.")
+                sys.exit(1)
 
 
 # ============================
@@ -3838,7 +3879,6 @@ def getVCDRCloudFS(**kwargs):
         if json_response == None:
             print("API Error")
             sys.exit(1)
-        # print(json.dumps(json_response, indent = 2))
         cloud_fs = json_response["cloud_file_systems"]
         table = PrettyTable(['Cloud FS Name', 'Cloud FS ID'])
         for i in cloud_fs:
@@ -4603,8 +4643,6 @@ def main():
     # create a subparser for nsxaf sub-commands
     nsxaf_parser_subs = nsxaf_parser.add_subparsers(help='nsxaf sub-command help')
 
-    # show_nsxaf_status_parser=nsxaf_parser_subs.add_parser('show-nsxaf-status', parents = [nsx_url_flag], help = 'Display the status of the NSX Advanced Firewall Add-on')
-
     show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
     show_ids_cluster_status_parser.set_defaults(func = getNsxIdsEnabledClusters)
     
@@ -4698,7 +4736,6 @@ def main():
     # new_group_parser.add_argument("--scope", choices = ["CGW", "MGW"], help = "Select either the default CGW of MGW to associate to this group.")
     # new_group_parser.add_argument("--group-id", help = "Provide a unique name / ID for this group")
     # new_group_parser.add_argument("--member-type", choices=["ip-based", "member-based", "criteria-based", "group-based"], help = "The type of membership to assign to the group: ip-based, member-based, criteria-based, or group-based.")
-
     # new_group_parser.add_argument("--key")
     # new_group_parser.add_argument("--operator")
     # new_group_parser.add_argument("--value")
@@ -4718,8 +4755,20 @@ def main():
 
     # create individual parsers for each sub-command
     new_service_parser=inventory_parser_subs.add_parser('new-service', parents = [nsx_url_flag], help = 'create a new service')
+    new_service_parser.add_argument("objectname", help = "The name of the inventory service to create.")
+    new_service_parser.add_argument("-i", "--interactive", action='store_true', help = "Use to interactively define service entries and ports.  If not used, command expects additional arguments for service entries and ports.")
+    new_service_parser.add_argument("-src", "--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
+    new_service_parser.add_argument("-dest", "--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
+    new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
+    new_service_parser.set_defaults(func = newSDDCService)
+
     remove_service_parser=inventory_parser_subs.add_parser('remove-service', parents = [nsx_url_flag], help = 'remove a service')
+    remove_service_parser.add_argument("objectname", help = "The ID of the inventory service to delete.  Use './pyVMC.py inventory show-services' for a list.")
+    remove_service_parser.set_defaults(func = removeSDDCService)
+
     show_services_parser=inventory_parser_subs.add_parser('show-services', parents = [nsx_url_flag], help = 'show services')
+    show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find / show.")
+    show_services_parser.set_defaults(func = getSDDCService)    
 
 # ============================
 # NSX-T - System
@@ -5050,28 +5099,7 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #     # ============================
 
 
-#     elif intent_name == "set-sddc-connected-services":
-#         value = sys.argv[2]
-#         if setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'true':
-#             print("S3 access from the SDDC is over the ENI.")
-#         elif setSDDCConnectedServices(proxy,session_token,value) == 200 and value == 'false':
-#             print("S3 access from the SDDC is over the Internet.")
-#         else:
-#             print("Make sure you use a 'true' or 'false' parameter")
-#     elif intent_name == "show-compatible-subnets":
-#         n = (len(sys.argv))
-#         if ( n < 4):
-#             print("Usage: show-compatible-subnets linkedAccountId region")
-#         else:
-#             getCompatibleSubnets(ORG_ID,session_token,sys.argv[2],sys.argv[3])
-#     elif intent_name == "show-connected-accounts":
-#         getConnectedAccounts(ORG_ID,session_token)
-#     elif intent_name == "show-sddc-connected-vpc":
-#         print(getSDDCConnectedVPC(proxy,session_token))
-#     elif intent_name == "show-shadow-account":
-#         print("The SDDC is deployed in the " + str(getSDDCShadowAccount(proxy,session_token)) + " AWS Shadow Account.")
-#     elif intent_name == "get-access-token":
-#         print(session_token)
+#    TT: deleted sections for show-connected-accounts, show-compatible-subnets, set-connected services, etc.
 
 
 # BR: deleted SDDC 
@@ -5293,78 +5321,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             user_list = routes.split()
 #             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
 #             get_task_status(task_id, ORG_ID, session_token)
-
-#     # ============================
-#     # NSX-T - Firewall Services
-#     # ============================
-
-
-#     elif intent_name == "new-service":
-#         if len(sys.argv) == 2:
-#             service_id = input("Please input the name of the service:")
-#             service_entry_list = []
-#                 # Start a loop that will run until the user enters 'quit'.
-#                 # Ask the user for a name.
-#             destination_port = ""
-#             while destination_port != 'done':
-#                 destination_port_list = []
-#                 source_port_list = []
-#                 service_entry_id = input("Please enter the Service Entry ID:")
-#                 l4_protocol = input("Please enter the L4 Protocol:")
-#                 source_port = ""
-#                 destination_port = ""
-#                 while source_port != 'done':
-#                     source_port = input("Plese enter the Source Ports or type 'done' when your list is finished:")
-#                     if source_port != "done":
-#                         source_port_list.append(source_port)
-#                 while (destination_port != 'next') and (destination_port != "done"):
-#                     source_port = ""
-#                     destination_port = input("Plese enter the Destination Ports, type 'next' when you want to define another service entry or 'done' if you have finished:")
-#                     if (destination_port != 'next') and (destination_port != "done"):
-#                         destination_port_list.append(destination_port)
-#                 # print(service_id)
-#                 # print(destination_port_list)
-#                 # print(source_port_list)
-#                 # print(l4_protocol)
-#                 service_entry = {
-#                     "l4_protocol": l4_protocol,
-#                     "source_ports": source_port_list,
-#                     "destination_ports" : destination_port_list,
-#                     "resource_type" : "L4PortSetServiceEntry",
-#                     "id" : service_entry_id,
-#                     "display_name" : service_entry_id     }
-#                 service_entry_list.append(service_entry)
-#                 # print(service_entry)
-#                 # print(service_entry_list)
-#             newSDDCService(proxy,session_token,service_id,service_entry_list)
-#             sddc_service = getSDDCService(proxy,session_token,service_id)
-#             print(sddc_service)
-#         elif len(sys.argv) == 4:
-#             name = sys.argv[2]
-#             service_entry_string = sys.argv[3]
-#             service_entry_list = service_entry_string.split(",")
-#             newSDDCService(proxy,session_token,name,service_entry_list)
-#             sddc_service = getSDDCService(proxy,session_token,service_id)
-#             print(sddc_service)
-#         else:
-#             print("Incorrect syntax")
-#     elif intent_name == "remove-service":
-#         if len(sys.argv) > 3:
-#             print("This command did not work. Follow the instructions")
-#         else:
-#             service_id = sys.argv[2]
-#             sddc_service_delete = removeSDDCService(proxy,session_token,service_id)
-#     elif intent_name == "show-services" or intent_name == "show-service":
-#         if len(sys.argv) == 2:
-#             sddc_services = getSDDCServices(proxy,session_token)
-#             print(sddc_services)
-#         elif len(sys.argv) == 3:
-#             service_id = sys.argv[2]
-#             sddc_service = getSDDCService(proxy,session_token,service_id)
-#             print(sddc_service)
-#         else:
-#             print("This command did not work. Follow the instructions")
-
 
 #     # ============================
 #     # NSX-T - Inventory Groups
