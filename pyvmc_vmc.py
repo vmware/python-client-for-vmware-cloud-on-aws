@@ -288,6 +288,21 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
             print(json_response['error_messages'])
         return None
 
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/primarycluster/get/
+
+def get_sddc_clusters_json(strProdURL, orgID, sessiontoken,sddcID):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}/primarycluster"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
 
 # ============================
 # TKG
@@ -518,7 +533,7 @@ def get_sddc_groups_json(strProdURL, org_id, session_token):
 
 def get_task_status_json(strProdURL,task_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/operation/{}/core/operations/{}".format(strProdURL, org_id, task_id)
+    myURL = f"{strProdURL}/api/operation/{org_id}/core/operations/{task_id}"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
@@ -526,36 +541,56 @@ def get_task_status_json(strProdURL,task_id, org_id, session_token):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
+        return None
 
 # ============================
 # VTC - SDDC Group Operations
 # ============================
-def create_sddc_group_json(strProdURL, name, deployment_id, org_id, session_token):
+
+def buildDeploymentIdList(deploymentList: list) -> list:
+    '''Quick function to build up list'''
+    retlist = []
+    for i in deploymentList:
+        d = {"id" : i}
+        retlist.append(d)
+    return retlist
+
+#
+#  No documentation. Use the API explorer.
+#
+def create_sddc_group_json(strProdURL, name, description, deployment_groups, org_id, session_token):
     """Create an SDDC group"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/network-connectivity-configs/create-group-network-connectivity".format(strProdURL, org_id)
+    myURL = f"{strProdURL}/api/network/{org_id}/core/network-connectivity-configs/create-group-network-connectivity"
     body = {
         "name": name,
-        "description": name,
-        "members": [
-            {
-                "id": deployment_id
-            }
-        ]
+        "description": description,
+        "members": buildDeploymentIdList(deployment_groups)
     }
+    # 
     response = requests.post(myURL, json=body, headers=myHeader)
+    if response.status_code == 504:
+        print("API returned with 504 error code. Check your permissions and network routes")
+        return None
+
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        if 'error_message' in json_response:
+            print(json_response['error_message'])
+        return None
+#
+##
 
+# HERE Needs work.
 def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/aws/operations".format(strProdURL, org_id)
+    myHeader = {'csp-auth-token': session_token,'Content-Type' : 'application/json'}
+    myURL = f'{strProdURL}/api/network/{org_id}/aws/operations' 
     body = {
         "type": "DELETE_DEPLOYMENT_GROUP",
         "resource_id": resource_id,
@@ -565,7 +600,12 @@ def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
         }
     }
     response = requests.post(myURL, json=body, headers=myHeader)
-    return response
+    if response.status_code not in (200,201,202):
+        print(f"Error on delete call for resource_id: {resource_id}. Code: {response.status_code}, Message: {response.reason}")
+        return None
+    else:
+        json_response = response.json()
+        return json_response
 
 def get_group_info_json(strProdURL, org_id, group_id, session_token):
     """Display details for an SDDC group"""
