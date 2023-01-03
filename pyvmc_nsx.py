@@ -1688,9 +1688,8 @@ def new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_
     if response.status_code == 200:
         return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 def new_l2vpn_json (proxy_url, session_token, display_name, json_data):

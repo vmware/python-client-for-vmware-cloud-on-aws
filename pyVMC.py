@@ -3796,19 +3796,48 @@ def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
     return sddc_l2vpn_path
 
 
-def newSDDCIPSecVpnIkeProfile(proxy_url, session_token, display_name):
+def new_sddc_ipsec_vpn_ike_profile(**kwargs):
     """ Creates the configured IPSec VPN Ike Profile """
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    ike_ver = kwargs['ike_version']
+    dh_group = kwargs['dh_group']
+    digest_algo = kwargs['digest_algo']
+    encrypt_algo = kwargs['encrypt_algo']
+
+    # Check for incompatible IKE profile options
+    if 'AES_GCM_256' in encrypt_algo and ike_ver != 'IKE_V2':
+        sys.exit(f'AES GCM encryption algorithms require IKE V2')
+    elif 'AES_GCM_192' in encrypt_algo and ike_ver != 'IKE_V2':
+        sys.exit(f'AES GCM encryption algorithms require IKE V2')
+    elif 'AES_GCM_128' in encrypt_algo and ike_ver != 'IKE_V2':
+        sys.exit(f'AES GCM encryption algorithms require IKE V2')
+    elif 'AES_GCM_256' in encrypt_algo and digest_algo:
+        sys.exit(f'AES GCM encryption algorithm cannot be configured with a digest algorithm')
+    elif 'AES_GCM_192' in encrypt_algo and digest_algo:
+        sys.exit(f'AES GCM encryption algorithm cannot be configured with a digest algorithm')
+    elif 'AES_GCM_128' in encrypt_algo and digest_algo:
+        sys.exit(f'AES GCM encryption algorithm cannot be configured with a digest algorithm')
+    else:
+        pass
+
+    # Build JSON data
     json_data = {
-    "resource_type":"IPSecVpnIkeProfile",
-    "display_name": display_name,
-    "id": display_name,
-    "encryption_algorithms":["AES_128"],
-    "digest_algorithms":["SHA2_256"],
-    "dh_groups":["GROUP14"],
-    "ike_version":"IKE_V2"
+        "resource_type": "IPSecVpnIkeProfile",
+        "display_name": display_name,
+        "id": display_name,
+        "encryption_algorithms": encrypt_algo,
+        "digest_algorithms": digest_algo,
+        "dh_groups": dh_group,
+        "ike_version": ike_ver
     }
-    json_response_status_code = new_ipsec_vpn_ike_profile_json(proxy_url, session_token, display_name, json_data)
-    return json_response_status_code
+    json_response_status_code = new_ipsec_vpn_ike_profile_json(proxy, session_token, display_name, json_data)
+    if json_response_status_code == 200:
+        sys.exit(f'IKE Profile {display_name} was created successfully')
+    else:
+        print('There was an error')
+        sys.exit(1)
 
 
 def newSDDCIPSecVpnTunnelProfile(proxy_url, session_token, display_name):
@@ -4311,6 +4340,7 @@ def main():
 # NSX-T - VPN
 # ============================
     parent_vpn_parser = argparse.ArgumentParser(add_help=False)
+    parent_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
 
     # create the parser for the "vpn" command
     vpn_parser = subparsers.add_parser('vpn', help='Create, delete, update, and show virtual private network (VPN) settings.')
@@ -4318,19 +4348,26 @@ def main():
     vpn_parser_subs = vpn_parser.add_subparsers(help='vpn sub-command help')
 
     # create individual parsers for each sub-command
-    # new_l2vpn_parser=vpn_parser_subs.add_parser('new-l2vpn', parents = [nsx_url_flag], help = 'create a new L2VPN')
-    # remove_l2VPN_parser=vpn_parser_subs.add_parser('remove-l2VPN', parents = [nsx_url_flag], help = 'remove a L2VPN')
-    # remove_vpn_parser=vpn_parser_subs.add_parser('remove-vpn', parents = [nsx_url_flag], help = 'remove a VPN')
-    # remove_vpn_ike_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents = [nsx_url_flag], help = 'remove a VPN IKE profile')
-    # remove_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'To remove a VPN IPSec Tunnel profile')
-    # show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
-    # show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
-    # show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
-    # show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
-    # show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
-    # show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
-    # show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
-    # show_vpn_ipsec_endpoints_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
+    new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
+    new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, help='IKE version for this profile. Default is IKE-V2')
+    new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
+    new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', help='IKE digest algorithm.Default is SHA2-256')
+    new_ike_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256'], default='AES_256', required=True, nargs='+', help='IKE encryption algorithm. Default is AES-256. If any GCM algorithm is chosen, IKE V2 is required.')
+    new_ike_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_ike_profile)
+    new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[nsx_url_flag], help='Create a new VPN IPSEC Profile')
+    new_l2vpn_parser=vpn_parser_subs.add_parser('new-l2vpn', parents = [nsx_url_flag], help = 'create a new L2VPN')
+    remove_l2VPN_parser=vpn_parser_subs.add_parser('remove-l2VPN', parents = [nsx_url_flag], help = 'remove a L2VPN')
+    remove_vpn_parser=vpn_parser_subs.add_parser('remove-vpn', parents = [nsx_url_flag], help = 'remove a VPN')
+    remove_vpn_ike_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents = [nsx_url_flag], help = 'remove a VPN IKE profile')
+    remove_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'To remove a VPN IPSec Tunnel profile')
+    show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
+    show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
+    show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
+    #show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
+    show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
+    show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
+    show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
+    show_vpn_ipsec_endpoints_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
