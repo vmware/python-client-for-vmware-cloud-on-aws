@@ -1046,13 +1046,11 @@ def put_sddc_inventory_group_json_response(proxy_url, session_token, json_data, 
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    json_response = response.json()
     if response.status_code == 200:
         return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
@@ -1062,26 +1060,10 @@ def get_sddc_inventory_groups_json(proxy_url, session_token, gw):
     json_response = response.json()
     if response.status_code == 200:
         return json_response
-    elif response.status_code == 400:
-        print(f"Error Code {response.status_code}: Bad Request.")
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
-        return None
-    elif response.status_code == 403:
-        print(f"Error Code {response.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
-        return None
-    elif response.status_code == 503:
-        print(f"Error Code {response.status_code}: Service Unavailable.")
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
-        return None
     else:
-        print(f'Status code: {response.status_code}: Unknown error')
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
+        nsx_error_handling(response)
         return None
+
 
 def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
     myHeader = {'csp-auth-token': session_token}
@@ -1091,9 +1073,8 @@ def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
@@ -1104,9 +1085,8 @@ def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
@@ -1117,9 +1097,8 @@ def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
@@ -1130,9 +1109,8 @@ def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
@@ -1143,9 +1121,8 @@ def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
+        nsx_error_handling(response)
+        return None
 
 
 def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
@@ -1156,23 +1133,19 @@ def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
-
+        nsx_error_handling(response)
+        return None
 
 def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/group-service-associations?intent_path=/infra/domains/{gw}/groups/{group_id}'
     response = requests.get(my_url, headers=my_header)
-    json_response = response.json()
     if response.status_code == 200:
+        json_response = response.json()
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        sys.exit()
-
+        nsx_error_handling(response)
+        return None
 
 def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, group_id):
     myHeader = {'csp-auth-token': session_token}
@@ -1181,10 +1154,8 @@ def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, grou
     if response.status_code == 200:
         return response.status_code
     else:
-        json_response = response.json()
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        sys.exit(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 # ============================
