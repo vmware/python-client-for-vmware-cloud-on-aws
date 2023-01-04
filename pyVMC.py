@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.10
 # The shebang above is to tell the shell which interpreter to use. This make the file executable without "python3" in front of it (otherwise I had to use python3 pyvmc.py)
 # I also had to change the permissions of the file to make it run. "chmod +x pyVMC.py" did the trick.
 # I also added "export PATH="MY/PYVMC/DIRECTORY":$PATH" (otherwise I had to use ./pyvmc.y)
@@ -21,7 +21,7 @@ CSP API documentation is available at https://console.cloud.vmware.com/csp/gatew
 vCenter API documentation is available at https://code.vmware.com/apis/366/vsphere-automation
 
 
-You can install python 3.9 from https://www.python.org/downloads/windows/ (Windows) or https://www.python.org/downloads/mac-osx/ (MacOs).
+You can install python 3.10 from https://www.python.org/downloads/windows/ (Windows) or https://www.python.org/downloads/mac-osx/ (MacOs).
 
 You can install the dependent python packages locally (handy for Lambda) with:
 pip3 install requests or pip3 install requests -t . --upgrade
@@ -41,6 +41,7 @@ import operator
 import time
 import json
 import sys
+import ipaddress
 import pandas as pd
 from deepdiff import DeepDiff
 from os.path import exists
@@ -77,6 +78,15 @@ def create_directory(dir_name):
         print(f'Created directory:{dir_name}')
     else:
         print(f'Directory already exists: {dir_name}')
+
+
+def validate_ip_address(ip_addr):
+    """Validates if a provided IP address is a valide format"""
+    try:
+        ip_object = ipaddress.ip_address(ip_addr)
+        return True
+    except ValueError:
+        return False
 
 # ============================
 # CSP - Service Definitions
@@ -3856,22 +3866,100 @@ def new_sddc_ipsec_vpn_ike_profile(**kwargs):
         sys.exit(1)
 
 
-def newSDDCIPSecVpnTunnelProfile(proxy_url, session_token, display_name):
+def new_sddc_ipsec_vpn_tunnel_profile(**kwargs):
     """ Creates the configured IPSec VPN Tunnel Profile """
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    dh_group = kwargs['dh_group']
+    digest_algo = kwargs['digest_algo']
+    encrypt_algo = kwargs['encrypt_algo']
+    pfs = kwargs['pfs_disable']
+
+    if not pfs:
+        pfs = False
+    else:
+        pfs = True
+
+    # Check for incompatible IPSec Tunnel profile options
+    if 'NO_ENCRYPTION_AUTH_AES_GMAC_128' in encrypt_algo and digest_algo:
+        sys.exit('Digest algorithm should not be configured with NO_ENCRYPTION_AUTH_AES_GMAC selected as the encryption algorithm')
+    elif 'NO_ENCRYPTION_AUTH_AES_GMAC_192' in encrypt_algo and digest_algo:
+        sys.exit('Digest algorithm should not be configured with NO_ENCRYPTION_AUTH_AES_GMAC selected as the encryption algorithm')
+    elif 'NO_ENCRYPTION_AUTH_AES_GMAC_256' in encrypt_algo and digest_algo:
+        sys.exit('Digest algorithm should not be configured with NO_ENCRYPTION_AUTH_AES_GMAC selected as the encryption algorithm')
+    else:
+        pass
+
+    #Build JSON Data
     json_data = {
-    "resource_type":"IPSecVpnTunnelProfile",
-    "display_name": display_name,
-    "id": display_name,
-    "encryption_algorithms":["AES_GCM_128"],
-    "digest_algorithms":[],
-    "dh_groups":["GROUP14"],
-    "enable_perfect_forward_secrecy":True
+        "resource_type": "IPSecVpnTunnelProfile",
+        "display_name": display_name,
+        "id": display_name,
+        "encryption_algorithms": encrypt_algo,
+        "digest_algorithms": digest_algo,
+        "dh_groups": dh_group,
+        "enable_perfect_forward_secrecy": pfs
     }
-    json_response_status_code = new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data)
-    return json_response_status_code
+    json_response_status_code = new_ipsec_vpn_profile_json(proxy, session_token, display_name, json_data)
+    if json_response_status_code == 200:
+        sys.exit(f'IKE Profile {display_name} was created successfully')
+    else:
+        print('There was an error')
+        sys.exit(1)
 
 
-def newSDDCIPSecVpnSession(proxy_url, session_token, display_name, endpoint, peer_ip):
+def new_sddc_ipsec_vpn_dpd_profile(**kwargs):
+    """Creates a new IPSEC VPN DPD Profile"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    probe_mode = kwargs['probe_mode']
+    probe_inter = kwargs['interval']
+    status = kwargs['disable']
+    retry = kwargs['retry_count']
+
+#   Set DPD status to enabled or disabled
+    if not status:
+        status = False
+    else:
+        status = True
+
+#   Set the DPD retry count
+    if retry is None:
+        retry = 10
+    else:
+        pass
+
+#   Check for invalid settings by the user
+    if probe_mode == 'PERIODIC' and probe_inter in range(3, 360):
+        pass
+    elif probe_mode == 'ON-DEMAND' and probe_inter in range(1, 10):
+        pass
+    else:
+        sys.exit(f'The selected DPD Probe Interval {probe_inter} is invalid with the selected Probe Mode {probe_mode}.')
+
+#   Build the JSON payload
+    json_data = {
+        "resource_type": "IPSecVpnDpdProfile",
+        "display_name": display_name,
+        "id": display_name,
+        "enabled": status,
+        "dpd_probe_mode": probe_mode,
+        "dpd_probe_interval": probe_inter,
+        "retry_count": retry
+    }
+
+#   Send the put request
+    json_response_status_code = new_ipsec_vpn_dpd_profile_json(proxy, session_token, json_data, display_name)
+    if json_response_status_code == 200:
+        sys.exit(f'DPD Profile {display_name} has been created successfully.')
+    else:
+        print('There was an error')
+        sys.exit(1)
+
+
+def new_sddc_ipsec_vpn_session(proxy_url, session_token, display_name, endpoint, peer_ip):
     """ Creates the configured IPSec VPN Tunnel Profile """
     json_data = {
     "resource_type":"RouteBasedIPSecVpnSession",
@@ -3898,6 +3986,175 @@ def newSDDCIPSecVpnSession(proxy_url, session_token, display_name, endpoint, pee
     }
     json_response_status_code = new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name)
     return json_response_status_code
+
+
+def new_t1_vpn_service(**kwargs):
+    """Creates a new Tier-1 VPN Services"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    t1g = kwargs['tier1_gateway']
+    service = kwargs['service_type']
+
+    if service == 'ipsec':
+        json_data = {
+            "resource_type": "IPSecVpnService",
+            "display_name": display_name,
+            "id": display_name,
+            "enabled": True
+        }
+        json_response_status_code = new_t1_ipsec_vpn_service_json(proxy, session_token, json_data, display_name, t1g)
+        if json_response_status_code == 200:
+            sys.exit(f'T1 IPSec VPN service {display_name} has been created successfully.')
+        else:
+            print('There was an error')
+            sys.exit(1)
+    elif service == 'l2vpn':
+        json_data = {
+            "resource_type": "L2VPNService",
+            "display_name": display_name,
+            "id": display_name
+        }
+        json_response_status_code = new_t1_l2vpn_service_json(proxy, session_token, json_data, display_name, t1g)
+        if json_response_status_code == 200:
+            sys.exit(f'T1 L2VPN service {display_name} has been created successfully.')
+        else:
+            print('There was an error')
+            sys.exit(1)
+    else:
+        print(f'The supplied service is not correct.  Please either provide "ipsec" or "l2vpn" as your option')
+        sys.exit(1)
+
+
+def new_t1_local_endpoint(**kwargs):
+    """Creates a new Local Endpoint attached to a Tier-1 gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    t1g = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+    local_addr = kwargs['local_address']
+
+    if validate_ip_address(local_addr):
+        pass
+    else:
+        sys.exit(f'The provided local address {local_addr} is not a valid IPV4 address')
+
+    json_data = {
+        "resource_type": "IPSecVpnLocalEndpoint",
+        "display_name": display_name,
+        "local_id": local_addr,
+        "local_address": local_addr
+    }
+
+    json_response_status_code = new_t1_local_endpoint_json(proxy, session_token, json_data, display_name, t1g, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f'T1 local endpoint {display_name} has been created successfully.')
+    else:
+        print('There was an error')
+        sys.exit(1)
+
+
+def new_t1_ipsec_session(**kwargs):
+    """Creates a new Tier-1 Gateway VPN Session"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    t1g = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+    dpd_profile = kwargs['dpd_profile']
+    ike_profile = kwargs['ike_profile']
+    tunnel_profile = kwargs['tunnel_profile']
+    local_endpoint = kwargs['local_endpoint']
+    vpn_type = kwargs['vpn_type']
+    remote_addr = kwargs['remote_address']
+    psk = kwargs['psk']
+    bgp_tunnel_address = kwargs['bgp_ip_address']
+    bgp_subnet_prefix = kwargs['bgp_subnet_prefix']
+    dest_addr = kwargs['destination_addr']
+    src_addr = kwargs['source_addr']
+
+#   Validate the provided remote IP address
+    if validate_ip_address(remote_addr):
+        pass
+    else:
+        sys.exit(f'The provided local address {remote_addr} is not a valid IPV4 address')
+
+#   Build the JSON payload for both route-based and policy-based VPNs
+    if vpn_type == 'route-based':
+        if bgp_tunnel_address is not None and bgp_subnet_prefix is not None:
+            #Build the Route-based VPN JSON payload
+            json_data = {
+                "resource_type": "RouteBasedIPSecVpnSession",
+                "display_name": display_name,
+                "id": display_name,
+                "tunnel_profile_path": f'/infra/ipsec-vpn-tunnel-profiles/{tunnel_profile}',
+                "ike_profile_path": f'/infra/ipsec-vpn-ike-profiles/{ike_profile}',
+                "dpd_profile_path": f'/infra/ipsec-vpn-dpd-profiles/{dpd_profile}',
+                "local_endpoint_path": f'/infra/tier-1s/{t1g}/ipsec-vpn-services/{vpn_service}/local-endpoints/{local_endpoint}',
+                "psk": psk,
+                "peer_address": remote_addr,
+                "peer_id": remote_addr,
+                "tunnel_interfaces": [{
+                    "ip_subnets": [{
+                        "ip_addresses": bgp_tunnel_address,
+                        "prefix_length": bgp_subnet_prefix
+                    }]
+                }]
+            }
+        else:
+            sys.exit(f'A BGP tunnel address and subnet prefix must be defined for a route-based VPN. Please include "-b" and "-s" in your command definition.')
+    elif vpn_type == 'policy-based':
+        if dest_addr is not None and src_addr is not None:
+            #Build the Source and Destination subnet arrays
+            dest_array = []
+            src_array = []
+            for d in dest_addr:
+                dest_subnet = {
+                    "subnet": d
+                    }
+                dest_array.append(dest_subnet)
+
+            for s in src_addr:
+                src_subnet = {
+                    "subnet": s
+                    }
+                src_array.append(src_subnet)
+
+#           Build the Policy-based VPN JSON payload
+            json_data = {
+                "resource_type": "PolicyBasedIPSecVpnSession",
+                "display_name": display_name,
+                "id": display_name,
+                "tunnel_profile_path": f'/infra/ipsec-vpn-tunnel-profiles/{tunnel_profile}',
+                "ike_profile_path": f'/infra/ipsec-vpn-ike-profiles/{ike_profile}',
+                "dpd_profile_path": f'/infra/ipsec-vpn-dpd-profiles/{dpd_profile}',
+                "local_endpoint_path": f'/infra/tier-1s/{t1g}/ipsec-vpn-services/{vpn_service}/local-endpoints/{local_endpoint}',
+                "psk": psk,
+                "peer_address": remote_addr,
+                "peer_id": remote_addr,
+                "rules": [
+                    {
+                        "resource_type": "IPSecVpnRule",
+                        "display_name": display_name,
+                        "id": display_name,
+                        "sources": src_array,
+                        "destinations": dest_array
+                    }
+                ]
+            }
+        else:
+            sys.exit(f'A policy-based VPN must have at least one source network and destination network defined. Please include "-src" and "-dest" in your command definition.')
+    else:
+        print(f'The VPN Type selected {vpn_type} is not valid')
+        sys.exit(1)
+#   Send the PUT request to the API endpoint
+    json_response_status_code = new_t1_ipsec_session_json(proxy, session_token, json_data, display_name, t1g, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f'Tier-1 IPSec VPN Session {display_name} has been created successfully.')
+    else:
+        print('There was an error')
+        sys.exit(1)
 
 
 def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
@@ -4120,19 +4377,19 @@ def getVCDRSDDCs(**kwargs):
         print(" ")
 
 
-
 # --------------------------------------------
 # ---------------- Main ----------------------
 # --------------------------------------------
 def main():
 
-# Should we have a separate module for argument handling?
-# Should we have a separate module for parsing the config.ini?
+#   Should we have a separate module for argument handling?
+#   Should we have a separate module for parsing the config.ini?
 
     from argparse import SUPPRESS
+
     class MyFormatter(argparse.RawDescriptionHelpFormatter):
         def __init__(self,prog):
-            super(MyFormatter,self).__init__(prog,max_help_position=40)
+            super(MyFormatter, self).__init__(prog,max_help_position=40)
     # this is the top level parser
     # ap = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
     ap = argparse.ArgumentParser(formatter_class=MyFormatter, usage=SUPPRESS,
@@ -4353,7 +4610,7 @@ def main():
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
 
 # ============================
-# NSX-T - VPN
+# NSX-T - VPN (SDDC and Tier-1)
 # ============================
     parent_vpn_parser = argparse.ArgumentParser(add_help=False)
     parent_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
@@ -4365,25 +4622,68 @@ def main():
 
     # create individual parsers for each sub-command
     new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
-    new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, help='IKE version for this profile. Default is IKE-V2')
-    new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
-    new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', help='IKE digest algorithm.Default is SHA2-256')
-    new_ike_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256'], default='AES_256', required=True, nargs='+', help='IKE encryption algorithm. Default is AES-256. If any GCM algorithm is chosen, IKE V2 is required.')
+    new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, type=str.upper, help='IKE version for this profile. Default is IKE-V2')
+    new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
+    new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IKE digest algorithm.Default is SHA2-256')
+    new_ike_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256'], default='AES_256', required=True, nargs='+', type=str.upper, help='IKE encryption algorithm. Default is AES-256. If any GCM algorithm is chosen, IKE V2 is required.')
     new_ike_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_ike_profile)
-    new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[nsx_url_flag], help='Create a new VPN IPSEC Profile')
-    new_l2vpn_parser=vpn_parser_subs.add_parser('new-l2vpn', parents = [nsx_url_flag], help = 'create a new L2VPN')
-    remove_l2VPN_parser=vpn_parser_subs.add_parser('remove-l2VPN', parents = [nsx_url_flag], help = 'remove a L2VPN')
-    remove_vpn_parser=vpn_parser_subs.add_parser('remove-vpn', parents = [nsx_url_flag], help = 'remove a VPN')
-    remove_vpn_ike_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents = [nsx_url_flag], help = 'remove a VPN IKE profile')
-    remove_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'To remove a VPN IPSec Tunnel profile')
-    show_l2vpn_parser=vpn_parser_subs.add_parser('show-l2vpn', parents = [nsx_url_flag], help = 'show l2 vpn')
-    show_l2vpn_services_parser=vpn_parser_subs.add_parser('show-l2vpn-services', parents = [nsx_url_flag], help = 'show l2 vpn services')
-    show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the configured VPN')
-    #show_vpn_parser=vpn_parser_subs.add_parser('show-vpn', parents = [nsx_url_flag], help = 'show the VPN statistics')
-    show_vpn_ike_profile_parser=vpn_parser_subs.add_parser('show-vpn-ike-profile', parents = [nsx_url_flag], help = 'show the VPN IKE profiles')
-    show_vpn_internet_ip_parser=vpn_parser_subs.add_parser('show-vpn-internet-ip', parents = [nsx_url_flag], help = 'show the public IP used for VPN services')
-    show_vpn_ipsec_tunnel_profile_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents = [nsx_url_flag], help = 'show the VPN tunnel profile')
-    show_vpn_ipsec_endpoints_parser=vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents = [nsx_url_flag], help = 'show the VPN IPSec endpoints')
+
+    new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new VPN IPSEC Tunnel Profile')
+    new_ipsec_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
+    new_ipsec_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256', 'NO_ENCRYPTION_AUTH_AES_GMAC_128', 'NO_ENCRYPTION_AUTH_AES_GMAC_192', 'NO_ENCRYPTION_AUTH_AES_GMAC_256', 'NO_ENCRYPTION'], default='AES_256', required=True, nargs='+', type=str.upper, help='IPSEC Encryption Algorithm options. Default is AES-256')
+    new_ipsec_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IPSec Digest Algorithm.')
+    new_ipsec_profile_parser.add_argument('-p', '--pfs-disable', action='store_false', help='Disable perfect forward secrecy')
+    new_ipsec_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_tunnel_profile)
+
+    new_dpd_profile_parser = vpn_parser_subs.add_parser('new-dpd-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC DPD profile')
+    new_dpd_profile_parser.add_argument('-m', '--probe-mode', choices=['PERIODIC', 'ON-DEMAND'], default='PERIODIC', type=str.upper, required=True, help='DPD Probe Mode is used to query the liveliness of the peer.')
+    new_dpd_profile_parser.add_argument('-i', '--interval', type=int, help='DPD Probe interval defines an interval for DPD probes (in seconds).  Default for periodic is 60s and On-Demand is 10s.')
+    new_dpd_profile_parser.add_argument('-d', '--disable', action='store_false', help='Disable dead peer detection')
+    new_dpd_profile_parser.add_argument('-r', '--retry-count', type=int, help='Maximum number of DPD message retry attemptes')
+    new_dpd_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_dpd_profile)
+
+    new_t1_vpn_service_parser = vpn_parser_subs.add_parser('new-t1-vpn-service', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN service')
+    new_t1_vpn_service_parser.add_argument('-t1', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this VPN service should be attached to')
+    new_t1_vpn_service_parser.add_argument('-s', '--service-type', required=True, choices=['ipsec', 'l2vpn'], help='Select whether this service is for an IPSec VPN or L2VPN')
+    new_t1_vpn_service_parser.set_defaults(func=new_t1_vpn_service)
+
+    new_local_endpoint_parser = vpn_parser_subs.add_parser('new-local-endpoint', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 VPN local endpoint')
+    new_local_endpoint_parser.add_argument('-t', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this Local Endpoint is associated with')
+    new_local_endpoint_parser.add_argument('-s', '--vpn-service', required=True, help='Select which VPN service this Local Endpoint will be associated with')
+    new_local_endpoint_parser.add_argument('-l', '--local-address', required=True, help='Define the local IPv4 address for the Local Endpoint')
+    new_local_endpoint_parser.set_defaults(func=new_t1_local_endpoint)
+
+    new_t1_ipsec_session_parser = vpn_parser_subs.add_parser('new-t1-ipsec-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN session')
+    new_t1_ipsec_session_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
+    new_t1_ipsec_session_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='Define which Tier-1 Gateway this ')
+    new_t1_ipsec_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the VPN service to which this session should be attached')
+    new_t1_ipsec_session_parser.add_argument('-d', '--dpd-profile', required=True, help='Provide the name of the DPD profile to use with this IPSEC VPN')
+    new_t1_ipsec_session_parser.add_argument('-i', '--ike-profile', required=True, help='Provide the name of the IKE profile to use with this IPSEC VPN')
+    new_t1_ipsec_session_parser.add_argument('-t', '--tunnel-profile', required=True, help='Provide the IPSEC Tunnel Profile to use with this IPSEC VPN')
+    new_t1_ipsec_session_parser.add_argument('-l', '--local-endpoint', required=True, help='Provide the name of the Local Endpoint to use with this IPSEC VPN')
+    new_t1_ipsec_session_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address for the remote site')
+    new_t1_ipsec_session_parser.add_argument('-p', '--psk', required=True, help='Define the pre-shared key for the IPSEC VPN session')
+    new_t1_ipsec_session_parser.add_argument('-b', '--bgp-ip-address', nargs='+', help='Define the BGP IPV4 interface. Route-based VPN only')
+    new_t1_ipsec_session_parser.add_argument('-s', '--bgp-subnet-prefix', help='Define the BGP subnet prefix length. Route-based VPN only')
+    new_t1_ipsec_session_parser.add_argument('-dest', '--destination-addr', nargs='+', help='Define the destination subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
+    new_t1_ipsec_session_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
+    new_t1_ipsec_session_parser.set_defaults(func=new_t1_ipsec_session)
+
+    new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
+    new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
+    remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
+    remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help='To remove a VPN IPSec Tunnel profile')
+    show_l2vpn_parser = vpn_parser_subs.add_parser('show-l2vpn', parents=[nsx_url_flag], help='show l2 vpn')
+    show_l2vpn_services_parser = vpn_parser_subs.add_parser('show-l2vpn-services', parents=[nsx_url_flag], help='show l2 vpn services')
+    show_vpn_parser = vpn_parser_subs.add_parser('show-vpn', parents=[nsx_url_flag], help='show the configured VPN')
+    show_vpn_stats_parser = vpn_parser_subs.add_parser('show-vpn-stats', parents=[nsx_url_flag], help='show the VPN statistics')
+    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profile', parents=[nsx_url_flag], help='show the VPN IKE profiles')
+    show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[nsx_url_flag], help='show the public IP used for VPN services')
+    show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help = 'show the VPN tunnel profile')
+    show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[nsx_url_flag], help='show the VPN IPSec endpoints')
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
@@ -5151,8 +5451,10 @@ def main():
     args.func(**params)
     sys.exit(0)
 
+
 if __name__ == "__main__":
     main()
+
 
 """
 This section has been retained for review purposes during the refactor effort.  
