@@ -2550,7 +2550,7 @@ def newSDDCMGWRule(**kwargs):
                 print(f'Invalid group:{item} - must be an existing Management Group in the Inventory.')
                 params = {"proxy":proxy, "sessiontoken":sessiontoken, "gateway": "mgw"}
                 print()
-                getSDDCGroups(**params)
+                get_inv_groups(**params)
                 exit(1)
             else:
                 item = f'{group_index}{item}'
@@ -2565,7 +2565,7 @@ def newSDDCMGWRule(**kwargs):
         if dg_string[0] not in string_compare:
             print("Invalid destination group - must be an existing Management Group in the Inventory.")
             params = {"proxy":proxy, "sessiontoken":sessiontoken, "gateway": "mgw"}
-            getSDDCGroups(**params)
+            get_inv_groups(**params)
             exit(1)
         else:
             destination_groups = []
@@ -3119,7 +3119,6 @@ def new_inv_group(**kwargs):
                 'operator' : operator,
                 'value' : filter_value
             } ]
-    print(json.dumps(json_data, indent = 4))
     response = put_sddc_inventory_group_json_response(proxy, sessiontoken, json_data, scope, group_id)
     if response is not None:
         params = {"proxy":proxy, "sessiontoken":sessiontoken, "gateway":scope, "objectname":group_id}
@@ -3133,7 +3132,7 @@ def remove_inv_group(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     gw = kwargs['gateway']
     group_id = kwargs['objectname']
-    json_response_status_code = delete_sddc_inventory_group_json_response(proxy, sessiontoken, gw, group_id)
+    json_response_status_code = delete_inventory_group_json_response(proxy, sessiontoken, gw, group_id)
     if json_response_status_code == 200:
         print("The group " + group_id + " has been deleted")
     else:
@@ -3214,28 +3213,28 @@ def get_inv_groups(**kwargs):
                         if i['resource_type'] == 'ConjunctionOperator':
                             continue
                         elif i['member_type'] == 'VirtualMachine':
-                            group_vm_membership_json = get_sddc_group_vm_membership_json(proxy, sessiontoken, gw, group_id)
+                            group_vm_membership_json = get_inventory_group_vm_membership_json(proxy, sessiontoken, gw, group_id)
                             group_vm_membership = group_vm_membership_json['results']
                             for x in group_vm_membership:
                                 vm_table.add_row([x['display_name']])
                             print("Here is the list of VMs included in this group")
                             print(vm_table)
                         elif i['member_type'] == 'Segment':
-                            group_segment_membership_json = get_sddc_group_segment_json(proxy, sessiontoken, gw, group_id)
+                            group_segment_membership_json = get_inventory_group_segment_json(proxy, sessiontoken, gw, group_id)
                             group_segment_membership = group_segment_membership_json['results']
                             for y in group_segment_membership:
                                 segment_table.add_row([y['display_name']])
                             print("Here is the list of Segments included in this group")
                             print(segment_table)
                         elif i['member_type'] == 'SegmentPort':
-                            group_segment_port_membership_json = get_sddc_group_segment_port_json(proxy, sessiontoken, gw, group_id)
+                            group_segment_port_membership_json = get_inventory_group_segment_port_json(proxy, sessiontoken, gw, group_id)
                             group_segment_port_membership = group_segment_port_membership_json['results']
                             for z in group_segment_port_membership:
                                 segment_port_table.add_row([z['display_name']])
                             print("Here is the list of Segment Ports included in this group")
                             print(segment_port_table)
                         elif i['member_type'] == 'IPSet':
-                            group_ip_address_membership_json = get_sddc_group_ip_address_json(proxy, sessiontoken, gw, group_id)
+                            group_ip_address_membership_json = get_inventory_group_ip_address_json(proxy, sessiontoken, gw, group_id)
                             group_id_address_membership = group_ip_address_membership_json['results']
                             for a in group_id_address_membership:
                                 ip_address_table.add_row([a['displan_name']])
@@ -3245,21 +3244,21 @@ def get_inv_groups(**kwargs):
                             print("No effective group member")
 
                 elif g["resource_type"] == "IPAddressExpression":
-                    ip_addr = get_sddc_group_ip_address_json(proxy, sessiontoken, gw, group_id)
+                    ip_addr = get_inventory_group_ip_address_json(proxy, sessiontoken, gw, group_id)
                     ips = ip_addr['results']
                     for i in ips:
                         ip_address_table.add_row([i])
                     print("The group " + group_id + " is based on the IP addresses criteria:")
                     print(ip_address_table)
                 elif g["resource_type"] == "ExternalIDExpression" and g['member_type'] == 'VirtualMachine':
-                    group_vm = get_sddc_group_vm_membership_json(proxy, sessiontoken, gw, group_id)
+                    group_vm = get_inventory_group_vm_membership_json(proxy, sessiontoken, gw, group_id)
                     vms = group_vm['results']
                     for v in vms:
                         vm_table.add_row([v['display_name']])
                     print(f"The VMs in group {group_id} are:")
                     print(vm_table)
                 elif g["resource_type"] == "ExternalIDExpression" and g['member_type'] == 'VirtualNetworkInterface':
-                    group_vif = get_sddc_group_vif_json(proxy, sessiontoken, gw, group_id)
+                    group_vif = get_inventory_group_vif_json(proxy, sessiontoken, gw, group_id)
                     vifs = group_vif['results']
                     for v in vifs:
                         vif_table.add_row([v['display_name']])
@@ -3271,7 +3270,7 @@ def get_inv_groups(**kwargs):
                         if '/infra/domains/cgw/groups/' in p:
                             group_table.add_row([p])
                         elif '/infra/tier-1s/' in p:
-                            group_segments = get_sddc_group_segment_json(proxy, sessiontoken, gw, group_id)
+                            group_segments = get_inventory_group_segment_json(proxy, sessiontoken, gw, group_id)
                             segments = group_segments['results']
                             for s in segments:
                                 segment_table.add_row([s['display_name'], s['path']])
@@ -3299,15 +3298,15 @@ def get_inv_group_assoc(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     gw = kwargs['gateway']
     group_id = kwargs['objectname']
-    json_response = get_sddc_group_association_json(proxy, sessiontoken, gw, group_id)
+    json_response = get_inventory_group_association_json(proxy, sessiontoken, gw, group_id)
     if json_response is not None:
         try:
-            sddc_group = json_response['results']
-            if len(sddc_group) == 0:
+            inv_group = json_response['results']
+            if len(inv_group) == 0:
                 print("No object is associated with this group.")
             else:
                 table = PrettyTable(['ID', 'Name'])
-                for i in sddc_group:
+                for i in inv_group:
                     table.add_row([i['target_id'], i['target_display_name']])
                 print(table)
         except:

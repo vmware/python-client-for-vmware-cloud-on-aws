@@ -1077,7 +1077,7 @@ def get_sddc_inventory_group_id_json(proxy_url, session_token, gw, group_id):
         return None
 
 
-def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_vm_membership_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/virtual-machines'
     response = requests.get(my_url, headers=my_header)
@@ -1089,7 +1089,7 @@ def get_sddc_group_vm_membership_json(proxy_url, session_token, gw, group_id):
         return None
 
 
-def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_ip_address_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/ip-addresses'
     response = requests.get(my_url, headers=my_header)
@@ -1101,7 +1101,7 @@ def get_sddc_group_ip_address_json(proxy_url, session_token, gw, group_id):
         return None
 
 
-def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_segment_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/segments'
     response = requests.get(my_url, headers=my_header)
@@ -1113,7 +1113,7 @@ def get_sddc_group_segment_json(proxy_url, session_token, gw, group_id):
         return None
 
 
-def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_segment_port_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/segment-ports'
     response = requests.get(my_url, headers=my_header)
@@ -1125,7 +1125,7 @@ def get_sddc_group_segment_port_json(proxy_url, session_token, gw, group_id):
         return None
 
 
-def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_vif_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}/members/vifs'
     response = requests.get(my_url, headers=my_header)
@@ -1136,7 +1136,7 @@ def get_sddc_group_vif_json(proxy_url, session_token, gw, group_id):
         nsx_error_handling(response)
         return None
 
-def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
+def get_inventory_group_association_json(proxy_url, session_token, gw, group_id):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/group-service-associations?intent_path=/infra/domains/{gw}/groups/{group_id}'
     response = requests.get(my_url, headers=my_header)
@@ -1147,7 +1147,7 @@ def get_sddc_group_association_json(proxy_url, session_token, gw, group_id):
         nsx_error_handling(response)
         return None
 
-def delete_sddc_inventory_group_json_response(proxy_url, session_token, gw, group_id):
+def delete_inventory_group_json_response(proxy_url, session_token, gw, group_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/domains/{gw}/groups/{group_id}'
     response = requests.delete(myURL, headers=myHeader)
