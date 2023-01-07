@@ -305,10 +305,7 @@ def get_sddcs_json(strProdURL, orgID, sessiontoken):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-        return None
+        vmc_error_handling(response)
 
 # Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/get/
 def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
