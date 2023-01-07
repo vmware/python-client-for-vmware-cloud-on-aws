@@ -5766,55 +5766,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
 #             get_task_status(task_id, ORG_ID, session_token)
 
-#     # ============================
-#     # NSX-T - NAT
-#     # ============================
-
-
-#     elif intent_name == "new-nat-rule":
-#         display_name = sys.argv[2]
-#         action = sys.argv[3]
-#         if action == "any" or action == "REFLEXIVE":
-#             translated_network = sys.argv[4]
-#             source_network = sys.argv[5]
-#             service = ""
-#             translated_port = ""
-#             if len(sys.argv) >= 7:
-#                 logging = sys.argv[6]
-#             else:
-#                 logging = False
-#             if len(sys.argv) >= 8:
-#                 status = sys.argv[7]
-#             else:
-#                 status = True
-#             newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-#         elif action == "DNAT":
-#             translated_network = sys.argv[4]
-#             source_network = sys.argv[5]
-#             service = sys.argv[6]
-#             translated_port = sys.argv[7]
-#             if len(sys.argv) >= 9:
-#                 logging = sys.argv[8]
-#             else:
-#                 logging = "false"
-#             if len(sys.argv) >= 10:
-#                 status = sys.argv[9]
-#             else:
-#                 status = "true"
-#             newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-#         else:
-#             print("There was an error. Make sure you follow the instructions.")
-#     elif intent_name == "remove-nat-rule":
-#         if len(sys.argv) == 3:
-#             id = sys.argv[2]
-#             result = remove_sddc_nat_json(proxy, session_token, id)
-#             print(result)
-#             print("\n")
-#             print(getSDDCNAT(proxy, session_token))
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")
-
-
 
 #     # ============================
 #     # NSX-T - VPN
