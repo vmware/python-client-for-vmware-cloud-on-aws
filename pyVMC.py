@@ -850,7 +850,7 @@ def get_nsx_info( org_id, deployment_id, session_token):
     return
 
 
-def get_deployments(org_id, session_token):
+def get_deployments(org_id, session_token, strProdURL):
     json_response = get_deployments_json(strProdURL,org_id, session_token)
     if (json_response['empty'] == True):
         print("\n=====No SDDC found=========")
@@ -3340,7 +3340,6 @@ def delete_nat_rule(**kwargs):
 
     result = remove_sddc_nat_json(proxy, sessiontoken, nat_id, tier1_id)
     if result is not None:
-        print(result)
         print("\n")
         params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'objectname':nat_id, 'tier1_id':tier1_id}
         get_nat_rules(**params)
@@ -3360,6 +3359,11 @@ def new_nat_rule(**kwargs):
     status = kwargs['disabled']
     public_ip = kwargs['public_ip']
     private_ip = kwargs['private_ip']
+
+    if action == 'REFLEXIVE' and kwargs['service'] is not None:
+        print('Reflexive rules may not be configured with a service / port.  Please check your configuration and try again.')
+    else:
+        pass
 
     if kwargs['disabled'] == True:
         status = True
@@ -3399,7 +3403,6 @@ def new_nat_rule(**kwargs):
         service = kwargs['service']
         json_data["service"] = f'/infra/services/{service}'
 
-    print(json.dumps(json_data, indent=4))
     json_response_status_code = new_sddc_nat_json(proxy, sessiontoken, nat_id, tier1_id, json_data) 
     if json_response_status_code is not None:
         print(f"NAT {nat_id} created successfully")
@@ -4452,7 +4455,7 @@ def main():
                                     "Show a list of network segments:\n"
                                     "python pyVMC.py search-nsx Segment\n\n"
                                     "Show the SDDC route table:\n"
-                                    "python pyMVC.py system show-t0-routes -rt t0\n \u00A0 \n")
+                                    "python pyMVC.py system show-routes t0 \n \u00A0 \n")
 
     # create a subparser for the subsequent sections    
     subparsers = ap.add_subparsers(help='sub-command help')
