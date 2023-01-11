@@ -1163,57 +1163,52 @@ def delete_inventory_group_json_response(proxy_url, session_token, gw, group_id)
 # ============================
 
 
-def get_sddc_nat_info_json(proxy_url, sessiontoken):
+def get_sddc_nat_info_json(proxy_url, sessiontoken, tier1_id):
     """Returns JSON response with SDDC NAT rules"""
     myHeader = {'csp-auth-token': sessiontoken}
-    myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules'
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{tier1_id}/nat/USER/nat-rules'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
-def get_nat_stats_json(proxy_url, sessiontoken, nat_id):
+def get_nat_stats_json(proxy_url, sessiontoken, nat_id, tier1_id):
     """Returns JSON response with NAT statistics for selected NAT rule"""
     myHeader = {'csp-auth-token': sessiontoken}
-    myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{nat_id}/statistics'
+    myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{tier1_id}/nat/USER/nat-rules/{nat_id}/statistics'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
-def new_sddc_nat_json(proxy_url, session_token, display_name, json_data):
+def new_sddc_nat_json(proxy_url, session_token, display_name, tier1_id, json_data):
     my_header = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': session_token}
-    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{display_name}'
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/{tier1_id}/nat/USER/nat-rules/{display_name}'
     response = requests.put(my_url, headers=my_header, json=json_data)
-    json_response = response.json()
     if response.status_code == 200:
         return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
-def remove_sddc_nat_json(proxy_url, session_token, nat_id):
+def remove_sddc_nat_json(proxy_url, session_token, nat_id, tier1_id):
     my_header = {'csp-auth-token': session_token}
-    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/{nat_id}'
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/{tier1_id}/nat/USER/nat-rules/{nat_id}'
     response = requests.delete(my_url, headers=my_header)
     if response.status_code == 200:
         return response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 # ============================

@@ -850,7 +850,7 @@ def get_nsx_info( org_id, deployment_id, session_token):
     return
 
 
-def get_deployments(org_id, session_token):
+def get_deployments(org_id, session_token, strProdURL):
     json_response = get_deployments_json(strProdURL,org_id, session_token)
     if (json_response['empty'] == True):
         print("\n=====No SDDC found=========")
@@ -3331,68 +3331,125 @@ def get_inv_group_assoc(**kwargs):
 # ============================
 
 
-def newSDDCNAT(proxy_url, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status):
-    """ Creates a new NAT rule """
-    if action == "any" or action == "REFLEXIVE":
-        json_data = {
-        "action": "REFLEXIVE",
-        "translated_network": translated_network,
-        "source_network": source_network,
-        "sequence_number": 0,
-        "logging": logging,
-        "enabled": status,
-        "scope":["/infra/labels/cgw-public"],
-        "firewall_match":"MATCH_INTERNAL_ADDRESS",
-        "id": display_name}
-        json_response_status_code = new_sddc_nat_json(proxy_url, session_token, display_name, json_data)
-        if json_response_status_code == 200:
-            print(f"NAT {display_name} created successfully")
+def delete_nat_rule(**kwargs):
+    """Deletes specified SDDC NAT rule"""
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    nat_id = kwargs['objectname']
+    tier1_id = kwargs['tier1_id']
 
+    result = remove_sddc_nat_json(proxy, sessiontoken, nat_id, tier1_id)
+    if result is not None:
+        print("\n")
+        params = {'proxy':proxy, 'sessiontoken':sessiontoken, 'objectname':nat_id, 'tier1_id':tier1_id}
+        get_nat_rules(**params)
     else:
-        json_data = {
-        "action": "DNAT",
-        "destination_network": translated_network,
-        "translated_network": source_network,
-        "translated_ports": translated_port,
-        "service":("/infra/services/"+service),
-        "sequence_number": 0,
-        "logging": logging,
-        "enabled": status,
-        "scope":["/infra/labels/cgw-public"],
-        "firewall_match":"MATCH_INTERNAL_ADDRESS",
-        "id": display_name}
-        json_response_status_code = new_sddc_nat_json(proxy_url, session_token, display_name, json_data)
-        if json_response_status_code == 200:
-            print(f"NAT {display_name} created successfully")
+        print('Something went wrong.  Please check your syntax and try again.')
+        sys.exit(1)
+
+def new_nat_rule(**kwargs):
+    """ Creates a new NAT rule """
+
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    nat_id = kwargs['objectname']
+    tier1_id = kwargs['tier1_id']
+    action = kwargs['action']
+    logging = kwargs['logging']
+    status = kwargs['disabled']
+    public_ip = kwargs['public_ip']
+    private_ip = kwargs['private_ip']
+
+    if action == 'REFLEXIVE' and kwargs['service'] is not None:
+        print('Reflexive rules may not be configured with a service / port.  Please check your configuration and try again.')
+    else:
+        pass
+
+    if kwargs['disabled'] == True:
+        status = True
+    elif kwargs['disabled'] == False:
+        status = False
+    if kwargs['logging'] == True:
+        logging = True
+    elif kwargs['logging'] == False:
+        logging = False
+
+    json_data = {}
+    json_data["sequence_number"] = 0
+    json_data["logging"] = logging
+    json_data["enabled"] = status
+    json_data["id"] = nat_id
+    json_data["firewall_match"] = "MATCH_INTERNAL_ADDRESS"
+    json_data["scope"] = []
+
+    match action:
+        case  "REFLEXIVE":
+            json_data["action"] = f'REFLEXIVE'
+            json_data["translated_network"] = public_ip
+            json_data["source_network"] = private_ip
+
+        case "DNAT":
+            json_data['action'] = 'DNAT'
+            json_data["destination_network"] = public_ip
+            json_data["translated_network"] = private_ip
+            if kwargs['translated_port'] is not None:
+                json_data["translated_ports"] =  kwargs['translated_port']
+
+    match tier1_id:
+        case "cgw":
+            json_data["scope"] = ["/infra/labels/cgw-public"]
+
+    if kwargs['service'] is not None:
+        service = kwargs['service']
+        json_data["service"] = f'/infra/services/{service}'
+
+    json_response_status_code = new_sddc_nat_json(proxy, sessiontoken, nat_id, tier1_id, json_data) 
+    if json_response_status_code is not None:
+        print(f"NAT {nat_id} created successfully")
+    else:
+        print("Something went wrong.   Please check your syntax and try again.")
 
 
-def getSDDCNAT(proxy_url, sessiontoken):
+def get_nat_rules(**kwargs):
     """Prints out all SDDC NAT rules"""
-    json_response = get_sddc_nat_info_json(proxy_url, sessiontoken)
-    sddc_NAT = json_response['results']
-    table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
-    for i in sddc_NAT:
-        if 'destination_network' in i:
-            table.add_row([i['id'], i['display_name'], i['destination_network'], i['translated_ports'], i['translated_network'], i['enabled']])
-        else:
-            table.add_row([i['id'], i['display_name'], i['translated_network'], "any", i['source_network'], i['enabled']])
-    return table
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    tier1_id = kwargs['tier1_id']
+    json_response = get_sddc_nat_info_json(proxy, sessiontoken, tier1_id)
+    if json_response is not None:
+        sddc_NAT = json_response['results']
+        table = PrettyTable(['ID', 'Name', 'Public IP', 'Ports', 'Internal IP', 'Enabled?'])
+        for i in sddc_NAT:
+            if 'destination_network' in i:
+                table.add_row([i['id'], i['display_name'], i['destination_network'], i['translated_ports'], i['translated_network'], i['enabled']])
+            else:
+                table.add_row([i['id'], i['display_name'], i['translated_network'], "any", i['source_network'], i['enabled']])
+        print(table)
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
+        sys.exit(1)
 
-
-def getSDDCNATStatistics(proxy_url, sessiontoken, nat_id):
-    """Prints NAT statistics for provided NAT rule ID"""
-    json_response = get_nat_stats_json(proxy_url, sessiontoken, nat_id)
-    sddc_NAT_stats = json_response['results'][0]['rule_statistics']
-    table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
-    for i in sddc_NAT_stats:
-        #  For some reason, the API returns an entry with null values and one with actual data. So I am removing this entry.
-        if (i['active_sessions'] == 0) and (i['total_bytes'] == 0) and (i['total_packets'] == 0):
-            # What this code does is simply check if all entries are empty and skip (pass below) before writing the stats.
-            pass
-        else:
-            table.add_row([nat_id, i['active_sessions'], i['total_bytes'], i['total_packets']])
-    return table
-
+def get_nat_stats(**kwargs):
+    """Prints out statistics for specific NAT rule"""
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    nat_id = kwargs['objectname']
+    tier1_id = kwargs['tier1_id']
+    json_response = get_nat_stats_json(proxy, sessiontoken, nat_id, tier1_id)
+    if json_response is not None:
+        sddc_NAT_stats = json_response['results'][0]['rule_statistics']
+        table = PrettyTable(['NAT Rule', 'Active Sessions', 'Total Bytes', 'Total Packets'])
+        for i in sddc_NAT_stats:
+            #  For some reason, the API returns an entry with null values and one with actual data. So I am removing this entry.
+            if (i['active_sessions'] == 0) and (i['total_bytes'] == 0) and (i['total_packets'] == 0):
+                # What this code does is simply check if all entries are empty and skip (pass below) before writing the stats.
+                pass
+            else:
+                table.add_row([nat_id, i['active_sessions'], i['total_bytes'], i['total_packets']])
+        print(table)
+    else:
+        print("Something went wrong.  Please check your syntax and try again.")
+        sys.exit(1)
 
 # ============================
 # NSX-T - Public IP Addressing
@@ -4398,7 +4455,7 @@ def main():
                                     "Show a list of network segments:\n"
                                     "python pyVMC.py search-nsx Segment\n\n"
                                     "Show the SDDC route table:\n"
-                                    "python pyMVC.py system show-t0-routes -rt t0\n \u00A0 \n")
+                                    "python pyMVC.py system show-routes t0 \n \u00A0 \n")
 
     # create a subparser for the subsequent sections    
     subparsers = ap.add_subparsers(help='sub-command help')
@@ -4741,11 +4798,34 @@ def main():
     nat_parser_subs = nat_parser_main.add_subparsers(help='nat sub-command help')
 
     # create individual parsers for each sub-command
-    # new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents = [nsx_url_flag], help = 'To create a new NAT rule')
-    # remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents = [nsx_url_flag], help = 'remove a NAT rule')
-    # show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the configured NAT rules')
-    # show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the statistics for a specific NAT rule')
+    new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents = [nsx_url_flag], help = 'To create a new NAT rule')
+    new_nat_rule_parser.add_argument('-n', '--objectname', required = True, help = "The name / ID of the NAT rule to create.")
+    new_nat_rule_parser.add_argument('-a','--action', choices=["DNAT", "REFLEXIVE"], type = str.upper, nargs = '?', default = "REFLEXIVE", help = '''
+    Destination NAT(DNAT) - translates the destination IP address of inbound packets so that packets are delivered to a target address into another network. DNAT is only supported when the logical router is running in active-standby mode.
+    Reflexive NAT(REFLEXIVE - default) - all inbound traffic is translated, regardless of port.
+    ''')
+    new_nat_rule_parser.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway to which to apply the NAT rule.  If not specified, default = "cgw"')   
+    new_nat_rule_parser.add_argument('-pub','--public_ip', required = True, help = "The IP address or network on the 'external' network. For REFLEXIVE rules this will be used as the 'TRANSLATED' address.  For DNAT rules this will be used as the 'DESTINATION' address.")
+    new_nat_rule_parser.add_argument('-priv','--private_ip', required = True, help = "The IP address or network on the 'internal' network. For REFLEXIVE rules this will be used as the 'SOURCE' address.  For DNAT rules this will be used as the 'TRANSLATED' address.")
+    new_nat_rule_parser.add_argument('-svc','--service', help = "Represents the service on which the NAT rule will be applied. Use './pyVMC.py inventory show-services' for a list of available services.")
+    new_nat_rule_parser.add_argument('-tp','--translated_port', help = "Single port number or range. Examples- Single port '8080', Range of ports '8090-8095'.  If there is a service configured in NAT rule, the translated_port will be realized on NSX Manager as the destination_port")
+    new_nat_rule_parser.add_argument('-l','--logging', action = 'store_true', help = "Use to enable logging - default is False.")
+    new_nat_rule_parser.add_argument('-d','--disabled', action = 'store_false', help = "Use to disable the rule - default is enabled.")
+    new_nat_rule_parser.set_defaults(func = new_nat_rule)
 
+    remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents = [nsx_url_flag], help = 'remove a NAT rule')
+    remove_nat_rule_parser.add_argument('-n', '--objectname', required = True, help = "The name / ID of the NAT rule to delete.")
+    remove_nat_rule_parser.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway for the NAT rule.  If not specified, default = "cgw"')   
+    remove_nat_rule_parser.set_defaults(func = delete_nat_rule)
+
+    show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the configured NAT rules')
+    show_nat_parser.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway to which to apply the NAT rule.  If not specified, default = "cgw"')
+    show_nat_parser.set_defaults(func = get_nat_rules)
+
+    show_nat_stats=nat_parser_subs.add_parser('show-nat-stats', parents = [nsx_url_flag], help = 'Show the statistics for a given NAT rule.')
+    show_nat_stats.add_argument('-n', '--objectname', required = True, help = "The name / ID of the rule to show statistics for.")
+    show_nat_stats.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway to which to apply the NAT rule.  If not specified, default = "cgw"')
+    show_nat_stats.set_defaults(func = get_nat_stats)
 
 # ============================
 # NSX-T - T1
@@ -5689,62 +5769,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
 #             get_task_status(task_id, ORG_ID, session_token)
 
-#     # ============================
-#     # NSX-T - NAT
-#     # ============================
-
-
-#     elif intent_name == "new-nat-rule":
-#         display_name = sys.argv[2]
-#         action = sys.argv[3]
-#         if action == "any" or action == "REFLEXIVE":
-#             translated_network = sys.argv[4]
-#             source_network = sys.argv[5]
-#             service = ""
-#             translated_port = ""
-#             if len(sys.argv) >= 7:
-#                 logging = sys.argv[6]
-#             else:
-#                 logging = False
-#             if len(sys.argv) >= 8:
-#                 status = sys.argv[7]
-#             else:
-#                 status = True
-#             newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-#         elif action == "DNAT":
-#             translated_network = sys.argv[4]
-#             source_network = sys.argv[5]
-#             service = sys.argv[6]
-#             translated_port = sys.argv[7]
-#             if len(sys.argv) >= 9:
-#                 logging = sys.argv[8]
-#             else:
-#                 logging = "false"
-#             if len(sys.argv) >= 10:
-#                 status = sys.argv[9]
-#             else:
-#                 status = "true"
-#             newSDDCNAT(proxy, session_token, display_name, action, translated_network, source_network, service, translated_port, logging, status)
-#         else:
-#             print("There was an error. Make sure you follow the instructions.")
-#     elif intent_name == "remove-nat-rule":
-#         if len(sys.argv) == 3:
-#             id = sys.argv[2]
-#             result = remove_sddc_nat_json(proxy, session_token, id)
-#             print(result)
-#             print("\n")
-#             print(getSDDCNAT(proxy, session_token))
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")
-#     elif intent_name == "show-nat":
-#         if len(sys.argv) == 2:
-#             print(getSDDCNAT(proxy, session_token))
-#         elif len(sys.argv) == 3:
-#             NATid = sys.argv[2]
-#             NATStats = getSDDCNATStatistics(proxy,session_token,NATid)
-#             print(NATStats)
-#         else:
-#             print("Incorrect syntax. Try again or check the help.")
 
 #     # ============================
 #     # NSX-T - VPN
