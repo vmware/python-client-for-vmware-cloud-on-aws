@@ -55,6 +55,7 @@ from pyvmc_csp import *
 from pyvmc_nsx import *
 from pyvmc_vmc import *
 from pyvmc_vcdr import *
+from pyvmc_flexcomp import *
 
 if not exists("./config.ini"):
     print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
@@ -339,6 +340,221 @@ def showORGusers(**kwargs):
     for i in users:
         table.add_row([i['user']['firstName'],i['user']['lastName'],i['user']['username']])
     print (table.get_string(sortby="Last Name"))
+
+# ============================
+# Cloud Flex Compute
+# ============================
+
+
+def showFlexcompActivityStatus(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    activity_id = kwargs['activityId']
+    jsonResponse = get_activity_status(strProdURL, session_token=sessiontoken, org_id=ORG_ID, activity_id=activity_id)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+
+def showFlexcompNamespaces(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    jsonResponse = get_flexcomp_namesapces(strProdURL, session_token=sessiontoken, org_id=ORG_ID)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    result = (jsonResponse['content'])
+    table = PrettyTable(['ID', 'Name', 'Provider', 'Region', 'State'])
+    for i in result:
+        table.add_row([i['id'], i['name'],i['provider'],i['region'],i['state']['display_name']])
+    print(table.get_string(sortby="Name"))
+
+def showFlexcompRegions(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    jsonResponse = get_namespace_region(strProdURL, session_token=sessiontoken, org_id=ORG_ID)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    result = jsonResponse['region_profile_map']
+    table = PrettyTable(['Region Name', 'Region Description'])
+    for k,v in result.items():
+        table.add_row([k, v['region_description']])
+    print(table)
+
+def showFlexcompTemplates(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    jsonResponse = get_namespace_profiles(strProdURL, session_token=sessiontoken, org_id=ORG_ID)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    result = jsonResponse['GENERAL_PURPOSE']['sizes']
+    # print(result)
+    table = PrettyTable(['id', 'Name', 'Capacity'])
+    for i in result:
+        cpu_cap = str(i['capacity']['cpu']['value']).split(".")[0]+i['capacity']['cpu']['unit']
+        mem_cap = str(i['capacity']['memory']['value']).split(".")[0]+i['capacity']['memory']['unit']
+        storage_cap = str(i['capacity']['storage']['value']).split(".")[0]+i['capacity']['storage']['unit']
+        capacity = cpu_cap + " " + mem_cap + " " + storage_cap
+        table.add_row([i['id'],i['name'],capacity])
+    print(table)
+
+def validateNetworkFlexComp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    cidr = kwargs["flexCompCIDR"]
+    seg_name = kwargs['segName']
+    seg_cidr = kwargs['segCIDR']
+    jsonResponse = flexcomp_validate_network(strProdURL, session_token=sessiontoken, org_id=ORG_ID, cidr=cidr, seg_name=seg_name, seg_cidr=seg_cidr)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    ens_result = jsonResponse["ens_cidr_config"]["result"]
+    seg_result = jsonResponse["segments_gateway_cidrs_configs"][0]["result"]
+    table = PrettyTable(['Field', 'Message', 'Status'])
+    table.add_row([ens_result["field_name"],ens_result["message"],ens_result["status"]])
+    table.add_row([seg_result[0]["field_name"],seg_result[0]["message"],seg_result[0]["status"]])
+    table.add_row([seg_result[1]["field_name"],seg_result[1]["message"],seg_result[1]["status"]])
+    print(table)
+
+def createFlexcompNamespace(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    cidr = kwargs["flexCompCIDR"]
+    seg_name = kwargs['segName']
+    seg_cidr = kwargs['segCIDR']
+    namespace_name = kwargs['nsName']
+    namespace_desc = kwargs['nsDesc']
+    template_id = kwargs['templateId']
+    region = kwargs['region']
+    jsonResponse = create_flexcomp_namespace(strProdURL, session_token=sessiontoken, org_id=ORG_ID, name=namespace_name,
+                                             desc=namespace_desc, ens_size_id=template_id, region=region, cidr=cidr,
+                                             seg_name=seg_name,seg_cidr=seg_cidr)
+
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+def deleteFlexcompNamespace(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    nsId = kwargs["nsId"]
+    jsonResponse = delete_flexcomp_namespace(strProdURL, session_token=sessiontoken, org_id=ORG_ID, nsId=nsId)
+
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+# ===================================
+# Cloud Flex Compute - VM operations
+# ===================================
+
+def showAllImagesFlexcomp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    jsonResponse = get_all_images(strProdURL, session_token=sessiontoken, org_id=ORG_ID)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    result = jsonResponse['content']
+    # print(result)
+    table = PrettyTable(['id', 'Name', 'Type', 'State', 'OS'])
+    for i in result:
+        table.add_row([i['id'],i['name'],i['type'],i['state']['name'],i['os']])
+    print(table)
+
+def showAllVMsFlexcomp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    jsonResponse = get_all_vms(strProdURL, session_token=sessiontoken, org_id=ORG_ID)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    result = jsonResponse['content']
+    table = PrettyTable(['id', 'Name', 'Namespace', 'State', 'Power State'])
+    for i in result:
+        table.add_row([i['id'],i['name'],i['namespaceName'],i['state']['name'],i['vmMetadata']['powerState']])
+    print(table)
+
+def vmPowerOperationsFlexcomp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    vmId = kwargs['vmId']
+    powerOperation = kwargs['powerOperation']
+    jsonResponse = vm_power_operation(strProdURL, session_token=sessiontoken, org_id=ORG_ID, vmId=vmId, powerOperation=powerOperation)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+def createVMFlexcomp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    vmName = kwargs['vmName']
+    vmNamespaceId = kwargs['vmNamespaceId']
+    vmCPU = kwargs['vmCPU']
+    vmMem = kwargs['vmMem']
+    vmStorage = kwargs['vmStorage']
+    networkSegName = kwargs['networkSegName']
+    # networkCIDR = kwargs['networkSegCIDR']
+    guestOS = kwargs['guestOS']
+    imageId = kwargs['imageId']
+    jsonResponse = create_vm_from_iso(strProdURL, session_token=sessiontoken, org_id=ORG_ID, name=vmName, namespace_name=vmNamespaceId, cpu=vmCPU, mem=vmMem, storage=vmStorage, network_seg_id=networkSegName, guestOS=guestOS, imageId=imageId)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    # print(jsonResponse)
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+def vmDeleteFlexcomp(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    vmId = kwargs['vmId']
+    jsonResponse = delete_vm(strProdURL, session_token=sessiontoken, org_id=ORG_ID, vmId=vmId)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
 
 # ============================
 # SDDC - Create/Delete/Task
@@ -4545,6 +4761,85 @@ def main():
 
     show_org_users_parser=csp_parser_subs.add_parser('show-org-users', parents = [csp_url_flag, org_id_flag], help = 'Show all organization users')
     show_org_users_parser.set_defaults(func = showORGusers)
+
+# ============================
+# Cloud Flex Compute
+# ============================
+
+    # create the parser for the "flex-compute" command
+    flexcomp_parser = subparsers.add_parser('flexcomp', formatter_class=MyFormatter, help='Commands related to the Cloud Flex Compute itself.')
+    # create subparser for flexcomp sub-commands
+    flexcomp_parser_sub = flexcomp_parser.add_subparsers(help='flexcomp sub-command help')
+
+    flexcomp_activityStatus = flexcomp_parser_sub.add_parser('activity-status', parents=[vmc_url_flag,org_id_flag], help='Get activity status of long running tasks')
+    flexcomp_activityStatus.add_argument('activityId', help='Activity ID of the task.')
+    flexcomp_activityStatus.set_defaults(func=showFlexcompActivityStatus)
+
+# =================================
+# Cloud Flex Compute - Compute
+# =================================
+    show_all_namespaces = flexcomp_parser_sub.add_parser('show-all-namespaces', parents=[vmc_url_flag,org_id_flag], help='Show all present Cloud Flex Compute Name Spaces')
+    show_all_namespaces.set_defaults(func=showFlexcompNamespaces)
+
+    validate_network = flexcomp_parser_sub.add_parser('validate-network', parents=[vmc_url_flag,org_id_flag], help='Validate network CIDR before creating Cloud Flex Compute Name Space')
+    validate_network.add_argument('flexCompCIDR', help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
+    validate_network.add_argument('segName', help='Workload Segment name')
+    validate_network.add_argument('segCIDR', help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
+    validate_network.set_defaults(func=validateNetworkFlexComp)
+
+    create_flexcomp_namespace = flexcomp_parser_sub.add_parser('create-flexcompute',parents=[vmc_url_flag,org_id_flag], help='Create new Cloud Flex Compute')
+    create_flexcomp_namespace.add_argument('nsName', help='Name of Cloud Flex Compute')
+    create_flexcomp_namespace.add_argument('nsDesc', help='Description for Cloud Flex Compute')
+    create_flexcomp_namespace.add_argument('templateId', help='Resource size template id. Available values can be seen using `show-flex-comp-templates` option')
+    create_flexcomp_namespace.add_argument('region', help='Cloud Flex Compute region name. Available regions can be seen using `show-flex-comp-regions` option')
+    create_flexcomp_namespace.add_argument('flexCompCIDR',
+                              help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
+    create_flexcomp_namespace.add_argument('segName', help='Workload Segment name')
+    create_flexcomp_namespace.add_argument('segCIDR',
+                              help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
+    create_flexcomp_namespace.set_defaults(func=createFlexcompNamespace)
+
+    delete_flexcomp_namespace = flexcomp_parser_sub.add_parser('delete-flexcomp', parents=[vmc_url_flag,org_id_flag], help='Delete existing Cloud Flex Compute')
+    delete_flexcomp_namespace.add_argument('nsId', help='Cloud Flex Compute ID. Available Cloud Flex Compute IDs can be seen using `show-all-namespaces` option')
+    delete_flexcomp_namespace.set_defaults(func=deleteFlexcompNamespace)
+
+# =================================
+# Cloud Flex Compute - Profiles
+# =================================
+    show_flexcomp_region = flexcomp_parser_sub.add_parser('show-flex-comp-regions', parents=[vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute regions')
+    show_flexcomp_region.set_defaults(func=showFlexcompRegions)
+    show_flexcomp_templates = flexcomp_parser_sub.add_parser('show-flex-comp-templates', parents=[vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute resource templates to create Name Space')
+    show_flexcomp_templates.set_defaults(func=showFlexcompTemplates)
+
+# =================================
+# Cloud Flex Compute - VMs
+# =================================
+    show_flexcomp_vms = flexcomp_parser_sub.add_parser('show-all-vms', parents=[vmc_url_flag,org_id_flag], help='Show all VMs in Cloud Flex Compute instance')
+    show_flexcomp_vms.set_defaults(func=showAllVMsFlexcomp)
+
+    show_flexcomp_images = flexcomp_parser_sub.add_parser('show-all-images', parents=[vmc_url_flag,org_id_flag], help='Show all images available to create VMs from')
+    show_flexcomp_images.set_defaults(func=showAllImagesFlexcomp)
+
+    flexcomp_createVm = flexcomp_parser_sub.add_parser('create-vm', parents=[vmc_url_flag,org_id_flag], help='Create VM')
+    flexcomp_createVm.add_argument('vmName', help='Virtual Machine Name')
+    flexcomp_createVm.add_argument('vmNamespaceId', help='Namespace ID on which to create VM')
+    flexcomp_createVm.add_argument('vmCPU', help='Number of CPUs for the VM. Min 1 CPU, Max 36 CPU. Make sure CPU number is less or equal to CPUs for Namespace')
+    flexcomp_createVm.add_argument('vmMem', help='Memory in GB for the VM. Min 1 GB, Max 1 TiB. Make sure memory size is less or equal to memory for Namespace')
+    flexcomp_createVm.add_argument('vmStorage', help='Storage for the VM. Min 1 MB, Max 61 TiB. Make sure storage size is less or equal to storage for Namespace')
+    flexcomp_createVm.add_argument('networkSegName', help='Network Seg Name')
+    # flexcomp_createVm.add_argument('networkSegCIDR', help='Network Seg CIDR')
+    flexcomp_createVm.add_argument('guestOS', help='Current support for Linux Guest OS : UBUNTU_64, RHEL_6_64, RHEL_7_64, CENTOS_7_64')
+    flexcomp_createVm.add_argument('imageId', help='ISO Image name from which VM will be created.')
+    flexcomp_createVm.set_defaults(func=createVMFlexcomp)
+
+    flexcomp_vmPowerOps = flexcomp_parser_sub.add_parser('power-operation', parents=[vmc_url_flag,org_id_flag], help='Perform Power Operations on VM')
+    flexcomp_vmPowerOps.add_argument('vmId', help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
+    flexcomp_vmPowerOps.add_argument('powerOperation', help='Available operations are: power_off, power_on, suspend, hard_stop, reset, guest_os_shutdown, guest_os_restart')
+    flexcomp_vmPowerOps.set_defaults(func=vmPowerOperationsFlexcomp)
+
+    flexcomp_vmDelete = flexcomp_parser_sub.add_parser('delete-vm', parents=[vmc_url_flag, org_id_flag], help='Delete VM. Make sure VM is in powerd OFF state.')
+    flexcomp_vmDelete.add_argument('vmId',help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
+    flexcomp_vmDelete.set_defaults(func=vmDeleteFlexcomp)
 
 # ============================
 # SDDC - AWS Account and VPC
