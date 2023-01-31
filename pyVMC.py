@@ -773,11 +773,22 @@ def getSDDCShadowAccount(**kwargs):
 #
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
 #
-def getAccessToken(myKey):
+def getAccessToken(myKey=None, oauth_clientSecret=None, oauth_clientId=None):
     """ Gets the Access Token using the Refresh Token """
-    params = {'api_token': myKey}
+    response = None
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+    if myKey is not None:
+        params = {'api_token': myKey}
+        response = requests.post('https://console-stg.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+
+    elif oauth_clientId is not None and oauth_clientSecret is not None:
+        payload = {'grant_type': 'client_credentials'}
+        response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/authorize', headers=headers, data=payload, auth=(oauth_clientId, oauth_clientSecret))
+
+    else:
+        print('Either refresh_key or OAuth client details are required.')
+        exit(1)
+
     if response.status_code != 200:
         print(f'Error received on api token: {response.status_code}.')
         if response.status_code == 400:
@@ -5701,12 +5712,33 @@ def main():
     try:
         config = configparser.ConfigParser()
         config.read("./config.ini")
+        auth_info = False
+        Refresh_Token = ""
+        clientId = ""
+        clientSecret = ""
+
         strProdURL      = config.get("vmcConfig", "strProdURL")
         strCSPProdURL   = config.get("vmcConfig", "strCSPProdURL")
-        Refresh_Token   = config.get("vmcConfig", "refresh_Token")
         ORG_ID          = config.get("vmcConfig", "org_id")
         SDDC_ID         = config.get("vmcConfig", "sddc_id")
         strVCDRProdURL  = config.get("vmcConfig", "strVCDRProdURL")
+
+        if config.has_option("vmcConfig", "refresh_Token"):
+            Refresh_Token = config.get("vmcConfig", "refresh_Token")
+            auth_info = True
+
+        if config.has_option("vmcConfig", "oauth_clientSecret") and config.has_option("vmcConfig", "oauth_clientId"):
+            clientId = config.get("vmcConfig", "oauth_clientId")
+            clientSecret = config.get("vmcConfig", "oauth_clientSecret")
+            auth_info = True
+
+        if len(Refresh_Token) != 0 and len(clientId) != 0:
+            print()
+            print('For authentication either of refresh_Token or OAuth clientId/clientSecret is needed.')
+            print('As values for both OAuth and Refresh Token are present, Refresh Token will be used for authentication.')
+            print()
+            clientId = ""
+            clientSecret = ""
 
         if config.has_section("vtcConfig"):
             aws_acc         = config.get("vtcConfig", "MyAWS")
@@ -5724,7 +5756,7 @@ def main():
         else:
             print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
 
-        if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or len(Refresh_Token) == 0 or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
+        if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or not auth_info or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
             print()
             print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
             print()
@@ -5742,6 +5774,8 @@ def main():
             - strProdURL     - this should read: "https://vmc.vmware.com"
             - strCSPProdURL  - this should read: "https://console.cloud.vmware.com"
             - Refresh_Token  - this should be a properly scoped refresh refresh token from the VMware Cloud Services Console.
+            - oauth_clientId - this should be OAuth Client ID properly scoped from VMware Cloud Services Console.
+            - oauth_clientSecret - this should be OAuth Client Secret.
             - ORG_ID         - this should be the ID of your VMware Cloud Organization, found in the VMware Cloud Services Portal.
             - SDDC_ID        - if applicable, this should be the ID of the VMware Cloud SDDC (Software Defined Datacenter) you wish to work with.
             - strVCDRProdURL - if applicable, this should be the URL of your VMware Cloud DR Orchestrator.
@@ -5761,9 +5795,12 @@ def main():
     else:
         pass
 
-    # Extract arguments into a dictionary
+    # Depending on params in config.ini use OAuth or Refresh Token for auth
     params = vars(args)
-    sessiontoken = getAccessToken(Refresh_Token)
+    if len(clientId) != 0:
+        sessiontoken = getAccessToken(oauth_clientId=clientId,oauth_clientSecret=clientSecret)
+    else:
+        sessiontoken = getAccessToken(myKey=Refresh_Token)
     if sessiontoken == None:
         sys.exit(1)
         
