@@ -787,7 +787,7 @@ def getAccessToken(myKey=None, oauth_clientSecret=None, oauth_clientId=None):
 
     else:
         print('Either refresh_key or OAuth client details are required.')
-        exit(1)
+        return None
 
     if response.status_code != 200:
         print(f'Error received on api token: {response.status_code}.')
