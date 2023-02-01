@@ -91,6 +91,7 @@ Here are the currently supported 'super' commands:
     system                              Show and update configuration data associated with the NSX-T System (DNS, public IP, etc).
     search-nsx                          Search the NSX Manager inventory.
     vcdr                                Create, delete, update, and show information about VMware Cloud Disaster Recovery.
+    flexcomp                            Commands related to the Cloud Flex Compute itself.
 ```
 
 #### 1.6.2.2 Getting Help

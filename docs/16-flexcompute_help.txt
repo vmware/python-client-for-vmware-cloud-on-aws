@@ -1,0 +1,22 @@
+usage:  flexcomp [-h]
+        {activity-status,show-all-namespaces,validate-network,create-flexcompute,delete-flexcomp,show-flex-comp-regions,show-flex-comp-templates,show-all-vms,show-all-images,create-vm,power-operation,delete-vm}
+        ...
+
+positional arguments:
+  {activity-status,show-all-namespaces,validate-network,create-flexcompute,delete-flexcomp,show-flex-comp-regions,show-flex-comp-templates,show-all-vms,show-all-images,create-vm,power-operation,delete-vm}
+                                        flexcomp sub-command help
+    activity-status                     Get activity status of long running tasks
+    show-all-namespaces                 Show all present Cloud Flex Compute Name Spaces
+    validate-network                    Validate network CIDR before creating Cloud Flex Compute Name Space
+    create-flexcompute                  Create new Cloud Flex Compute
+    delete-flexcomp                     Delete existing Cloud Flex Compute
+    show-flex-comp-regions              Show available Cloud Flex Compute regions
+    show-flex-comp-templates            Show available Cloud Flex Compute resource templates to create Name Space
+    show-all-vms                        Show all VMs in Cloud Flex Compute instance
+    show-all-images                     Show all images available to create VMs from
+    create-vm                           Create VM
+    power-operation                     Perform Power Operations on VM
+    delete-vm                           Delete VM. Make sure VM is in powerd OFF state.
+
+options:
+  -h, --help
