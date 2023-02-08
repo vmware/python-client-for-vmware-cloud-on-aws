@@ -779,7 +779,7 @@ def getAccessToken(myKey=None, oauth_clientSecret=None, oauth_clientId=None):
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     if myKey is not None:
         params = {'api_token': myKey}
-        response = requests.post('https://console-stg.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+        response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
 
     elif oauth_clientId is not None and oauth_clientSecret is not None:
         payload = {'grant_type': 'client_credentials'}
