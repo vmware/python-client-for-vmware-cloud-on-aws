@@ -3268,9 +3268,9 @@ def getSDDCService(**kwargs):
             if status == 200:
                 json_response = response.json()
                 sddc_services = json_response['results']
-                table = PrettyTable(['ID', 'Name'])
+                table = PrettyTable(['ID', 'Name','System Owned'])
                 for i in sddc_services:
-                    table.add_row([i['id'], i['display_name']])
+                    table.add_row([i['id'], i['display_name'], i['_system_owned']])
                 print(table)
             else:
                 print("Plese check your syntax and try again.")
