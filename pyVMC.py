@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.10
+#!/usr/bin/env python3
 # The shebang above is to tell the shell which interpreter to use. This make the file executable without "python3" in front of it (otherwise I had to use python3 pyvmc.py)
 # I also had to change the permissions of the file to make it run. "chmod +x pyVMC.py" did the trick.
 # I also added "export PATH="MY/PYVMC/DIRECTORY":$PATH" (otherwise I had to use ./pyvmc.y)
@@ -772,22 +772,26 @@ def getSDDCShadowAccount(**kwargs):
 
 #
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
-#
-def getAccessToken(myKey=None, oauth_clientSecret=None, oauth_clientId=None):
-    """ Gets the Access Token using the Refresh Token """
-    response = None
+
+def getAccessToken(**kwargs):
+    auth_method = kwargs['auth_method']
+    strCSPProdURL = kwargs['strCSPProdURL']
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    if myKey is not None:
-        params = {'api_token': myKey}
-        response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+    response = None
 
-    elif oauth_clientId is not None and oauth_clientSecret is not None:
-        payload = {'grant_type': 'client_credentials'}
-        response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/authorize', headers=headers, data=payload, auth=(oauth_clientId, oauth_clientSecret))
-
-    else:
-        print('Either refresh_key or OAuth client details are required.')
-        return None
+    match auth_method:
+        case 'oauth':
+            oauth_clientSecret = kwargs['oauth_clientSecret']
+            oauth_clientId = kwargs['oauth_clientId']
+            auth_string = "/csp/gateway/am/api/auth/authorize"
+            payload = {'grant_type': 'client_credentials'}
+            response = requests.post(f'{strCSPProdURL}{auth_string}', headers=headers, data=payload, auth=(oauth_clientId, oauth_clientSecret))
+ 
+        case 'refresh_token':
+            myKey = kwargs['myKey']
+            auth_string = "/csp/gateway/am/api/auth/api-tokens/authorize"
+            params = {'api_token': myKey}
+            response = requests.post(f'{strCSPProdURL}{auth_string}', params=params, headers=headers)
 
     if response.status_code != 200:
         print(f'Error received on api token: {response.status_code}.')
@@ -2548,16 +2552,20 @@ def getSDDCroutes(**kwargs):
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
+    t0_routes = {}
     if t0_routes_json == None:
         print("API Error")
         sys.exit(1)
-    t0_routes0 = t0_routes_json['results'][0]['route_entries']
-    t0_routes1 = t0_routes_json['results'][1]['route_entries']
-    t0_routes = t0_routes0 + t0_routes1
+    elif len(t0_routes_json['results']) == 1:
+        t0_routes = t0_routes_json['results'][0]['route_entries']
+    elif len(t0_routes_json['results']) >1:
+        t0_routes0 = t0_routes_json['results'][0]['route_entries']
+        t0_routes1 = t0_routes_json['results'][1]['route_entries']
+        t0_routes = t0_routes0 + t0_routes1
+
     df = pd.DataFrame(t0_routes)
     df.drop(['lr_component_id', 'lr_component_type'], axis=1, inplace=True)
     df.drop_duplicates(inplace = True)
-    # print(df)
     print('T0 Routes')
     print('Route Type Legend:')
     print('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
@@ -4684,6 +4692,8 @@ def main():
                                     "Show the SDDC route table:\n"
                                     "python pyMVC.py system show-routes t0 \n \u00A0 \n")
 
+    ap.add_argument('auth_method', choices=['oauth', 'refresh_token'], help = "Choose either 'oauth' or 'refresh_token' to indicate how pyVMC authenticates to the VMware Cloud Service Portal.  Be sure the correct parameters are configured in config.ini.")
+
     # create a subparser for the subsequent sections    
     subparsers = ap.add_subparsers(help='sub-command help')
 
@@ -5732,14 +5742,6 @@ def main():
             clientSecret = config.get("vmcConfig", "oauth_clientSecret")
             auth_info = True
 
-        if len(Refresh_Token) != 0 and len(clientId) != 0:
-            print()
-            print('For authentication either of refresh_Token or OAuth clientId/clientSecret is needed.')
-            print('As values for both OAuth and Refresh Token are present, Refresh Token will be used for authentication.')
-            print()
-            clientId = ""
-            clientSecret = ""
-
         if config.has_section("vtcConfig"):
             aws_acc         = config.get("vtcConfig", "MyAWS")
             region          = config.get("vtcConfig", "AWS_region")
@@ -5796,14 +5798,21 @@ def main():
         pass
 
     # Depending on params in config.ini use OAuth or Refresh Token for auth
-    params = vars(args)
-    if len(clientId) != 0:
-        sessiontoken = getAccessToken(oauth_clientId=clientId,oauth_clientSecret=clientSecret)
-    else:
-        sessiontoken = getAccessToken(myKey=Refresh_Token)
+    auth_method = args.auth_method
+    sessiontoken = ''
+    match auth_method:
+        case "oauth":
+            auth_params = {'auth_method':auth_method, 'strCSPProdURL':strCSPProdURL, 'oauth_clientSecret':clientSecret, 'oauth_clientId':clientId}
+            sessiontoken = getAccessToken(**auth_params)
+        case "refresh_token":
+            auth_params = {'auth_method':auth_method, 'strCSPProdURL':strCSPProdURL, 'myKey':Refresh_Token}
+            sessiontoken = getAccessToken(**auth_params)
     if sessiontoken == None:
         sys.exit(1)
         
+    # Build dictionary to pass to later functions
+    params = vars(args)
+
     # Update the dictionary with the session token
     params.update({"sessiontoken": sessiontoken})
 
