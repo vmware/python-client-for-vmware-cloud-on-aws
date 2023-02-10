@@ -38,6 +38,7 @@ import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
 import argparse
 import operator
+import os
 import time
 import json
 import sys
@@ -46,6 +47,7 @@ import pandas as pd
 from deepdiff import DeepDiff
 from os.path import exists
 from os import makedirs
+from pathlib import Path
 from prettytable import PrettyTable
 from requests.sessions import session
 from datetime import datetime, timezone
@@ -3249,6 +3251,80 @@ def removeSDDCService(**kwargs):
         print("There was an error. Try again.")
         sys.exit(1)
 
+def import_service(**kwargs):
+    """ Populates the services list with a set of a provider's services, can also list providers and delete the provider's services from the list"""
+
+    proxy = kwargs['proxy']
+    sessiontoken = kwargs['sessiontoken']
+    list_providers = kwargs['list_providers']
+    test_only = kwargs['test_only']
+    delete_mode = kwargs['delete_mode']
+
+    # JSON files should be placed in this path
+    import_path = 'import'
+    
+    # Display the list of providers in the import_path
+    if (list_providers):
+        dirpath = Path(import_path)
+        table = PrettyTable(['Providers'])
+        for provider in os.listdir(dirpath):
+            table.add_row([provider])
+        
+        print(table)
+        return
+    
+    # If we're not displaying a provider list, then we need a provider specified to work with
+    if not kwargs['provider_name']:
+        print("Provider name is required")
+        return
+
+    # Ensure the provider argument points to a valid file
+    fname = Path(import_path) / kwargs['provider_name']
+    if not os.path.exists(fname):
+        print(f'Invalid provider: {fname} not found.')
+        return
+    
+    with open(fname, 'r') as infile:
+        json_data = json.load(infile)
+
+    # Setting these variables lets us write a single print statement whether we're in import or delete mode.
+    if delete_mode:
+        action_past_tense = "deleted"
+        action_present_tense = "Deleting"
+        action_noun = "Delete"
+    else:
+        action_past_tense = "imported"
+        action_present_tense = "Importing"
+        action_noun = "Import"
+
+    # Test mode makes no changes to the SDDC, it prints the services found in the provider
+    if (test_only):
+        print(f'Test mode - no services will be {action_past_tense}.')
+
+        table = PrettyTable(['ID','Display Name'])
+        for svc in json_data:
+            table.add_row([svc['id'],svc['display_name']])
+        print(table)
+    else:
+        print(f"{action_present_tense} services in provider {kwargs['provider_name']}...")
+        table = PrettyTable(['ID','Display Name',f'{action_noun} Success'])
+        for svc in json_data:
+            print(f"{action_present_tense} {svc['id']}... ",end = '')
+            if delete_mode:
+                retval = delete_sddc_service_json(proxy, sessiontoken, svc['id'])
+            else:
+                retval = new_sddc_service_json(proxy,sessiontoken,svc['id'],svc,patch_mode=True)
+                
+            if retval is not None and retval == 200:
+                api_success = True
+                print("Success")
+            else:
+                api_success = False
+                print("Error")
+            table.add_row([svc['id'],svc['display_name'],api_success])
+
+        print(f"{action_noun} results: ")
+        print(table)
 
 def getSDDCService(**kwargs):
     """ Gets the SDDC Services """
@@ -5531,6 +5607,13 @@ def main():
     new_service_parser.add_argument("-dest", "--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
     new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
     new_service_parser.set_defaults(func = newSDDCService)
+
+    import_service_parser=inventory_parser_subs.add_parser('import-service', parents = [auth_flag,nsx_url_flag], help = 'Common 3rd party services that can be added to or removed from the services list of your SDDC. Default is to add, optional flag to delete')
+    import_service_parser.add_argument("-l", "--list-providers", action = "store_true", help = "Display a list available providers for import - all other arguments are ignored if you use this argument")
+    import_service_parser.add_argument("-p", "--provider-name", required=False, help = "Use the named provider - providers are JSON files located in imports folder. Default is to add services, optional flag to delete")
+    import_service_parser.add_argument("-t", "--test-only", action = "store_true", help = "Displays a list of the provider's services - does not modify the SDDC configuration")
+    import_service_parser.add_argument("-d", "--delete-mode", action = "store_true", help = "Changes to delete mode - the services in the provider's list will be deleted from the SDDC")
+    import_service_parser.set_defaults(func = import_service)
 
     remove_service_parser=inventory_parser_subs.add_parser('remove-service', parents=[auth_flag,nsx_url_flag], help = 'remove a service')
     remove_service_parser.add_argument("objectname", help = "The ID of the inventory service to delete.  Use './pyVMC.py inventory show-services' for a list.")
