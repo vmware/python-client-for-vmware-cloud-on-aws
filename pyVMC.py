@@ -4723,19 +4723,19 @@ def main():
     """Parsers to be used as parent to pass glaf(s) for correct API URL, ORG_ID, or SDDC_ID"""
         
     csp_url_flag = argparse.ArgumentParser(add_help=False)
-    csp_url_flag.add_argument("--strCSPProdURL",help=argparse.SUPPRESS) # TOM What about config.ini?
+    csp_url_flag.add_argument("--csp_flag",help=argparse.SUPPRESS) # TOM What about config.ini?
 
     vmc_url_flag = argparse.ArgumentParser(add_help=False)
-    vmc_url_flag.add_argument("--strProdURL",help=argparse.SUPPRESS)
+    vmc_url_flag.add_argument("--vmc_flag",help=argparse.SUPPRESS)
 
     vcdr_url_flag= argparse.ArgumentParser(add_help=False)
-    vcdr_url_flag.add_argument("--strVCDRProdURL", help = argparse.SUPPRESS)
+    vcdr_url_flag.add_argument("--vcdr_flag", help = argparse.SUPPRESS)
 
     org_id_flag = argparse.ArgumentParser(add_help=False)
-    org_id_flag.add_argument("--ORG_ID",help=argparse.SUPPRESS)
+    org_id_flag.add_argument("--org_flag",help=argparse.SUPPRESS)
 
     sddc_id_parser_flag = argparse.ArgumentParser(add_help=False)
-    sddc_id_parser_flag.add_argument("--SDDC_ID",help=argparse.SUPPRESS)
+    sddc_id_parser_flag.add_argument("--sddc_flag",help=argparse.SUPPRESS)
 
 # ============================
 # CSP - Global
@@ -5832,35 +5832,35 @@ def main():
 
     # If flags are present for VMC, add the appropriate URL to the parameters payload. Command line arguments overload
     try:
-        args.strProdURL
+        args.vmc_flag
         params.update({"strProdURL": strProdURL})
     except:
         pass
 
     # If flags are present for CSP, add the appropriate URL to the parameters payload.
     try:
-        args.strCSPProdURL
+        args.csp_flag
         params.update({"strCSPProdURL": strCSPProdURL})
     except:
         pass
 
     # If flags are present for VCDR, add the appropriate URL to the parameters payload.
     try:
-        args.strVCDRProdURL
+        args.vcdr_flag
         params.update({"strVCDRProdURL": strVCDRProdURL})
     except:
         pass
 
     # If flags are present for ORG_ID, add the ORG_ID to the parameters payload.
     try:
-        args.ORG_ID
+        args.org_flag
         params.update({"ORG_ID": ORG_ID})
     except:
         pass
 
  # If flags are present for SDDC_ID, add the SDDC_ID to the parameters payload.
     try:
-        args.SDDC_ID
+        args.sddc_flag
         params.update({"SDDC_ID": SDDC_ID})
     except:
         pass
