@@ -1,3 +1,15 @@
+# What's New - February 2023
+The refactoring work continues, as well as the introduction of some new things!
+
+### Flex Compute
+Thanks to some wonderful contributions this past January, we are very plesed to report that VMWare Cloud Flex Compute!  Of course the service isn't actually Generally Available (GA) yet, but once it's released, pyVMC will support it!
+
+### OAuth Support
+Now, in addition to supporting authentication via an API refresh token, users may now configure authentication via an OAuth Application ID and Secret.  Read more about how to authenticate applications with OAuth 2.0 here:  https://docs.vmware.com/en/VMware-Cloud-services/services/Using-VMware-Cloud-Services/GUID-53D39337-D93A-4B84-BD18-DDF43C21479A.html.
+
+With this release, simply add the parameters for your OAuth Application and Secret to your config.ini file and you can authenticate using the "--oauth" flag!
+
+
 # What's New - November 14, 2022
 In this latest release, all commands have been refactored to use a command / sub-command syntax.  This provides for greater ease of use, as commands can be grouped by category.  Furthermore, a comprehensive argument framework has been implemented (argparse) which allows for passing parameters via the command line for better support for scripting. 
 
