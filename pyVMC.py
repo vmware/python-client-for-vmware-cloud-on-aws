@@ -2383,7 +2383,11 @@ def getSDDCT0BGPRoutes(proxy, session_token):
 
     learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
     advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
-    neighbors = bgp_neighbors['results']
+    if 'results' in bgp_neighbors:
+        neighbors = bgp_neighbors['results']
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
     for i in range(len(neighbors)):
         bgp_neighbor_id = neighbors[i]['id']
         route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
@@ -2553,6 +2557,12 @@ def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
     t0_routes = {}
+    if 'results' in t0_routes_json:
+        pass
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
+
     if t0_routes_json == None:
         print("API Error")
         sys.exit(1)
@@ -2582,8 +2592,11 @@ def getSDDCT0staticroutes(proxy_url,session_token):
     if t0_static_routes_json == None:
         print("API Error")
         sys.exit(1)
-
-    t0_static_routes = t0_static_routes_json['results']
+    if 'results' in t0_static_routes_json:
+        t0_static_routes = t0_static_routes_json['results']
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
     route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_static_routes:
         route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
@@ -4365,12 +4378,15 @@ def new_t1_ipsec_session(**kwargs):
     bgp_subnet_prefix = kwargs['bgp_subnet_prefix']
     dest_addr = kwargs['destination_addr']
     src_addr = kwargs['source_addr']
+    json_data = {}
 
 #   Validate the provided remote IP address
     if validate_ip_address(remote_addr):
         pass
     else:
         sys.exit(f'The provided local address {remote_addr} is not a valid IPV4 address')
+
+    json_data['display_name'] = display_name
 
 #   Build the JSON payload for both route-based and policy-based VPNs
     if vpn_type == 'route-based':
@@ -4446,6 +4462,57 @@ def new_t1_ipsec_session(**kwargs):
         sys.exit(f'Tier-1 IPSec VPN Session {display_name} has been created successfully.')
     else:
         print('There was an error')
+        sys.exit(1)
+
+
+def new_t1_l2vpn_session(**kwargs):
+    """Create a new Tier-1 L2VPN Session"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    t1g = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+    l2vpn_service = kwargs['l2vpn_service']
+    local_endpoint = kwargs['local_endpoint']
+    remote_addr = kwargs['remote_address']
+    tunnel_addr = kwargs['tunnel_bgp_address']
+    tunnel_subnet = kwargs['tunnel_bgp_subnet']
+    psk = kwargs['psk']
+    local_endpoint = kwargs['local_endpoint']
+
+    ipsec_json = {
+        "resource_type": "RouteBasedIPSecVpnSession",
+        "display_name": f'L2VPN-{display_name}',
+        "id": f'L2VPN-{display_name}',
+        "local_endpoint_path": f'/infra/tier-1s/{t1g}/ipsec-vpn-services/{vpn_service}/local-endpoints/{local_endpoint}',
+        "tunnel_profile_path": f'/infra/ipsec-vpn-tunnel-profiles/nsx-default-l2vpn-tunnel-profile',
+        "ike_profile_path": f'/infra/ipsec-vpn-ike-profiles/nsx-default-l2vpn-ike-profile',
+        "dpd_profile_path": f'/infra/ipsec-vpn-dpd-profiles/nsx-default-l3vpn-dpd-profile',
+        "psk": psk,
+        "peer_address": remote_addr,
+        "peer_id": remote_addr,
+        "tunnel_interfaces": [{
+            "ip_subnets": [{
+                "ip_addresses": tunnel_addr,
+                "prefix_length": tunnel_subnet
+            }]
+        }]
+    }
+    ipsec_json_response_code = new_t1_ipsec_session_json(proxy, session_token, ipsec_json, display_name, t1g, vpn_service)
+    if ipsec_json_response_code == 200:
+        l2vpn_json = {
+            "resource_type": "L2VPNSession",
+            "display_name": display_name,
+            "transport_tunnels": [f"/infra/tier-1s/{t1g}/ipsec-vpn-services/{vpn_service}/sessions/L2VPN-{display_name}"]
+        }
+        l2vpn_json_response_code = new_t1_l2vpn_session_json(proxy, session_token, l2vpn_json, display_name, t1g, l2vpn_service)
+        if l2vpn_json_response_code == 200:
+            sys.exit(f'Tier-1 L2VPN Session {display_name} created successfully.')
+        else:
+            print('There was an error in the creation of the L2VPN Session')
+            sys.exit(1)
+    else:
+        print('There was an error in the creation of the IPSEC Session')
         sys.exit(1)
 
 
@@ -5051,6 +5118,7 @@ def main():
     new_t1_ipsec_session_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
     new_t1_ipsec_session_parser.set_defaults(func=new_t1_ipsec_session)
 
+<<<<<<< Updated upstream
     new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
     new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
     new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[auth_flag,nsx_url_flag], help='create a new L2VPN for the SDDC')
@@ -5066,6 +5134,33 @@ def main():
     show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[auth_flag,nsx_url_flag], help='show the public IP used for VPN services')
     show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[auth_flag,nsx_url_flag], help = 'show the VPN tunnel profile')
     show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[auth_flag,nsx_url_flag], help='show the VPN IPSec endpoints')
+=======
+    new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
+    new_t1_l2vpn_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the IPSec VPN Service')
+    new_t1_l2vpn_session_parser.add_argument('-ls', '--l2vpn-service', required=True, help='Define the L2VPN Service')
+    new_t1_l2vpn_session_parser.add_argument('-le', '--local-endpoint', required=True, help='Define the local endpoint for the L2VPN')
+    new_t1_l2vpn_session_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the remote site')
+    new_t1_l2vpn_session_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The Tier-1 Gateway that this L2VPN is attached to')
+    new_t1_l2vpn_session_parser.add_argument('-p', '--psk', required=True, help='The pre-shared key for the L2VPN session')
+    new_t1_l2vpn_session_parser.add_argument('-t', '--tunnel-bgp-address', nargs='+', required=True, help='The tunnel interface for the L2VPN.  Entry must be a valid IPv4 address')
+    new_t1_l2vpn_session_parser.add_argument('-s', '--tunnel-bgp-subnet', required=True, help='The BGP tunnel subnet for the L2VPN session.  Entry must be a valid CIDR mask')
+    new_t1_l2vpn_session_parser.set_defaults(func=new_t1_l2vpn_session)
+
+    new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
+    remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
+    remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help='To remove a VPN IPSec Tunnel profile')
+    show_l2vpn_parser = vpn_parser_subs.add_parser('show-l2vpn', parents=[nsx_url_flag], help='show l2 vpn')
+    show_l2vpn_services_parser = vpn_parser_subs.add_parser('show-l2vpn-services', parents=[nsx_url_flag], help='show l2 vpn services')
+    show_vpn_parser = vpn_parser_subs.add_parser('show-vpn', parents=[nsx_url_flag], help='show the configured VPN')
+    show_vpn_stats_parser = vpn_parser_subs.add_parser('show-vpn-stats', parents=[nsx_url_flag], help='show the VPN statistics')
+    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profile', parents=[nsx_url_flag], help='show the VPN IKE profiles')
+    show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[nsx_url_flag], help='show the public IP used for VPN services')
+    show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help = 'show the VPN tunnel profile')
+    show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[nsx_url_flag], help='show the VPN IPSec endpoints')
+>>>>>>> Stashed changes
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
