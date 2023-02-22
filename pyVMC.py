@@ -2383,7 +2383,11 @@ def getSDDCT0BGPRoutes(proxy, session_token):
 
     learnedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'AS Path', 'Network', 'Next Hop'])
     advertisedRoutesTable = PrettyTable(['BGP Neighbor', 'Source Address', 'Network', 'Next Hop'])
-    neighbors = bgp_neighbors['results']
+    if 'results' in bgp_neighbors:
+        neighbors = bgp_neighbors['results']
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
     for i in range(len(neighbors)):
         bgp_neighbor_id = neighbors[i]['id']
         route_learned_json = get_sddc_t0_learned_routes_json(proxy, session_token, bgp_neighbor_id)
@@ -2553,6 +2557,12 @@ def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
     t0_routes = {}
+    if 'results' in t0_routes_json:
+        pass
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
+
     if t0_routes_json == None:
         print("API Error")
         sys.exit(1)
@@ -2582,8 +2592,11 @@ def getSDDCT0staticroutes(proxy_url,session_token):
     if t0_static_routes_json == None:
         print("API Error")
         sys.exit(1)
-
-    t0_static_routes = t0_static_routes_json['results']
+    if 'results' in t0_static_routes_json:
+        t0_static_routes = t0_static_routes_json['results']
+    else:
+        print("No results.  Something went wrong - please check your syntax and try again.")
+        sys.exit(1)
     route_table = PrettyTable(['Display Name', 'Network', 'Admin Distance', 'Next Hop'])
     for routes in t0_static_routes:
         route_table.add_row([routes['display_name'],routes['network'],routes['next_hops'][0]['admin_distance'],routes['next_hops'][0]['ip_address']])
