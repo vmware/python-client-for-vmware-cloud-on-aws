@@ -2,6 +2,7 @@
 ## Table of Contents
 <!-- TOC -->
 - [Current Supported Commands](#current-supported-commands)
+- [Authentication](#authentication)
 - [Getting Help](#getting-help)
 - [1. CSP - Cloud Service Portal related commands](#1-csp-commands)
 - [2. SDDC - Software Defined Datacenter related commands](#2-sddc-commands)
@@ -43,7 +44,23 @@ Here are the currently supported 'super' commands:
     vcdr                                Create, delete, update, and show information about VMware Cloud Disaster Recovery.
     flexcomp                            Commands related to the Cloud Flex Compute itself.
 ```
+## Authentication
+pyVMC supports both **refresh_token** and **OAuth AppId/Secret** way to authenticate.
+Values for it needs to be specified in config.ini file. Default auth method is to use **refresh_token**.
 
+If one wants to use OAuth, then **--oauth** switch needs to be provided when running the command.
+
+Examples:
+
+Using default 'refresh_token'
+```shell
+./pyVMC.py sddc show-sddcs
+```
+
+Using OAuth
+```shell
+./pyVMC.py sddc show-sddcs --oauth
+```
 ## Getting Help
 
 To see the supported commands for any given category / super-command, simply use '-h'... for example:
@@ -77,6 +94,7 @@ positional arguments:
     show      Show information about the VCDR Scale-out file System(s).
 
 optional arguments:
+  --oauth [OAUTH]       Used to specify use of OAuth app ID and secret in config.ini instead of 'refresh_token' (default)
   -h, --help  show this help message and exit
 ```
 
