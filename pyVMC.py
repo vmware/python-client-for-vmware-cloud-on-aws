@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.10
+#!/usr/bin/env python3
 # The shebang above is to tell the shell which interpreter to use. This make the file executable without "python3" in front of it (otherwise I had to use python3 pyvmc.py)
 # I also had to change the permissions of the file to make it run. "chmod +x pyVMC.py" did the trick.
 # I also added "export PATH="MY/PYVMC/DIRECTORY":$PATH" (otherwise I had to use ./pyvmc.y)
@@ -772,22 +772,26 @@ def getSDDCShadowAccount(**kwargs):
 
 #
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
-#
-def getAccessToken(myKey=None, oauth_clientSecret=None, oauth_clientId=None):
-    """ Gets the Access Token using the Refresh Token """
-    response = None
+
+def getAccessToken(**kwargs):
+    auth_method = kwargs['auth_method']
+    strCSPProdURL = kwargs['strCSPProdURL']
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    if myKey is not None:
-        params = {'api_token': myKey}
-        response = requests.post('https://console-stg.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+    response = None
 
-    elif oauth_clientId is not None and oauth_clientSecret is not None:
-        payload = {'grant_type': 'client_credentials'}
-        response = requests.post('https://console.cloud.vmware.com/csp/gateway/am/api/auth/authorize', headers=headers, data=payload, auth=(oauth_clientId, oauth_clientSecret))
-
-    else:
-        print('Either refresh_key or OAuth client details are required.')
-        return None
+    match auth_method:
+        case 'oauth':
+            oauth_clientSecret = kwargs['oauth_clientSecret']
+            oauth_clientId = kwargs['oauth_clientId']
+            auth_string = "/csp/gateway/am/api/auth/authorize"
+            payload = {'grant_type': 'client_credentials'}
+            response = requests.post(f'{strCSPProdURL}{auth_string}', headers=headers, data=payload, auth=(oauth_clientId, oauth_clientSecret))
+ 
+        case 'refresh_token':
+            myKey = kwargs['myKey']
+            auth_string = "/csp/gateway/am/api/auth/api-tokens/authorize"
+            params = {'api_token': myKey}
+            response = requests.post(f'{strCSPProdURL}{auth_string}', params=params, headers=headers)
 
     if response.status_code != 200:
         print(f'Error received on api token: {response.status_code}.')
@@ -2548,16 +2552,20 @@ def getSDDCroutes(**kwargs):
 def getSDDCT0routes(proxy_url, session_token):
     """Prints all routes for T0 edge gateway"""
     t0_routes_json = get_sddc_t0_routes_json(proxy_url, session_token)
+    t0_routes = {}
     if t0_routes_json == None:
         print("API Error")
         sys.exit(1)
-    t0_routes0 = t0_routes_json['results'][0]['route_entries']
-    t0_routes1 = t0_routes_json['results'][1]['route_entries']
-    t0_routes = t0_routes0 + t0_routes1
+    elif len(t0_routes_json['results']) == 1:
+        t0_routes = t0_routes_json['results'][0]['route_entries']
+    elif len(t0_routes_json['results']) >1:
+        t0_routes0 = t0_routes_json['results'][0]['route_entries']
+        t0_routes1 = t0_routes_json['results'][1]['route_entries']
+        t0_routes = t0_routes0 + t0_routes1
+
     df = pd.DataFrame(t0_routes)
     df.drop(['lr_component_id', 'lr_component_type'], axis=1, inplace=True)
     df.drop_duplicates(inplace = True)
-    # print(df)
     print('T0 Routes')
     print('Route Type Legend:')
     print('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
@@ -3268,9 +3276,9 @@ def getSDDCService(**kwargs):
             if status == 200:
                 json_response = response.json()
                 sddc_services = json_response['results']
-                table = PrettyTable(['ID', 'Name'])
+                table = PrettyTable(['ID', 'Name','System Owned'])
                 for i in sddc_services:
-                    table.add_row([i['id'], i['display_name']])
+                    table.add_row([i['id'], i['display_name'], i['_system_owned']])
                 print(table)
             else:
                 print("Plese check your syntax and try again.")
@@ -4688,6 +4696,17 @@ def main():
     subparsers = ap.add_subparsers(help='sub-command help')
 
     # ============================
+    # GLOBAL Auth Parser
+    # ============================
+    """Parser to be used as parent for ALL FUNCTIONS AND SUBPARSERS.
+    This will allow the user to specify either to use a refresh token or an OAuth app.
+    Excluding this parser as a parent will ALSO exclude the exclude the option to use OAuth as an authentication method..
+    *** Be sure to include this parser as a parent for ALL subparsers ***
+    """
+    auth_flag = argparse.ArgumentParser(add_help=False)
+    auth_flag.add_argument('--oauth', nargs='?', default = "refresh_token", const= "oauth", help = "Used to specify use of OAuth app ID and secret in config.ini instead of 'refresh_token' (default).")
+
+    # ============================
     # GLOBAL NSX Parser
     # ============================
     """Parser to be used as parent for ALL NSX functions.
@@ -4704,19 +4723,19 @@ def main():
     """Parsers to be used as parent to pass glaf(s) for correct API URL, ORG_ID, or SDDC_ID"""
         
     csp_url_flag = argparse.ArgumentParser(add_help=False)
-    csp_url_flag.add_argument("--strCSPProdURL",help=argparse.SUPPRESS) # TOM What about config.ini?
+    csp_url_flag.add_argument("--csp_flag",help=argparse.SUPPRESS) # TOM What about config.ini?
 
     vmc_url_flag = argparse.ArgumentParser(add_help=False)
-    vmc_url_flag.add_argument("--strProdURL",help=argparse.SUPPRESS)
+    vmc_url_flag.add_argument("--vmc_flag",help=argparse.SUPPRESS)
 
     vcdr_url_flag= argparse.ArgumentParser(add_help=False)
-    vcdr_url_flag.add_argument("--strVCDRProdURL", help = argparse.SUPPRESS)
+    vcdr_url_flag.add_argument("--vcdr_flag", help = argparse.SUPPRESS)
 
     org_id_flag = argparse.ArgumentParser(add_help=False)
-    org_id_flag.add_argument("--ORG_ID",help=argparse.SUPPRESS)
+    org_id_flag.add_argument("--org_flag",help=argparse.SUPPRESS)
 
     sddc_id_parser_flag = argparse.ArgumentParser(add_help=False)
-    sddc_id_parser_flag.add_argument("--SDDC_ID",help=argparse.SUPPRESS)
+    sddc_id_parser_flag.add_argument("--sddc_flag",help=argparse.SUPPRESS)
 
 # ============================
 # CSP - Global
@@ -4743,34 +4762,34 @@ def main():
 # CSP - Services
 # ============================
 
-    csp_service_parser = csp_parser_subs.add_parser('show-csp-services', parents=[csp_url_flag,org_id_flag], help='Show the entitled services in the VMware Cloud Service Console.')
+    csp_service_parser = csp_parser_subs.add_parser('show-csp-services', parents=[auth_flag,csp_url_flag,org_id_flag], help='Show the entitled services in the VMware Cloud Service Console.')
     csp_service_parser.set_defaults(func = getServiceDefinitions)
-    csp_service_role_parser = csp_parser_subs.add_parser('show-csp-service-roles', parents=[csp_url_flag, org_id_flag] , help='Show the entitled service roles in the VMware Cloud Service Console.')
+    csp_service_role_parser = csp_parser_subs.add_parser('show-csp-service-roles', parents=[auth_flag,csp_url_flag, org_id_flag] , help='Show the entitled service roles in the VMware Cloud Service Console.')
     csp_service_role_parser.set_defaults(func = getCSPServiceRoles)
-    # get_access_token_parser=csp_parser_subs.add_parser('get-access-token', parents = [csp_url_flag, nsx_url_flag], help = 'show your access token')
+    # get_access_token_parser=csp_parser_subs.add_parser('get-access-token', parents=[auth_flag,csp_url_flag, nsx_url_flag], help = 'show your access token')
 
 # ============================
 # CSP - User and Group Management
 # ============================
-    add_users_to_csp_group_parser=csp_parser_subs.add_parser('add-users-to-csp-group', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'CSP user to a group')
+    add_users_to_csp_group_parser=csp_parser_subs.add_parser('add-users-to-csp-group', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'CSP user to a group')
     add_users_to_csp_group_parser.set_defaults(func = addUsersToCSPGroup)
 
-    show_csp_group_diff_parser=csp_parser_subs.add_parser('show-csp-group-diff', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
+    show_csp_group_diff_parser=csp_parser_subs.add_parser('show-csp-group-diff', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
     show_csp_group_diff_parser.set_defaults(func = getCSPGroupDiff)
 
-    show_csp_group_members_parser=csp_parser_subs.add_parser('show-csp-group-members', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'show CSP group members')
+    show_csp_group_members_parser=csp_parser_subs.add_parser('show-csp-group-members', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'show CSP group members')
     show_csp_group_members_parser.set_defaults(func = getCSPGroupMembers)
 
-    show_csp_groups_parser=csp_parser_subs.add_parser('show-csp-groups', parents = [csp_url_flag, org_id_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
+    show_csp_groups_parser=csp_parser_subs.add_parser('show-csp-groups', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
     show_csp_groups_parser.set_defaults(func = getCSPGroups)
 
-    search_csp_org_users_parser=csp_parser_subs.add_parser('search-csp-org-users', parents = [csp_url_flag, org_id_flag,parent_user_group_parser], help = 'Search for users in the CSP or org.')
+    search_csp_org_users_parser=csp_parser_subs.add_parser('search-csp-org-users', parents=[auth_flag,csp_url_flag, org_id_flag,parent_user_group_parser], help = 'Search for users in the CSP or org.')
     search_csp_org_users_parser.set_defaults(func = searchCSPOrgUsers)
 
-    find_csp_user_by_service_role_parser=csp_parser_subs.add_parser('find-csp-user-by-service-role', parents = [csp_url_flag, org_id_flag, parent_user_group_parser], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
+    find_csp_user_by_service_role_parser=csp_parser_subs.add_parser('find-csp-user-by-service-role', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
     find_csp_user_by_service_role_parser.set_defaults(func = findCSPUserByServiceRole)
 
-    show_org_users_parser=csp_parser_subs.add_parser('show-org-users', parents = [csp_url_flag, org_id_flag], help = 'Show all organization users')
+    show_org_users_parser=csp_parser_subs.add_parser('show-org-users', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'Show all organization users')
     show_org_users_parser.set_defaults(func = showORGusers)
 
 # ============================
@@ -4782,23 +4801,23 @@ def main():
     # create subparser for flexcomp sub-commands
     flexcomp_parser_sub = flexcomp_parser.add_subparsers(help='flexcomp sub-command help')
 
-    flexcomp_activityStatus = flexcomp_parser_sub.add_parser('activity-status', parents=[vmc_url_flag,org_id_flag], help='Get activity status of long running tasks')
+    flexcomp_activityStatus = flexcomp_parser_sub.add_parser('activity-status', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Get activity status of long running tasks')
     flexcomp_activityStatus.add_argument('activityId', help='Activity ID of the task.')
     flexcomp_activityStatus.set_defaults(func=showFlexcompActivityStatus)
 
 # =================================
 # Cloud Flex Compute - Compute
 # =================================
-    show_all_namespaces = flexcomp_parser_sub.add_parser('show-all-namespaces', parents=[vmc_url_flag,org_id_flag], help='Show all present Cloud Flex Compute Name Spaces')
+    show_all_namespaces = flexcomp_parser_sub.add_parser('show-all-namespaces', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all present Cloud Flex Compute Name Spaces')
     show_all_namespaces.set_defaults(func=showFlexcompNamespaces)
 
-    validate_network = flexcomp_parser_sub.add_parser('validate-network', parents=[vmc_url_flag,org_id_flag], help='Validate network CIDR before creating Cloud Flex Compute Name Space')
+    validate_network = flexcomp_parser_sub.add_parser('validate-network', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Validate network CIDR before creating Cloud Flex Compute Name Space')
     validate_network.add_argument('flexCompCIDR', help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
     validate_network.add_argument('segName', help='Workload Segment name')
     validate_network.add_argument('segCIDR', help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
     validate_network.set_defaults(func=validateNetworkFlexComp)
 
-    create_flexcomp_namespace = flexcomp_parser_sub.add_parser('create-flexcompute',parents=[vmc_url_flag,org_id_flag], help='Create new Cloud Flex Compute')
+    create_flexcomp_namespace = flexcomp_parser_sub.add_parser('create-flexcompute',parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create new Cloud Flex Compute')
     create_flexcomp_namespace.add_argument('nsName', help='Name of Cloud Flex Compute')
     create_flexcomp_namespace.add_argument('nsDesc', help='Description for Cloud Flex Compute')
     create_flexcomp_namespace.add_argument('templateId', help='Resource size template id. Available values can be seen using `show-flex-comp-templates` option')
@@ -4810,28 +4829,28 @@ def main():
                               help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
     create_flexcomp_namespace.set_defaults(func=createFlexcompNamespace)
 
-    delete_flexcomp_namespace = flexcomp_parser_sub.add_parser('delete-flexcomp', parents=[vmc_url_flag,org_id_flag], help='Delete existing Cloud Flex Compute')
+    delete_flexcomp_namespace = flexcomp_parser_sub.add_parser('delete-flexcomp', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Delete existing Cloud Flex Compute')
     delete_flexcomp_namespace.add_argument('nsId', help='Cloud Flex Compute ID. Available Cloud Flex Compute IDs can be seen using `show-all-namespaces` option')
     delete_flexcomp_namespace.set_defaults(func=deleteFlexcompNamespace)
 
 # =================================
 # Cloud Flex Compute - Profiles
 # =================================
-    show_flexcomp_region = flexcomp_parser_sub.add_parser('show-flex-comp-regions', parents=[vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute regions')
+    show_flexcomp_region = flexcomp_parser_sub.add_parser('show-flex-comp-regions', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute regions')
     show_flexcomp_region.set_defaults(func=showFlexcompRegions)
-    show_flexcomp_templates = flexcomp_parser_sub.add_parser('show-flex-comp-templates', parents=[vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute resource templates to create Name Space')
+    show_flexcomp_templates = flexcomp_parser_sub.add_parser('show-flex-comp-templates', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute resource templates to create Name Space')
     show_flexcomp_templates.set_defaults(func=showFlexcompTemplates)
 
 # =================================
 # Cloud Flex Compute - VMs
 # =================================
-    show_flexcomp_vms = flexcomp_parser_sub.add_parser('show-all-vms', parents=[vmc_url_flag,org_id_flag], help='Show all VMs in Cloud Flex Compute instance')
+    show_flexcomp_vms = flexcomp_parser_sub.add_parser('show-all-vms', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all VMs in Cloud Flex Compute instance')
     show_flexcomp_vms.set_defaults(func=showAllVMsFlexcomp)
 
-    show_flexcomp_images = flexcomp_parser_sub.add_parser('show-all-images', parents=[vmc_url_flag,org_id_flag], help='Show all images available to create VMs from')
+    show_flexcomp_images = flexcomp_parser_sub.add_parser('show-all-images', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all images available to create VMs from')
     show_flexcomp_images.set_defaults(func=showAllImagesFlexcomp)
 
-    flexcomp_createVm = flexcomp_parser_sub.add_parser('create-vm', parents=[vmc_url_flag,org_id_flag], help='Create VM')
+    flexcomp_createVm = flexcomp_parser_sub.add_parser('create-vm', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create VM')
     flexcomp_createVm.add_argument('vmName', help='Virtual Machine Name')
     flexcomp_createVm.add_argument('vmNamespaceId', help='Namespace ID on which to create VM')
     flexcomp_createVm.add_argument('vmCPU', help='Number of CPUs for the VM. Min 1 CPU, Max 36 CPU. Make sure CPU number is less or equal to CPUs for Namespace')
@@ -4843,12 +4862,12 @@ def main():
     flexcomp_createVm.add_argument('imageId', help='ISO Image name from which VM will be created.')
     flexcomp_createVm.set_defaults(func=createVMFlexcomp)
 
-    flexcomp_vmPowerOps = flexcomp_parser_sub.add_parser('power-operation', parents=[vmc_url_flag,org_id_flag], help='Perform Power Operations on VM')
+    flexcomp_vmPowerOps = flexcomp_parser_sub.add_parser('power-operation', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Perform Power Operations on VM')
     flexcomp_vmPowerOps.add_argument('vmId', help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
     flexcomp_vmPowerOps.add_argument('powerOperation', help='Available operations are: power_off, power_on, suspend, hard_stop, reset, guest_os_shutdown, guest_os_restart')
     flexcomp_vmPowerOps.set_defaults(func=vmPowerOperationsFlexcomp)
 
-    flexcomp_vmDelete = flexcomp_parser_sub.add_parser('delete-vm', parents=[vmc_url_flag, org_id_flag], help='Delete VM. Make sure VM is in powerd OFF state.')
+    flexcomp_vmDelete = flexcomp_parser_sub.add_parser('delete-vm', parents=[auth_flag,vmc_url_flag, org_id_flag], help='Delete VM. Make sure VM is in powerd OFF state.')
     flexcomp_vmDelete.add_argument('vmId',help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
     flexcomp_vmDelete.set_defaults(func=vmDeleteFlexcomp)
 
@@ -4861,23 +4880,23 @@ def main():
     # create a subparser for csp sub-commands
     sddc_parser_subs = sddc_parser.add_subparsers(help='sddc sub-command help')
 
-    show_compatible_subnets_parser=sddc_parser_subs.add_parser('show-compatible-subnets', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'show compatible native AWS subnets connected to the SDDC')
+    show_compatible_subnets_parser=sddc_parser_subs.add_parser('show-compatible-subnets', parents=[auth_flag,vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'show compatible native AWS subnets connected to the SDDC')
     show_compatible_subnets_parser.add_argument("LinkedAccount", help = "The Object ID of the linked Account") # positional arg 1
     show_compatible_subnets_parser.add_argument("Region", help = "The text of the region ID") # positional arg 2
     show_compatible_subnets_parser.set_defaults(func = getCompatibleSubnets)
     
-    show_connected_accounts_parser=sddc_parser_subs.add_parser('show-connected-accounts', parents = [vmc_url_flag,org_id_flag, sddc_id_parser_flag], help = 'show native AWS accounts connected to the SDDC')
+    show_connected_accounts_parser=sddc_parser_subs.add_parser('show-connected-accounts', parents=[auth_flag,vmc_url_flag,org_id_flag, sddc_id_parser_flag], help = 'show native AWS accounts connected to the SDDC')
     show_connected_accounts_parser.set_defaults(func = getConnectedAccounts)
 
-    set_sddc_connected_services_parser=sddc_parser_subs.add_parser('set-sddc-connected-services', parents = [nsx_url_flag], help = 'change whether to use S3 over the Internet(false) or via the ENI(true)')
+    set_sddc_connected_services_parser=sddc_parser_subs.add_parser('set-sddc-connected-services', parents=[auth_flag,nsx_url_flag], help = 'change whether to use S3 over the Internet(false) or via the ENI(true)')
     set_sddc_connected_services_parser.add_argument('ServiceName', choices=['s3'], help="Only s3 for now")
     set_sddc_connected_services_parser.add_argument('ENIorInternet', choices=['true','false'], help="Connect s3 to ENI (true) or Internet (false)")
     set_sddc_connected_services_parser.set_defaults(func = setSDDCConnectedServices)
 
-    show_sddc_connected_vpc_parser=sddc_parser_subs.add_parser('show-sddc-connected-vpc', parents = [vmc_url_flag,sddc_id_parser_flag, nsx_url_flag], help = 'show the VPC connected to the SDDC')
+    show_sddc_connected_vpc_parser=sddc_parser_subs.add_parser('show-sddc-connected-vpc', parents=[auth_flag,vmc_url_flag,sddc_id_parser_flag, nsx_url_flag], help = 'show the VPC connected to the SDDC')
     show_sddc_connected_vpc_parser.set_defaults(func = getSDDCConnectedVPC)
     
-    show_shadow_account_parser=sddc_parser_subs.add_parser('show-shadow-account', parents = [vmc_url_flag,nsx_url_flag], help = 'show the Shadow AWS Account VMC is deployed in')
+    show_shadow_account_parser=sddc_parser_subs.add_parser('show-shadow-account', parents=[auth_flag,vmc_url_flag,nsx_url_flag], help = 'show the Shadow AWS Account VMC is deployed in')
     show_shadow_account_parser.set_defaults(func = getSDDCShadowAccount) 
 
 # ============================
@@ -4885,18 +4904,18 @@ def main():
 # ============================
     parent_sddc_parser = argparse.ArgumentParser(add_help=False)
 
-    show_sddc_state_parser=sddc_parser_subs.add_parser('show-sddc-state', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'get a view of your selected SDDC')
+    show_sddc_state_parser=sddc_parser_subs.add_parser('show-sddc-state', parents=[auth_flag,vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'get a view of your selected SDDC')
     show_sddc_state_parser.set_defaults(func = getSDDCState) 
-    show_sddc_hosts_parser=sddc_parser_subs.add_parser('show-sddc-hosts', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'display a list of the hosts in your SDDC')
+    show_sddc_hosts_parser=sddc_parser_subs.add_parser('show-sddc-hosts', parents=[auth_flag,vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'display a list of the hosts in your SDDC')
     show_sddc_hosts_parser.set_defaults(func = getSDDChosts)
 
-    show_sddcs_parser=sddc_parser_subs.add_parser('show-sddcs', parents = [vmc_url_flag,org_id_flag], help = 'display a list of your SDDCs')
+    show_sddcs_parser=sddc_parser_subs.add_parser('show-sddcs', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'display a list of your SDDCs')
     show_sddcs_parser.set_defaults(func = getSDDCS)
-    show_vms_parser=sddc_parser_subs.add_parser('show-vms', parents = [nsx_url_flag], help = 'get a list of your VMs')
+    show_vms_parser=sddc_parser_subs.add_parser('show-vms', parents=[auth_flag,nsx_url_flag], help = 'get a list of your VMs')
     show_vms_parser.set_defaults(func = getVMs)
 
   # Create-sddc
-    create_sddc_parser=sddc_parser_subs.add_parser('create', parents = [vmc_url_flag,org_id_flag], help = 'Create an SDDC')
+    create_sddc_parser=sddc_parser_subs.add_parser('create', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Create an SDDC')
     create_sddc_parser.add_argument('name', help= 'name for newly created SDDC')
     create_sddc_parser.add_argument('linked-account-guid', help='GUID for linked/connected account')
     # add link to list of possibilities?
@@ -4908,7 +4927,7 @@ def main():
     create_sddc_parser.add_argument('--validate-only', action='store_true',  help="(optional) Validate the input parameters but do not create the SDDC")
     create_sddc_parser.set_defaults(func = createSDDC)
     
-    delete_sddc_parser=sddc_parser_subs.add_parser('delete', parents = [vmc_url_flag,org_id_flag], help = 'Delete an SDDC')
+    delete_sddc_parser=sddc_parser_subs.add_parser('delete', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Delete an SDDC')
     delete_sddc_parser.add_argument("SDDCtoDelete", help = "The object id of the sddc to delete")
     delete_sddc_parser.add_argument("--force",action='store_true', help="(optional) Force the deletion of an SDDC")
     delete_sddc_parser.set_defaults(func = deleteSDDC)
@@ -4916,10 +4935,10 @@ def main():
 # ============================
 # SDDC - SDDC Tasks
 # ============================
-    watch_task_parser=sddc_parser_subs.add_parser('watch-task', parents = [vmc_url_flag,org_id_flag], help = 'Poll a tasks until completion') 
+    watch_task_parser=sddc_parser_subs.add_parser('watch-task', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Poll a tasks until completion') 
     watch_task_parser.set_defaults(func = watchSDDCTask )
     watch_task_parser.add_argument("taskID",help="GUID for task you want info on") 
-    cancel_task_parser=sddc_parser_subs.add_parser('cancel-task', parents = [vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'Cancel a task, if possible') 
+    cancel_task_parser=sddc_parser_subs.add_parser('cancel-task', parents=[auth_flag,vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'Cancel a task, if possible') 
     cancel_task_parser.add_argument("taskID", help="GUID for task you want to cancel")
     cancel_task_parser.set_defaults(func = cancelSDDCTask)
 
@@ -4934,8 +4953,8 @@ def main():
     tkg_parser_subs = tkg_parser.add_subparsers(help='sddc sub-command help')
 
     # create parsers for each of the inidividual subcommands
-    # enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents = [], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
-    # disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents = [], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    # enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents=[auth_flag,], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
+    # disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents=[auth_flag,], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
 
 # ============================
 # NSX-T - Segments
@@ -4958,16 +4977,16 @@ def main():
     segment_parser_subs = segment_parser.add_subparsers(help='segment sub-command help')
 
     # create individual parsers for each sub-command
-    segment_create_parser = segment_parser_subs.add_parser("create", parents=[nsx_url_flag, parent_segment_parser], help = "Create a new virtual machine network segment.")
+    segment_create_parser = segment_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Create a new virtual machine network segment.")
     segment_create_parser.set_defaults(func = new_segment)
 
-    segment_delete_parser = segment_parser_subs.add_parser("delete", parents=[nsx_url_flag, parent_segment_parser], help = "Delete a virtual machine network segment.")
+    segment_delete_parser = segment_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Delete a virtual machine network segment.")
     segment_delete_parser.set_defaults(func = remove_segment)
 
-    segment_show_parser = segment_parser_subs.add_parser("show", parents=[nsx_url_flag, parent_segment_parser], help = "Show the current virtual machine network segments.")
+    segment_show_parser = segment_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Show the current virtual machine network segments.")
     segment_show_parser.set_defaults(func = getSDDCnetworks)
 
-    segment_update_parser = segment_parser_subs.add_parser("update", parents=[nsx_url_flag, parent_segment_parser], help = "Update the configuration of a virtual machine network segment.")
+    segment_update_parser = segment_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Update the configuration of a virtual machine network segment.")
     segment_update_parser.set_defaults(func = configure_segment)
 
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
@@ -4984,39 +5003,39 @@ def main():
     vpn_parser_subs = vpn_parser.add_subparsers(help='vpn sub-command help')
 
     # create individual parsers for each sub-command
-    new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
+    new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
     new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, type=str.upper, help='IKE version for this profile. Default is IKE-V2')
     new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IKE digest algorithm.Default is SHA2-256')
     new_ike_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256'], default='AES_256', required=True, nargs='+', type=str.upper, help='IKE encryption algorithm. Default is AES-256. If any GCM algorithm is chosen, IKE V2 is required.')
     new_ike_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_ike_profile)
 
-    new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new VPN IPSEC Tunnel Profile')
+    new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IPSEC Tunnel Profile')
     new_ipsec_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ipsec_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256', 'NO_ENCRYPTION_AUTH_AES_GMAC_128', 'NO_ENCRYPTION_AUTH_AES_GMAC_192', 'NO_ENCRYPTION_AUTH_AES_GMAC_256', 'NO_ENCRYPTION'], default='AES_256', required=True, nargs='+', type=str.upper, help='IPSEC Encryption Algorithm options. Default is AES-256')
     new_ipsec_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IPSec Digest Algorithm.')
     new_ipsec_profile_parser.add_argument('-p', '--pfs-disable', action='store_false', help='Disable perfect forward secrecy')
     new_ipsec_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_tunnel_profile)
 
-    new_dpd_profile_parser = vpn_parser_subs.add_parser('new-dpd-profile', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC DPD profile')
+    new_dpd_profile_parser = vpn_parser_subs.add_parser('new-dpd-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC DPD profile')
     new_dpd_profile_parser.add_argument('-m', '--probe-mode', choices=['PERIODIC', 'ON-DEMAND'], default='PERIODIC', type=str.upper, required=True, help='DPD Probe Mode is used to query the liveliness of the peer.')
     new_dpd_profile_parser.add_argument('-i', '--interval', type=int, help='DPD Probe interval defines an interval for DPD probes (in seconds).  Default for periodic is 60s and On-Demand is 10s.')
     new_dpd_profile_parser.add_argument('-d', '--disable', action='store_false', help='Disable dead peer detection')
     new_dpd_profile_parser.add_argument('-r', '--retry-count', type=int, help='Maximum number of DPD message retry attemptes')
     new_dpd_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_dpd_profile)
 
-    new_t1_vpn_service_parser = vpn_parser_subs.add_parser('new-t1-vpn-service', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN service')
+    new_t1_vpn_service_parser = vpn_parser_subs.add_parser('new-t1-vpn-service', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN service')
     new_t1_vpn_service_parser.add_argument('-t1', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this VPN service should be attached to')
     new_t1_vpn_service_parser.add_argument('-s', '--service-type', required=True, choices=['ipsec', 'l2vpn'], help='Select whether this service is for an IPSec VPN or L2VPN')
     new_t1_vpn_service_parser.set_defaults(func=new_t1_vpn_service)
 
-    new_local_endpoint_parser = vpn_parser_subs.add_parser('new-local-endpoint', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 VPN local endpoint')
+    new_local_endpoint_parser = vpn_parser_subs.add_parser('new-local-endpoint', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 VPN local endpoint')
     new_local_endpoint_parser.add_argument('-t', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this Local Endpoint is associated with')
     new_local_endpoint_parser.add_argument('-s', '--vpn-service', required=True, help='Select which VPN service this Local Endpoint will be associated with')
     new_local_endpoint_parser.add_argument('-l', '--local-address', required=True, help='Define the local IPv4 address for the Local Endpoint')
     new_local_endpoint_parser.set_defaults(func=new_t1_local_endpoint)
 
-    new_t1_ipsec_session_parser = vpn_parser_subs.add_parser('new-t1-ipsec-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN session')
+    new_t1_ipsec_session_parser = vpn_parser_subs.add_parser('new-t1-ipsec-session', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN session')
     new_t1_ipsec_session_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
     new_t1_ipsec_session_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='Define which Tier-1 Gateway this ')
     new_t1_ipsec_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the VPN service to which this session should be attached')
@@ -5032,21 +5051,21 @@ def main():
     new_t1_ipsec_session_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
     new_t1_ipsec_session_parser.set_defaults(func=new_t1_ipsec_session)
 
-    new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
-    new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
-    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
-    remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
-    remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
-    remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
-    remove_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help='To remove a VPN IPSec Tunnel profile')
-    show_l2vpn_parser = vpn_parser_subs.add_parser('show-l2vpn', parents=[nsx_url_flag], help='show l2 vpn')
-    show_l2vpn_services_parser = vpn_parser_subs.add_parser('show-l2vpn-services', parents=[nsx_url_flag], help='show l2 vpn services')
-    show_vpn_parser = vpn_parser_subs.add_parser('show-vpn', parents=[nsx_url_flag], help='show the configured VPN')
-    show_vpn_stats_parser = vpn_parser_subs.add_parser('show-vpn-stats', parents=[nsx_url_flag], help='show the VPN statistics')
-    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profile', parents=[nsx_url_flag], help='show the VPN IKE profiles')
-    show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[nsx_url_flag], help='show the public IP used for VPN services')
-    show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help = 'show the VPN tunnel profile')
-    show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[nsx_url_flag], help='show the VPN IPSec endpoints')
+    new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
+    new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[auth_flag,nsx_url_flag], help='create a new L2VPN for the SDDC')
+    remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[auth_flag,nsx_url_flag], help='remove a L2VPN')
+    remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[auth_flag,nsx_url_flag], help='remove a VPN')
+    remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[auth_flag,nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents=[auth_flag,nsx_url_flag], help='To remove a VPN IPSec Tunnel profile')
+    show_l2vpn_parser = vpn_parser_subs.add_parser('show-l2vpn', parents=[auth_flag,nsx_url_flag], help='show l2 vpn')
+    show_l2vpn_services_parser = vpn_parser_subs.add_parser('show-l2vpn-services', parents=[auth_flag,nsx_url_flag], help='show l2 vpn services')
+    show_vpn_parser = vpn_parser_subs.add_parser('show-vpn', parents=[auth_flag,nsx_url_flag], help='show the configured VPN')
+    show_vpn_stats_parser = vpn_parser_subs.add_parser('show-vpn-stats', parents=[auth_flag,nsx_url_flag], help='show the VPN statistics')
+    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profile', parents=[auth_flag,nsx_url_flag], help='show the VPN IKE profiles')
+    show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[auth_flag,nsx_url_flag], help='show the public IP used for VPN services')
+    show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[auth_flag,nsx_url_flag], help = 'show the VPN tunnel profile')
+    show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[auth_flag,nsx_url_flag], help='show the VPN IPSec endpoints')
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
@@ -5058,39 +5077,39 @@ def main():
     rbvpn_prefixlist_parser_subs = rbvpn_prefixlist_parser.add_subparsers(help='rbvpn-prefix-list sub-command help')
 
     # create individual parsers for each sub-command
-    rbvpn_prefixlist_attach_parser = rbvpn_prefixlist_parser_subs.add_parser('attach', parents = [nsx_url_flag], formatter_class=MyFormatter, help = "Attach an existing prefix list to a BGP neighbor.")
+    rbvpn_prefixlist_attach_parser = rbvpn_prefixlist_parser_subs.add_parser('attach', parents=[auth_flag,nsx_url_flag], formatter_class=MyFormatter, help = "Attach an existing prefix list to a BGP neighbor.")
     rbvpn_prefixlist_attach_parser.add_argument("-plid", "--prefix-list-id", help = "The ID of prefix list")
     rbvpn_prefixlist_attach_parser.add_argument("-nid", "--neighbor-id", required = True, help = "The ID of the neighbor to attach to.  Use 'pyVMC.py rbvpn-neighbors show' for a list of BGP neighbors.")
     rbvpn_prefixlist_attach_parser.add_argument("-rf", "--route-filter", choices = ["in","out"], type= str.lower, help = "Use to specify either in_route_filter or out_route_filter.")
     rbvpn_prefixlist_attach_parser.add_argument("-i", "--interactive", nargs = '?', default = False, const = True, help = "Used to specify interactive mode.  If not specified, pyVMC assumes scripted mode.")
     rbvpn_prefixlist_attach_parser.set_defaults(func = attachT0BGPprefixlist)
 
-    rbvpn_prefixlist_create_parser = rbvpn_prefixlist_parser_subs.add_parser('create', parents = [nsx_url_flag], help = "Create a new prefix list for a route-based VPN.")
+    rbvpn_prefixlist_create_parser = rbvpn_prefixlist_parser_subs.add_parser('create', parents=[auth_flag,nsx_url_flag], help = "Create a new prefix list for a route-based VPN.")
     rbvpn_prefixlist_create_parser.set_defaults(func = newBGPprefixlist)
 
-    rbvpn_prefixlist_delete_parser = rbvpn_prefixlist_parser_subs.add_parser('delete', parents = [nsx_url_flag], help = "Delete a prefix list for a route-based VPN.")
+    rbvpn_prefixlist_delete_parser = rbvpn_prefixlist_parser_subs.add_parser('delete', parents=[auth_flag,nsx_url_flag], help = "Delete a prefix list for a route-based VPN.")
     rbvpn_prefixlist_delete_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
     rbvpn_prefixlist_delete_parser.set_defaults(func = delRBVPNprefixlist)
 
-    rbvpn_prefixlist_detach_parser = rbvpn_prefixlist_parser_subs.add_parser('detach', parents = [nsx_url_flag], help = "Detach all prefix lists from a BGP neighbor.")
+    rbvpn_prefixlist_detach_parser = rbvpn_prefixlist_parser_subs.add_parser('detach', parents=[auth_flag,nsx_url_flag], help = "Detach all prefix lists from a BGP neighbor.")
     rbvpn_prefixlist_detach_parser.set_defaults(func = detachT0BGPprefixlists)
 
-    rbvpn_prefixlist_export_parser = rbvpn_prefixlist_parser_subs.add_parser('export', parents = [nsx_url_flag], help = "Export an existing route-based VPN prefix list to a JSON file.")
+    rbvpn_prefixlist_export_parser = rbvpn_prefixlist_parser_subs.add_parser('export', parents=[auth_flag,nsx_url_flag], help = "Export an existing route-based VPN prefix list to a JSON file.")
     rbvpn_prefixlist_export_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
     rbvpn_prefixlist_export_parser.set_defaults(func = exportRBVPNprefixlist)
 
-    rbvpn_prefixlist_import_parser = rbvpn_prefixlist_parser_subs.add_parser('import', parents = [nsx_url_flag], help = "Import a JSON file as a route-based VPN prefix list (will overwrite an existing list of the same name).")
+    rbvpn_prefixlist_import_parser = rbvpn_prefixlist_parser_subs.add_parser('import', parents=[auth_flag,nsx_url_flag], help = "Import a JSON file as a route-based VPN prefix list (will overwrite an existing list of the same name).")
     rbvpn_prefixlist_import_parser.add_argument("-fn", "--filename", required = True, help = "The name of the file to import as a route-based VPN prefix list.  This must match the format of the json/sample-rbvpn-prefix-list.json file.")
     rbvpn_prefixlist_import_parser.add_argument("-plid", "--prefix-list-id", required = True, help = "The ID of prefix list")
     rbvpn_prefixlist_import_parser.set_defaults(func = importRBVPNprefixlist)
 
-    rbvpn_prefixlist_show_parser = rbvpn_prefixlist_parser_subs.add_parser('show', parents = [nsx_url_flag], help = "Show list of available prefix lists for a route-based VPN.")
+    rbvpn_prefixlist_show_parser = rbvpn_prefixlist_parser_subs.add_parser('show', parents=[auth_flag,nsx_url_flag], help = "Show list of available prefix lists for a route-based VPN.")
     rbvpn_prefixlist_show_parser.set_defaults(func = getSDDCT0PrefixLists)
 
     rbvpn_neighbors_parser=vpn_parser_subs.add_parser('rbvpn-neighbors' , help='Show and configure BGP Neighbors for route-based VPN.')
     rbvpn_neighbors_parser_subs = rbvpn_neighbors_parser.add_subparsers(help='rbvpn-neighbors sub-command help')
 
-    rbvpn_neighbors_show_parser = rbvpn_neighbors_parser_subs.add_parser('show', parents = [nsx_url_flag], help = "Show current BGP neighbors for route-based VPNs..")
+    rbvpn_neighbors_show_parser = rbvpn_neighbors_parser_subs.add_parser('show', parents=[auth_flag,nsx_url_flag], help = "Show current BGP neighbors for route-based VPNs..")
     rbvpn_neighbors_show_parser.set_defaults(func = getSDDCT0BGPneighbors)
 
 # ============================
@@ -5104,7 +5123,7 @@ def main():
     nat_parser_subs = nat_parser_main.add_subparsers(help='nat sub-command help')
 
     # create individual parsers for each sub-command
-    new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents = [nsx_url_flag], help = 'To create a new NAT rule')
+    new_nat_rule_parser=nat_parser_subs.add_parser('new-nat-rule', parents=[auth_flag,nsx_url_flag], help = 'To create a new NAT rule')
     new_nat_rule_parser.add_argument('-n', '--objectname', required = True, help = "The name / ID of the NAT rule to create.")
     new_nat_rule_parser.add_argument('-a','--action', choices=["DNAT", "REFLEXIVE"], type = str.upper, nargs = '?', default = "REFLEXIVE", help = '''
     Destination NAT(DNAT) - translates the destination IP address of inbound packets so that packets are delivered to a target address into another network. DNAT is only supported when the logical router is running in active-standby mode.
@@ -5119,16 +5138,16 @@ def main():
     new_nat_rule_parser.add_argument('-d','--disabled', action = 'store_false', help = "Use to disable the rule - default is enabled.")
     new_nat_rule_parser.set_defaults(func = new_nat_rule)
 
-    remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents = [nsx_url_flag], help = 'remove a NAT rule')
+    remove_nat_rule_parser=nat_parser_subs.add_parser('remove-nat-rule', parents=[auth_flag,nsx_url_flag], help = 'remove a NAT rule')
     remove_nat_rule_parser.add_argument('-n', '--objectname', required = True, help = "The name / ID of the NAT rule to delete.")
     remove_nat_rule_parser.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway for the NAT rule.  If not specified, default = "cgw"')   
     remove_nat_rule_parser.set_defaults(func = delete_nat_rule)
 
-    show_nat_parser=nat_parser_subs.add_parser('show-nat', parents = [nsx_url_flag], help = 'show the configured NAT rules')
+    show_nat_parser=nat_parser_subs.add_parser('show-nat', parents=[auth_flag,nsx_url_flag], help = 'show the configured NAT rules')
     show_nat_parser.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway to which to apply the NAT rule.  If not specified, default = "cgw"')
     show_nat_parser.set_defaults(func = get_nat_rules)
 
-    show_nat_stats=nat_parser_subs.add_parser('show-nat-stats', parents = [nsx_url_flag], help = 'Show the statistics for a given NAT rule.')
+    show_nat_stats=nat_parser_subs.add_parser('show-nat-stats', parents=[auth_flag,nsx_url_flag], help = 'Show the statistics for a given NAT rule.')
     show_nat_stats.add_argument('-n', '--objectname', required = True, help = "The name / ID of the rule to show statistics for.")
     show_nat_stats.add_argument('-t1id','--tier1_id', nargs = '?', default = 'cgw', help = 'The ID of the Tier1 gateway to which to apply the NAT rule.  If not specified, default = "cgw"')
     show_nat_stats.set_defaults(func = get_nat_stats)
@@ -5143,14 +5162,14 @@ def main():
     t1_parser_subs = t1_parser.add_subparsers(help='t1 sub-command help')
 
     # create individual parsers for each sub-command
-    t1_create_parser = t1_parser_subs.add_parser("create", parents=[nsx_url_flag], help = "Create a new, secondary T1 gateway.")
+    t1_create_parser = t1_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag], help = "Create a new, secondary T1 gateway.")
     t1_create_parser.set_defaults(func = t1_create)
 
-    t1_delete_parser = t1_parser_subs.add_parser("delete", parents=[nsx_url_flag], help = "Delete a secondary T1 gateway.")
+    t1_delete_parser = t1_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag], help = "Delete a secondary T1 gateway.")
     t1_delete_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
     t1_delete_parser.set_defaults(func = t1_remove)
 
-    t1_update_parser = t1_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration of a secondary T1 gateway.")
+    t1_update_parser = t1_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration of a secondary T1 gateway.")
     t1_update_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway.")
     t1_update_parser.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")    
     t1_update_parser.set_defaults(func = t1_configure)
@@ -5171,40 +5190,40 @@ def main():
     parent_vtc_parser = argparse.ArgumentParser(add_help=False)
     #     name
 
-    # connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents = [], help = 'Connect an vTGW to an AWS account')
-    # disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents = [], help = 'Disconnect a vTGW from an AWS account')
+    # connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,], help = 'Connect an vTGW to an AWS account')
+    # disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,], help = 'Disconnect a vTGW from an AWS account')
 
 # ============================
 # VTC - DXGW Operations
 # ============================
 
-    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents = [], help = 'Attach a Direct Connect Gateway to a vTGW')
-    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents = [], help = 'Detach a Direct Connect Gateway from a vTGW')
+    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,], help = 'Attach a Direct Connect Gateway to a vTGW')
+    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,], help = 'Detach a Direct Connect Gateway from a vTGW')
 
 # ============================
 # VTC - SDDC Operations
 # ============================
 
-    # get_sddc_info_parser=vtc_parser_subs.add_parser('get-sddc-info', parents = [], help = 'Display a list of all SDDCs')
-    # get_nsx_info_parser=vtc_parser_subs.add_parser('get-nsx-info', parents = [], help = 'Display NSX credentials and URLs')
-    # attach_sddc_parser=vtc_parser_subs.add_parser('attach-sddc', parents = [], help = 'Attach an SDDC to a vTGW')
-    # detach_sddc_parser=vtc_parser_subs.add_parser('detach-sddc', parents = [], help = 'Detach an SDDC from a vTGW')
+    # get_sddc_info_parser=vtc_parser_subs.add_parser('get-sddc-info', parents=[auth_flag,], help = 'Display a list of all SDDCs')
+    # get_nsx_info_parser=vtc_parser_subs.add_parser('get-nsx-info', parents=[auth_flag,], help = 'Display NSX credentials and URLs')
+    # attach_sddc_parser=vtc_parser_subs.add_parser('attach-sddc', parents=[auth_flag,], help = 'Attach an SDDC to a vTGW')
+    # detach_sddc_parser=vtc_parser_subs.add_parser('detach-sddc', parents=[auth_flag,], help = 'Detach an SDDC from a vTGW')
 
 # ============================
 # VTC - SDDC-Group Operations
 # ============================
 
-    # create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [], help = 'Create an SDDC group')
-    # delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [], help = 'Delete an SDDC group')
-    # get_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents = [], help = 'Display details for an SDDC group')
+    # create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents=[auth_flag,], help = 'Create an SDDC group')
+    # delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents=[auth_flag,], help = 'Delete an SDDC group')
+    # get_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents=[auth_flag,], help = 'Display details for an SDDC group')
 
 # ============================
 # VTC - VPC Operations
 # ============================
 
-    # attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents = [], help = 'Attach a VPC to a vTGW')
-    # detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents = [], help = 'Detach VPC from a vTGW')
-    # vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents = [], help = 'Add or remove vTGW static routes')
+    # attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents=[auth_flag,], help = 'Attach a VPC to a vTGW')
+    # detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents=[auth_flag,], help = 'Detach VPC from a vTGW')
+    # vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents=[auth_flag,], help = 'Add or remove vTGW static routes')
 
 # ============================
 # NSX-T - Firewall - Gateway
@@ -5216,7 +5235,7 @@ def main():
 
     # create individual parsers for each sub-command
 
-    new_cgw_rule_parser=gwfw_parser_subs.add_parser('new-cgw-rule', parents = [nsx_url_flag], formatter_class=argparse.RawTextHelpFormatter, help = "Create a new CGW security rule.  When specifying source or destination groups, note you may specify multiple simply by listing them, separated by spaces.")
+    new_cgw_rule_parser=gwfw_parser_subs.add_parser('new-cgw-rule', parents=[auth_flag,nsx_url_flag], formatter_class=argparse.RawTextHelpFormatter, help = "Create a new CGW security rule.  When specifying source or destination groups, note you may specify multiple simply by listing them, separated by spaces.")
     new_cgw_rule_parser.add_argument("-name", "--display_name", required= True, help = "The name of the rule")
     new_cgw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
     new_cgw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
@@ -5254,7 +5273,7 @@ def main():
     )
     new_cgw_rule_parser.set_defaults(func = newSDDCCGWRule)
 
-    new_mgw_rule_parser=gwfw_parser_subs.add_parser('new-mgw-rule', parents = [nsx_url_flag], help = 'Create a new MGW security rule.')
+    new_mgw_rule_parser=gwfw_parser_subs.add_parser('new-mgw-rule', parents=[auth_flag,nsx_url_flag], help = 'Create a new MGW security rule.')
     new_mgw_rule_parser.add_argument("-name", "--display_name", required= True, help = "The name of the rule")
     new_mgw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
     new_mgw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
@@ -5281,18 +5300,18 @@ def main():
     )
     new_mgw_rule_parser.set_defaults(func = newSDDCMGWRule)
 
-    remove_cgw_rule_parser=gwfw_parser_subs.add_parser('remove-cgw-rule', parents = [nsx_url_flag], help = 'delete a CGW security rule')
+    remove_cgw_rule_parser=gwfw_parser_subs.add_parser('remove-cgw-rule', parents=[auth_flag,nsx_url_flag], help = 'delete a CGW security rule')
     remove_cgw_rule_parser.add_argument("rule_id", help = "The ID of the rule you wish to delete.  Use './pyVMC.py gwfw show-cgw-rule for a list.")
     remove_cgw_rule_parser.set_defaults(func = removeSDDCCGWRule)
 
-    remove_mgw_rule_parser=gwfw_parser_subs.add_parser('remove-mgw-rule', parents = [nsx_url_flag], help = 'delete a MGW security rule')
+    remove_mgw_rule_parser=gwfw_parser_subs.add_parser('remove-mgw-rule', parents=[auth_flag,nsx_url_flag], help = 'delete a MGW security rule')
     remove_mgw_rule_parser.add_argument("rule_id", help = "The ID of the rule you wish to delete.  Use './pyVMC.py gwfw show-mgw-rule for a list.")
     remove_mgw_rule_parser.set_defaults(func = removeSDDCMGWRule)
 
-    show_cgw_rule_parser=gwfw_parser_subs.add_parser('show-cgw-rule', parents = [nsx_url_flag], help = 'show the CGW security rules')
+    show_cgw_rule_parser=gwfw_parser_subs.add_parser('show-cgw-rule', parents=[auth_flag,nsx_url_flag], help = 'show the CGW security rules')
     show_cgw_rule_parser.set_defaults(func = getSDDCCGWRule)
 
-    show_mgw_rule_parser=gwfw_parser_subs.add_parser('show-mgw-rule', parents = [nsx_url_flag], help = 'show the MGW security rules')
+    show_mgw_rule_parser=gwfw_parser_subs.add_parser('show-mgw-rule', parents=[auth_flag,nsx_url_flag], help = 'show the MGW security rules')
     show_mgw_rule_parser.set_defaults(func= getSDDCMGWRule)
 
 # ============================
@@ -5306,7 +5325,7 @@ def main():
     dfw_parser_subs = dfw_parser_main.add_subparsers(help='dfw sub-command help')
 
     # create individual parsers for each sub-command
-    new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents = [nsx_url_flag], help = 'create a new DFW security rule')
+    new_dfw_rule_parser=dfw_parser_subs.add_parser('new-dfw-rule', parents=[auth_flag,nsx_url_flag], help = 'create a new DFW security rule')
     new_dfw_rule_parser.add_argument("display_name", help = "The name of the rule")
     new_dfw_rule_parser.add_argument("--services", required= True, nargs = '+', help = "The service(s) to configure for the firewall rule.  You may specify multiple simply by listing them, separated by spaces.")
     new_dfw_rule_parser.add_argument("--action", choices= ["ALLOW", "DROP", "REJECT"], type= str.upper, required = True, help = "Choose the action to define for the rule.")
@@ -5344,7 +5363,7 @@ def main():
     )
     new_dfw_rule_parser.set_defaults(func = newSDDCDFWRule)
 
-    new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents = [nsx_url_flag], help = 'create a new DFW section')
+    new_dfw_section_parser=dfw_parser_subs.add_parser('new-dfw-section', parents=[auth_flag,nsx_url_flag], help = 'create a new DFW section')
     new_dfw_section_parser.add_argument("display_name", help = "The name of the section you wish to create.")
     new_dfw_section_parser.add_argument("--category", choices= ["Ethernet","Emergency", "Infrastructure", "Environment","Application"], required= False, help ='''
     Policy framework provides five pre-defined categories for classifying a security policy. They are "Ethernet","Emergency", "Infrastructure", "Environment" and "Application". 
@@ -5355,19 +5374,19 @@ def main():
     )
     new_dfw_section_parser.set_defaults(func = newSDDCDFWSection)
 
-    remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents = [nsx_url_flag], help = 'delete a DFW rule')
+    remove_dfw_rule_parser=dfw_parser_subs.add_parser('remove-dfw-rule', parents=[auth_flag,nsx_url_flag], help = 'delete a DFW rule')
     remove_dfw_rule_parser.add_argument('section_id', help = "The section ID containing the rule you wish to delete.  Use './pyVMC.py dfw show-dfw-section' for a list.")
     remove_dfw_rule_parser.add_argument('rule_id', help = "The ID of the rule you wish to delete.  Use './pyVMC.py dfw show-dfw-section-rules' for a list.")
     remove_dfw_rule_parser.set_defaults(func = removeSDDCDFWRule)
 
-    remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents = [nsx_url_flag], help = 'delete a DFW section')
+    remove_dfw_section_parser=dfw_parser_subs.add_parser('remove-dfw-section', parents=[auth_flag,nsx_url_flag], help = 'delete a DFW section')
     remove_dfw_section_parser.add_argument('section_id', help = "The name of the section you wish to remove.  Use './pyVMC.py dfw show-dfw-section' for a list.")
     remove_dfw_section_parser.set_defaults(func = removeSDDCDFWSection)
 
-    show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents = [nsx_url_flag], help = 'show the DFW sections')
+    show_dfw_section_parser=dfw_parser_subs.add_parser('show-dfw-section', parents=[auth_flag,nsx_url_flag], help = 'show the DFW sections')
     show_dfw_section_parser.set_defaults(func = getSDDCDFWSection)
 
-    show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents = [nsx_url_flag], help = 'show the DFW security rules within a section')
+    show_dfw_section_rules_parser=dfw_parser_subs.add_parser('show-dfw-section-rules', parents=[auth_flag,nsx_url_flag], help = 'show the DFW security rules within a section')
     show_dfw_section_rules_parser.add_argument('section_id', help = "The name of the section you wish to retrieve.  Use './pyVMC.py dfw show-dfw-section' for a list.")
     show_dfw_section_rules_parser.set_defaults(func = getSDDCDFWRule)
 
@@ -5381,63 +5400,63 @@ def main():
     # create a subparser for nsxaf sub-commands
     nsxaf_parser_subs = nsxaf_parser.add_subparsers(help='nsxaf sub-command help')
 
-    show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents = [nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
+    show_ids_cluster_status_parser=nsxaf_parser_subs.add_parser('show-ids-cluster-status', parents=[auth_flag,nsx_url_flag], help = 'Show IDS status for each cluster in the SDDC')
     show_ids_cluster_status_parser.set_defaults(func = getNsxIdsEnabledClusters)
     
-    enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on cluster')
+    enable_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS on cluster')
     enable_cluster_ids_parser.add_argument('cluster_id', help = "The ID of the cluster to enable with Advanced Firewall capabilities.")
     enable_cluster_ids_parser.set_defaults(func = enableNsxIdsCluster)
     
-    disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on cluster')
+    disable_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Disable IDS on cluster')
     disable_cluster_ids_parser.add_argument('cluster_id', help = "The ID of the cluster to enable with Advanced Firewall capabilities.")
     disable_cluster_ids_parser.set_defaults(func = disableNsxIdsCluster)
     
-    enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents = [nsx_url_flag], help = 'Enable IDS on all clusters')
+    enable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('enable-all-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS on all clusters')
     enable_all_cluster_ids_parser.set_defaults(func = enableNsxIdsAll)
     
-    disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents = [nsx_url_flag], help = 'Disable IDS on all clusters')
+    disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Disable IDS on all clusters')
     disable_all_cluster_ids_parser.set_defaults(func = disableNsxIdsAll)
     
-    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents = [nsx_url_flag], help = 'Enable IDS signature auto update')
+    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS signature auto update')
     enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
     
-    ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents = [nsx_url_flag], help = 'Force update of IDS signatures')
+    ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents=[auth_flag,nsx_url_flag], help = 'Force update of IDS signatures')
     ids_update_signatures_parser.set_defaults(func = NsxIdsUpdateSignatures)
     
-    show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents = [nsx_url_flag], help = 'Show downloaded signature versions')
+    show_ids_signature_versions_parser=nsxaf_parser_subs.add_parser('show-ids-signature-versions', parents=[auth_flag,nsx_url_flag], help = 'Show downloaded signature versions')
     show_ids_signature_versions_parser.set_defaults(func = getNsxIdsSigVersions)
     
-    show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents = [nsx_url_flag], help = 'Show all IDS profiles')
+    show_ids_profiles_parser=nsxaf_parser_subs.add_parser('show-ids-profiles', parents=[auth_flag,nsx_url_flag], help = 'Show all IDS profiles')
     show_ids_profiles_parser.set_defaults(func = getIdsProfiles)
     
-    search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents = [nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
+    search_product_affected_parser=nsxaf_parser_subs.add_parser('search-product-affected', parents=[auth_flag,nsx_url_flag], help = 'Search through the active IDS signature for specific product affected. Useful when building an IDS Profile')
     search_product_affected_parser.set_defaults(func = search_ids_signatures_product_affected)
     
-    create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents = [nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
+    create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
     create_ids_profile_parser.add_argument("objectname", help = "The name of the profile to create.")
     create_ids_profile_parser.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
     create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
     create_ids_profile_parser.set_defaults(func = create_ids_profile)
 
-    delete_ids_profile_parser=nsxaf_parser_subs.add_parser('delete-ids-profile', parents = [nsx_url_flag], help = 'Delete the specified IDS profile.')
+    delete_ids_profile_parser=nsxaf_parser_subs.add_parser('delete-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Delete the specified IDS profile.')
     delete_ids_profile_parser.add_argument("objectname", help = "The name of the profile to delete.")
     delete_ids_profile_parser.set_defaults(func = delete_ids_profile)
 
-    show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents = [nsx_url_flag], help = 'List all IDS policies')
+    show_ids_policies_parser=nsxaf_parser_subs.add_parser('show-ids-policies', parents=[auth_flag,nsx_url_flag], help = 'List all IDS policies')
     show_ids_policies_parser.set_defaults(func = listIdsPolicies)
 
-    create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents = [nsx_url_flag], help = 'Create an IDS policy')
+    create_ids_policy_parser=nsxaf_parser_subs.add_parser('create-ids-policy', parents=[auth_flag,nsx_url_flag], help = 'Create an IDS policy')
     create_ids_policy_parser.add_argument("objectname", help = "The name of the policy to create.")
     create_ids_policy_parser.set_defaults(func = create_ids_policy)
 
-    delete_ids_policy_parser=nsxaf_parser_subs.add_parser('delete-ids-policy', parents = [nsx_url_flag], help = 'Delete the specified IDS policy.')
+    delete_ids_policy_parser=nsxaf_parser_subs.add_parser('delete-ids-policy', parents=[auth_flag,nsx_url_flag], help = 'Delete the specified IDS policy.')
     delete_ids_policy_parser.add_argument("objectname", help = "The name of the policy to delete.")
     delete_ids_policy_parser.set_defaults(func = delete_ids_policy)
 
-    show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents = [nsx_url_flag], help = 'List all IDS rules')
+    show_ids_rules_parser=nsxaf_parser_subs.add_parser('show-ids-rules', parents=[auth_flag,nsx_url_flag], help = 'List all IDS rules')
     show_ids_rules_parser.set_defaults(func = get_ids_rules)
 
-    create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents = [nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
+    create_ids_rule_parser=nsxaf_parser_subs.add_parser('create-ids-rule', parents=[auth_flag,nsx_url_flag], help = 'Create an IDS rule using previously created IDS profile and inventory groups')
     create_ids_rule_parser.add_argument("objectname", help = "The name of the rule to create.")
     create_ids_rule_parser.add_argument('ids_profile', help='The IDS Profile to evaluate against. Required argument.')
     create_ids_rule_parser.add_argument('ids_policy', help='The IDS Policy this rule will be created under. Required argument.')
@@ -5448,7 +5467,7 @@ def main():
     create_ids_rule_parser.add_argument('-srv', '--services', required=False, default='ANY', nargs='*', help='Services this IDS rules is applied against.  Default is ANY.')
     create_ids_rule_parser.set_defaults(func = create_ids_rule)
 
-    delete_ids_rule_parser=nsxaf_parser_subs.add_parser('delete-ids-rule', parents = [nsx_url_flag], help = 'Delete the specified IDS rule.')
+    delete_ids_rule_parser=nsxaf_parser_subs.add_parser('delete-ids-rule', parents=[auth_flag,nsx_url_flag], help = 'Delete the specified IDS rule.')
     delete_ids_rule_parser.add_argument("objectname", help = "The name of the rule to delete.")
     delete_ids_rule_parser.add_argument('ids_policy', help='The IDS Policy this rule exists under. Required argument.')
     delete_ids_rule_parser.set_defaults(func = delete_ids_rule)
@@ -5466,7 +5485,7 @@ def main():
 # NSX-T - Inventory Groups
 # ============================
 
-    new_inv_group_parser=inventory_parser_subs.add_parser('new-inv-group', parents = [nsx_url_flag], help = 'create a new group')
+    new_inv_group_parser=inventory_parser_subs.add_parser('new-inv-group', parents=[auth_flag,nsx_url_flag], help = 'create a new group')
     new_inv_group_parser.add_argument("gateway", choices= ["cgw", "mgw"], help= "The gateway domain for which the group will be defined.")
     new_inv_group_parser.add_argument("objectname", help= "The name of the inventory group to create. Use 'pyVMC.py inventory show-group' for a complete list.")
     new_inv_group_parser.add_argument("--type", choices=["ip-based", "member-based", "criteria-based", "group-based"], required = True, help = '''
@@ -5485,17 +5504,17 @@ def main():
     new_inv_group_parser.add_argument("--filter_value", help = "String containing the value to filter on for criteria-based membership.")
     new_inv_group_parser.set_defaults(func = new_inv_group)
 
-    remove_inv_group_parser=inventory_parser_subs.add_parser('remove-inv-group', parents = [nsx_url_flag], help = 'remove a group')
+    remove_inv_group_parser=inventory_parser_subs.add_parser('remove-inv-group', parents=[auth_flag,nsx_url_flag], help = 'remove a group')
     remove_inv_group_parser.add_argument("gateway", choices= ["cgw", "mgw"], help= "The gateway domain for which the group is defined.")
     remove_inv_group_parser.add_argument("objectname", help= "The name of the inventory group to delete. Use 'pyVMC.py inventory show-group' for a complete list.")
     remove_inv_group_parser.set_defaults(func = remove_inv_group)
 
-    show_inv_group_parser=inventory_parser_subs.add_parser('show-inv-group', parents = [nsx_url_flag], help = 'show existing groups')
+    show_inv_group_parser=inventory_parser_subs.add_parser('show-inv-group', parents=[auth_flag,nsx_url_flag], help = 'show existing groups')
     show_inv_group_parser.add_argument("gateway", choices = ["cgw", "mgw", "both"], nargs = "?", default = "both", help = "Show the inventory groups associated with the MGW or CGW gateways.")
     show_inv_group_parser.add_argument("-n", "--objectname", help= "The name of the inventory group to retrieve details for. Use 'pyVMC.py inventory show-group' for a complete list.")
     show_inv_group_parser.set_defaults(func = get_inv_groups)
 
-    show_inv_group_association_parser=inventory_parser_subs.add_parser('show-inv-group-association', parents = [nsx_url_flag], help = 'Show security rules used by a group')
+    show_inv_group_association_parser=inventory_parser_subs.add_parser('show-inv-group-association', parents=[auth_flag,nsx_url_flag], help = 'Show security rules used by a group')
     show_inv_group_association_parser.add_argument("gateway", choices = ["cgw", "mgw"], help = "Show the inventory groups associated with the MGW or CGW gateways.")
     show_inv_group_association_parser.add_argument("objectname", help= "The name of the inventory group to retrieve details for. Use 'pyVMC.py inventory show-group' for a complete list.")
     show_inv_group_association_parser.set_defaults(func = get_inv_group_assoc)
@@ -5505,7 +5524,7 @@ def main():
 # ============================
 
     # create individual parsers for each sub-command
-    new_service_parser=inventory_parser_subs.add_parser('new-service', parents = [nsx_url_flag], help = 'create a new service')
+    new_service_parser=inventory_parser_subs.add_parser('new-service', parents=[auth_flag,nsx_url_flag], help = 'create a new service')
     new_service_parser.add_argument("objectname", help = "The name of the inventory service to create.")
     new_service_parser.add_argument("-i", "--interactive", action='store_true', help = "Use to interactively define service entries and ports.  If not used, command expects additional arguments for service entries and ports.")
     new_service_parser.add_argument("-src", "--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
@@ -5513,11 +5532,11 @@ def main():
     new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
     new_service_parser.set_defaults(func = newSDDCService)
 
-    remove_service_parser=inventory_parser_subs.add_parser('remove-service', parents = [nsx_url_flag], help = 'remove a service')
+    remove_service_parser=inventory_parser_subs.add_parser('remove-service', parents=[auth_flag,nsx_url_flag], help = 'remove a service')
     remove_service_parser.add_argument("objectname", help = "The ID of the inventory service to delete.  Use './pyVMC.py inventory show-services' for a list.")
     remove_service_parser.set_defaults(func = removeSDDCService)
 
-    show_services_parser=inventory_parser_subs.add_parser('show-services', parents = [nsx_url_flag], help = 'show services')
+    show_services_parser=inventory_parser_subs.add_parser('show-services', parents=[auth_flag,nsx_url_flag], help = 'show services')
     show_services_parser.add_argument("-n", "--objectname", help = "The ID of the inventory service to find, shows just the service entries for that one service.")
     show_services_parser.set_defaults(func = getSDDCService)    
 
@@ -5538,9 +5557,9 @@ def main():
     parent_dns_parser.add_argument("-t1-scope", "--tier1-scope", choices=["CGW","MGW"], help= "Specify either CGW or MGW as the tier 1 gateway to apply to.")
 
     # create individual parsers for each sub-command
-    show_dns_svc_parser=system_parser_subs.add_parser("show-dns-services", parents = [nsx_url_flag, parent_dns_parser], help="Show currently configured DNS services")
+    show_dns_svc_parser=system_parser_subs.add_parser("show-dns-services", parents=[auth_flag,nsx_url_flag, parent_dns_parser], help="Show currently configured DNS services")
     show_dns_svc_parser.set_defaults(func=getSDDCDNS_Services)   # exra logic necessary to call correct function
-    show_dns_zones_parser = system_parser_subs.add_parser('show-dns-zones', parents = [nsx_url_flag ,parent_dns_parser], help = "Show currently configured DNS zone services.")
+    show_dns_zones_parser = system_parser_subs.add_parser('show-dns-zones', parents=[auth_flag,nsx_url_flag ,parent_dns_parser], help = "Show currently configured DNS zone services.")
     show_dns_zones_parser.set_defaults(func=getSDDCDNS_Zones)
 
 
@@ -5549,20 +5568,20 @@ def main():
 # ============================
 
     # create individual parsers for each sub-command
-    new_sddc_public_ip_parser=system_parser_subs.add_parser('new-sddc-public-ip', parents = [nsx_url_flag], help = 'request a new public IP')
+    new_sddc_public_ip_parser=system_parser_subs.add_parser('new-sddc-public-ip', parents=[auth_flag,nsx_url_flag], help = 'request a new public IP')
     new_sddc_public_ip_parser.add_argument("ip_id", help = "The name / description of the public IP address; spaces are not allowed.")
     new_sddc_public_ip_parser.set_defaults(func = newSDDCPublicIP)
 
-    remove_sddc_public_ip_parser=system_parser_subs.add_parser('remove-sddc-public-ip', parents = [nsx_url_flag], help = 'remove an existing public IP')
+    remove_sddc_public_ip_parser=system_parser_subs.add_parser('remove-sddc-public-ip', parents=[auth_flag,nsx_url_flag], help = 'remove an existing public IP')
     remove_sddc_public_ip_parser.add_argument("ip_id", help = "The name / description of the public IP address; spaces are not allowed.")
     remove_sddc_public_ip_parser.set_defaults(func = deleteSDDCPublicIP)
 
-    set_sddc_public_ip_parser=system_parser_subs.add_parser('set-sddc-public-ip', parents = [nsx_url_flag], help = 'update the description of an existing public IP')
+    set_sddc_public_ip_parser=system_parser_subs.add_parser('set-sddc-public-ip', parents=[auth_flag,nsx_url_flag], help = 'update the description of an existing public IP')
     set_sddc_public_ip_parser.add_argument("ip_id", help = "The current ID of the public IP address to update.  Use './pyVMC.py system show-sddc-public-ip to see a list.")
     set_sddc_public_ip_parser.add_argument("notes", help = "The NEW name / description of the public IP address to update; spaces are not allowed.")
     set_sddc_public_ip_parser.set_defaults(func = setSDDCPublicIP)
 
-    show_sddc_public_ip_parser=system_parser_subs.add_parser('show-sddc-public-ip', parents = [nsx_url_flag], help = 'show the public IPs')
+    show_sddc_public_ip_parser=system_parser_subs.add_parser('show-sddc-public-ip', parents=[auth_flag,nsx_url_flag], help = 'show the public IPs')
     show_sddc_public_ip_parser.set_defaults(func = getSDDCPublicIP)
 
 # ============================
@@ -5575,10 +5594,10 @@ def main():
     mtu_parser_subs = mtu_parser_main.add_subparsers(help='mtu sub-command help')
 
     # create individual parsers for each sub-command
-    mtu_show_parser = mtu_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show the currently configured value for MTU on the Intranet Interface.")
+    mtu_show_parser = mtu_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show the currently configured value for MTU on the Intranet Interface.")
     mtu_show_parser.set_defaults(func = getSDDCMTU)
 
-    mtu_update_parser = mtu_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the MTU on the Intranet Interface.")
+    mtu_update_parser = mtu_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration value for the MTU on the Intranet Interface.")
     mtu_update_parser.add_argument("mtu", help = "new MTU value for the Direct Connect / Intranet Interface.")
     mtu_update_parser.set_defaults(func = setSDDCMTU)
 
@@ -5592,10 +5611,10 @@ def main():
     asn_parser_subs = asn_parser_main.add_subparsers(help='asn sub-command help')
 
     # create individual parsers for each sub-command
-    asn_show_parser = asn_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show the currently configured value for ASN on the Intranet Interface.")
+    asn_show_parser = asn_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show the currently configured value for ASN on the Intranet Interface.")
     asn_show_parser.set_defaults(func = getSDDCBGPAS)
 
-    asn_update_parser = asn_parser_subs.add_parser("update", parents=[nsx_url_flag], help = "Update the configuration value for the ASN on the Intranet Interface.")
+    asn_update_parser = asn_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration value for the ASN on the Intranet Interface.")
     asn_update_parser.add_argument("-asn", help = "new ASN value for the Direct Connect / Intranet Interface.")
     asn_update_parser.set_defaults(func = setSDDCBGPAS)
 
@@ -5609,7 +5628,7 @@ def main():
     dx_admin_cost_parser_subs = dx_admin_cost.add_subparsers(help='admin cost sub-command help')
 
     # create individual parsers for each sub-command
-    dx_admin_cost_show = dx_admin_cost_parser_subs.add_parser("show", parents=[nsx_url_flag], help = "Show currently configured routing preference / admin cost - VPN or DX.")
+    dx_admin_cost_show = dx_admin_cost_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show currently configured routing preference / admin cost - VPN or DX.")
     dx_admin_cost_show.set_defaults(func = getSDDCBGPVPN)
 
 
@@ -5617,14 +5636,14 @@ def main():
 # NSX-T - Interfaces, Egress counters
 # ============================
 
-    show_egress_interface_counters_parser=system_parser_subs.add_parser('show-egress-interface-counters', parents = [nsx_url_flag], help = 'show current Internet interface egress counters')
+    show_egress_interface_counters_parser=system_parser_subs.add_parser('show-egress-interface-counters', parents=[auth_flag,nsx_url_flag], help = 'show current Internet interface egress counters')
     show_egress_interface_counters_parser.set_defaults(func = getSDDCEgressInterfaceCtrs)
 
 # ============================
 # NSX-T - Show Routes
 # ============================
 
-    show_routes_parser= system_parser_subs.add_parser('show-routes', parents = [nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
+    show_routes_parser= system_parser_subs.add_parser('show-routes', parents=[auth_flag,nsx_url_flag, org_id_flag, vmc_url_flag], help = 'Show SDDC routes')
     show_routes_parser.add_argument('route-type', choices = ['t0', 'bgp', 'static', 'tgw'], type = str.lower, help = " Select the type of route information to display - t0 (all), bgp (learned and advertised), static, tgw (Trasit Gateway configured).")
     show_routes_parser.add_argument('--search-name', help = "Optionally, enter the name of the SDDC group you wish to view the route table for.")
     show_routes_parser.set_defaults(func = getSDDCroutes)
@@ -5634,7 +5653,7 @@ def main():
 # NSX-T - Search
 # ============================
     """ Subparser for NSX Search functions """
-    search_nsx_parser = subparsers.add_parser('search-nsx', parents = [nsx_url_flag],formatter_class=MyFormatter, help='Search the NSX Manager inventory.')
+    search_nsx_parser = subparsers.add_parser('search-nsx', parents=[auth_flag,nsx_url_flag],formatter_class=MyFormatter, help='Search the NSX Manager inventory.')
     search_nsx_parser.add_argument("object_type", choices=["BgpNeighborConfig","BgpRoutingConfig","Group","IdsSignature","PrefixList","RouteBasedIPSecVPNSession","Segment","Service","StaticRoute","Tier0","Tier1","VirtualMachine","VirtualNetworkInterface"], help="The type of object to search for.")
     search_nsx_parser.add_argument("-oid","--object_id", required=False, help="The name of the object you are searching for.")
     search_nsx_parser.set_defaults(func=search_nsx)
@@ -5653,7 +5672,7 @@ def main():
     vcdr_scfs_parser_subs = vcdr_scfs_parser.add_subparsers(help='vcdr scfs sub-command help')
 
     # create individual parsers for each SCFS sub-sub-command(s)
-    vcdr_scfs_show_parser = vcdr_scfs_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Scale-out file System(s).")
+    vcdr_scfs_show_parser = vcdr_scfs_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR Scale-out file System(s).")
     vcdr_scfs_show_parser.add_argument("-cfsid","--cloud_fs_id", required=False, help= "ID of the Cloud File System")
     vcdr_scfs_show_parser.set_defaults(func = getVCDRCloudFS)
 
@@ -5662,7 +5681,7 @@ def main():
     vcdr_pg_parser_subs = vcdr_pg_parser.add_subparsers(help='vcdr pg sub-command help')
 
     # create individual parsers for each PG sub-sub-command(s)
-    vcdr_pg_show_parser = vcdr_pg_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Protection Group(s).")
+    vcdr_pg_show_parser = vcdr_pg_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR Protection Group(s).")
     vcdr_pg_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
     vcdr_pg_show_parser.add_argument("-pgid", "--protection_group_id", required=False, help = "ID of the protection group")
     vcdr_pg_show_parser.set_defaults(func = getVCDRPG)
@@ -5672,7 +5691,7 @@ def main():
     vcdr_snaps_parser_subs = vcdr_snaps_parser.add_subparsers(help='vcdr snaps sub-command help')
 
     # create individual parsers for each Snapshot sub-sub-command(s)
-    vcdr_snaps_show_parser = vcdr_snaps_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Snapshot(s).")
+    vcdr_snaps_show_parser = vcdr_snaps_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR Snapshot(s).")
     vcdr_snaps_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
     vcdr_snaps_show_parser.add_argument("-pgid", "--protection_group_id", required=True, help = "ID of the protection group")
     vcdr_snaps_show_parser.add_argument("-snapid", "--protection_group_snap_id", required=False, help = "ID of the protection group snapshot")
@@ -5683,7 +5702,7 @@ def main():
     vcdr_rsddc_parser_subs = vcdr_rsddc_parser.add_subparsers(help='vcdr rsddc sub-command help')
 
     # create individual parsers for each Recovery SDDC sub-sub-command(s)
-    vcdr_rsddc_show_parser = vcdr_rsddc_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Recovery SDDC(s).")
+    vcdr_rsddc_show_parser = vcdr_rsddc_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR Recovery SDDC(s).")
     vcdr_rsddc_show_parser.add_argument("-rsddcid", "--recovery_sddc_id", required=False, help = "ID of the recovery SDDC")
     vcdr_rsddc_show_parser.set_defaults(func = getVCDRSDDCs)
 
@@ -5692,7 +5711,7 @@ def main():
     vcdr_psite_parser_subs = vcdr_psite_parser.add_subparsers(help='vcdr psite sub-command help')
 
     # create individual parsers for each Protected Site sub-sub-command(s)
-    vcdr_psite_show_parser = vcdr_psite_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR Protected Site(s).")
+    vcdr_psite_show_parser = vcdr_psite_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR Protected Site(s).")
     vcdr_psite_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
     vcdr_psite_show_parser.add_argument("-siteid", "--site_id", required=False, help = "ID of the protected site")
     vcdr_psite_show_parser.set_defaults(func = getVCDRSites)
@@ -5702,7 +5721,7 @@ def main():
     vcdr_vms_parser_subs = vcdr_vms_parser.add_subparsers(help='vcdr scfs sub-command help')
 
     # create individual parsers for each Protected VM sub-sub-command(s)
-    vcdr_vms_show_parser = vcdr_vms_parser_subs.add_parser("show", parents=[vcdr_url_flag], help = "Show information about the VCDR protected VM(s).")
+    vcdr_vms_show_parser = vcdr_vms_parser_subs.add_parser("show", parents=[auth_flag,vcdr_url_flag], help = "Show information about the VCDR protected VM(s).")
     vcdr_vms_show_parser.add_argument("-cfsid","--cloud_fs_id", required=True, help= "ID of the Cloud File System")
     vcdr_vms_show_parser.set_defaults(func = getVCDRVM)
 
@@ -5731,14 +5750,6 @@ def main():
             clientId = config.get("vmcConfig", "oauth_clientId")
             clientSecret = config.get("vmcConfig", "oauth_clientSecret")
             auth_info = True
-
-        if len(Refresh_Token) != 0 and len(clientId) != 0:
-            print()
-            print('For authentication either of refresh_Token or OAuth clientId/clientSecret is needed.')
-            print('As values for both OAuth and Refresh Token are present, Refresh Token will be used for authentication.')
-            print()
-            clientId = ""
-            clientSecret = ""
 
         if config.has_section("vtcConfig"):
             aws_acc         = config.get("vtcConfig", "MyAWS")
@@ -5796,48 +5807,60 @@ def main():
         pass
 
     # Depending on params in config.ini use OAuth or Refresh Token for auth
-    params = vars(args)
-    if len(clientId) != 0:
-        sessiontoken = getAccessToken(oauth_clientId=clientId,oauth_clientSecret=clientSecret)
-    else:
-        sessiontoken = getAccessToken(myKey=Refresh_Token)
+    sessiontoken = ''
+    try:
+        auth_method = args.oauth
+        match auth_method:
+            case "oauth":
+                auth_params = {'auth_method':auth_method, 'strCSPProdURL':strCSPProdURL, 'oauth_clientSecret':clientSecret, 'oauth_clientId':clientId}
+                sessiontoken = getAccessToken(**auth_params)
+            case "refresh_token":
+                auth_params = {'auth_method':auth_method, 'strCSPProdURL':strCSPProdURL, 'myKey':Refresh_Token}
+                sessiontoken = getAccessToken(**auth_params)
+    except:
+        auth_params = {'auth_method':"refresh_token", 'strCSPProdURL':strCSPProdURL, 'myKey':Refresh_Token}
+        sessiontoken = getAccessToken(**auth_params)
+
     if sessiontoken == None:
         sys.exit(1)
         
+    # Build dictionary to pass to later functions
+    params = vars(args)
+
     # Update the dictionary with the session token
     params.update({"sessiontoken": sessiontoken})
 
     # If flags are present for VMC, add the appropriate URL to the parameters payload. Command line arguments overload
     try:
-        args.strProdURL
+        args.vmc_flag
         params.update({"strProdURL": strProdURL})
     except:
         pass
 
     # If flags are present for CSP, add the appropriate URL to the parameters payload.
     try:
-        args.strCSPProdURL
+        args.csp_flag
         params.update({"strCSPProdURL": strCSPProdURL})
     except:
         pass
 
     # If flags are present for VCDR, add the appropriate URL to the parameters payload.
     try:
-        args.strVCDRProdURL
+        args.vcdr_flag
         params.update({"strVCDRProdURL": strVCDRProdURL})
     except:
         pass
 
     # If flags are present for ORG_ID, add the ORG_ID to the parameters payload.
     try:
-        args.ORG_ID
+        args.org_flag
         params.update({"ORG_ID": ORG_ID})
     except:
         pass
 
  # If flags are present for SDDC_ID, add the SDDC_ID to the parameters payload.
     try:
-        args.SDDC_ID
+        args.sddc_flag
         params.update({"SDDC_ID": SDDC_ID})
     except:
         pass
