@@ -1,0 +1,328 @@
+[
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "53","135","88","389","464","445","636","3268-3269","49152-65535"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_Directory_Service_TCP",
+                "display_name": "Amazon Directory Service TCP ports",
+                "path": "/infra/services/AWS_Directory_Service/service-entries/AWS_Directory_Service_TCP",
+                "relative_path": "AWS_Directory_Service",
+                "parent_path": "/infra/services/AWS_Directory_Service"
+            },
+            {
+                "l4_protocol": "UDP",
+                "source_ports": [],
+                "destination_ports": [
+                    "53","88","123","389","464"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_Directory_Service_UDP",
+                "display_name": "Amazon Directory Service UDP ports",
+                "path": "/infra/services/AWS_Directory_Service/service-entries/AWS_Directory_Service_UDP",
+                "relative_path": "AWS_Directory_Service",
+                "parent_path": "/infra/services/AWS_Directory_Service"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_Directory_Service",
+        "display_name": "AWS Directory Service",
+        "description": "AWS Directory Service",
+        "path": "/infra/services/AWS_Directory_Service",
+        "relative_path": "AWS_Directory_Service",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "2049"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_EFS_2049",
+                "display_name": "Amazon EFS 2049",
+                "path": "/infra/services/AWS_EFS/service-entries/AWS_EFS_2049",
+                "relative_path": "AWS_EFS",
+                "parent_path": "/infra/services/AWS_EFS"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_EFS",
+        "display_name": "Amazon Elastic File System",
+        "description": "Amazon Elastic File System",
+        "path": "/infra/services/AWS_EFS",
+        "relative_path": "AWS_EFS",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "3260"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_FSX_ISCSI_3260",
+                "display_name": "AWS FSx - iSCSI",
+                "path": "/infra/services/AWS_FSX_ISCSI/service-entries/AWS_FSX_ISCSI_3260",
+                "relative_path": "AWS_FSX_ISCSI",
+                "parent_path": "/infra/services/AWS_FSX_ISCSI"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_FSX_ISCSI",
+        "display_name": "Amazon FSx - iSCSI",
+        "description": "Amazon FSx - iSCSI",
+        "path": "/infra/services/AWS_FSX_ISCSI",
+        "relative_path": "AWS_FSX_ISCSI",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "111","635","2049"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_FSX_NFS_TCP",
+                "display_name": "AWS FSx - NFS TCP ports",
+                "path": "/infra/services/AWS_FSX_NFS/service-entries/AWS_FSX_NFS_TCP",
+                "relative_path": "AWS_FSX_NFS",
+                "parent_path": "/infra/services/AWS_FSX_NFS"
+            },
+            {
+                "l4_protocol": "UDP",
+                "source_ports": [],
+                "destination_ports": [
+                    "111","635","2049"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_FSX_NFS_UDP",
+                "display_name": "AWS FSx - NFS UDP ports",
+                "path": "/infra/services/AWS_FSX_NFS/service-entries/AWS_FSX_NFS_UDP",
+                "relative_path": "AWS_FSX_NFS",
+                "parent_path": "/infra/services/AWS_FSX_NFS"
+            }            
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_FSX_NFS",
+        "display_name": "Amazon FSx - NFS",
+        "description": "Amazon FSx - NFS",
+        "path": "/infra/services/AWS_FSX_NFS",
+        "relative_path": "AWS_FSX_NFS",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "445"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_FSX_WINDOWS_445",
+                "display_name": "AWS FSx - SMB - Windows 445",
+                "path": "/infra/services/AWS_FSX_WINDOWS_SMB/service-entries/AWS_FSX_WINDOWS_445",
+                "relative_path": "AWS_FSX_WINDOWS_SMB",
+                "parent_path": "/infra/services/AWS_FSX_WINDOWS_SMB"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_FSX_WINDOWS_SMB",
+        "display_name": "Amazon FSx SMB - Windows",
+        "description": "Amazon FSx SMB - Windows",
+        "path": "/infra/services/AWS_FSX_WINDOWS_SMB",
+        "relative_path": "AWS_FSX_WINDOWS_SMB",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "5985"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_FSX_WINDOWS_5985",
+                "display_name": "AWS FSx - WinRM - 5985",
+                "path": "/infra/services/AWS_FSX_WINDOWS_WINRM/service-entries/AWS_FSX_WINDOWS_5985",
+                "relative_path": "AWS_FSX_WINDOWS_WINRM",
+                "parent_path": "/infra/services/AWS_FSX_WINDOWS_WINRM"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_FSX_WINDOWS_WINRM",
+        "display_name": "Amazon FSx WinRM - Windows",
+        "description": "Amazon FSx WinRM - Windows",
+        "path": "/infra/services/AWS_FSX_WINDOWS_WINRM",
+        "relative_path": "AWS_FSX_WINDOWS_WINRM",
+        "parent_path": "/infra"
+    },         
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "3306"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_Aurora_3306",
+                "display_name": "AWS RDS Aurora 3306",
+                "path": "/infra/services/AWS_Aurora/service-entries/AWS_RDS_Aurora_3306",
+                "relative_path": "AWS_RDS_Aurora",
+                "parent_path": "/infra/services/AWS_RDS_Aurora"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_Aurora",
+        "display_name": "Amazon RDS - Aurora",
+        "description": "Amazon Relational Database Service - Aurora",
+        "path": "/infra/services/AWS_RDS_Aurora",
+        "relative_path": "AWS_RDS_Aurora",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "3306"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_MariaDB_3306",
+                "display_name": "Amazon RDS MariaDB 3306",
+                "path": "/infra/services/AWS_RDS_MariaDB/service-entries/AWS_RDS_MariaDB_3306",
+                "relative_path": "AWS_RDS_MariaDB",
+                "parent_path": "/infra/services/AWS_RDS_MariaDB"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_MariaDB",
+        "display_name": "Amazon RDS - MariaDB",
+        "description": "Amazon Relational Database Service - MariaDB",
+        "path": "/infra/services/AWS_RDS_MariaDB",
+        "relative_path": "AWS_RDS_MariaDB",
+        "parent_path": "/infra"
+    },    
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "3306"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_MySQL_3306",
+                "display_name": "Amazon RDS MySQL 3306",
+                "path": "/infra/services/AWS_RDS_MySQL/service-entries/AWS_RDS_MySQL_3306",
+                "relative_path": "AWS_RDS_MySQL",
+                "parent_path": "/infra/services/AWS_RDS_MySQL"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_MySQL",
+        "display_name": "Amazon RDS - MySQL",
+        "description": "Amazon Relational Database Service - MySQL",
+        "path": "/infra/services/AWS_RDS_MySQL",
+        "relative_path": "AWS_RDS_MySQL",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "1433"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_MSSQL_3306",
+                "display_name": "Amazon RDS MSSQL 1433",
+                "path": "/infra/services/AWS_RDS_MSSQL/service-entries/AWS_RDS_MSSQL_1433",
+                "relative_path": "AWS_RDS_MSSQL",
+                "parent_path": "/infra/services/AWS_RDS_MSSQL"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_MSSQL",
+        "display_name": "Amazon RDS - MSSQL",
+        "description": "Amazon Relational Database Service - MSSQL",
+        "path": "/infra/services/AWS_RDS_MSSQL",
+        "relative_path": "AWS_RDS_MSSQL",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "1521"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_Oracle_1521",
+                "display_name": "Amazon RDS Oracle 1521",
+                "path": "/infra/services/AWS_RDS_Oracle/service-entries/AWS_RDS_Oracle_1521",
+                "relative_path": "AWS_RDS_Oracle",
+                "parent_path": "/infra/services/AWS_RDS_Oracle"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_Oracle",
+        "display_name": "Amazon RDS - Oracle",
+        "description": "Amazon Relational Database Service - Oracle",
+        "path": "/infra/services/AWS_RDS_Oracle",
+        "relative_path": "AWS_RDS_Oracle",
+        "parent_path": "/infra"
+    },
+    {
+        "service_entries": [
+            {
+                "l4_protocol": "TCP",
+                "source_ports": [],
+                "destination_ports": [
+                    "5432"
+                ],
+                "resource_type": "L4PortSetServiceEntry",
+                "id": "AWS_RDS_Postgres_5432",
+                "display_name": "Amazon RDS Postgres 5432",
+                "path": "/infra/services/AWS_RDS_Postgres/service-entries/AWS_RDS_Postgres_5432",
+                "relative_path": "AWS_RDS_Postgres",
+                "parent_path": "/infra/services/AWS_RDS_Postgres"
+            }
+        ],
+        "service_type": "NON_ETHER",
+        "resource_type": "Service",
+        "id": "AWS_RDS_Postgres",
+        "display_name": "Amazon RDS - PostgreSQL",
+        "description": "Amazon Relational Database Service - PostgreSQL",
+        "path": "/infra/services/AWS_RDS_Postgres",
+        "relative_path": "AWS_RDS_Postgres",
+        "parent_path": "/infra"
+    }
+]
