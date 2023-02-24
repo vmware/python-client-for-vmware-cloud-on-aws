@@ -6035,6 +6035,25 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #         cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
 #         get_tkg_info(ORG_ID, cluster_id, session_token)
 
+# ============================
+# VTC - AWS Operations
+# ============================
+
+def vtcConnectAWS(**kwargs):
+    sessiontoken = kwargs['sessiontoken']
+    ORG_ID = kwargs['ORG_ID']
+    strProdURL = kwargs["strProdURL"]
+    activity_id = kwargs['activityId']
+    jsonResponse = get_activity_status(strProdURL, session_token=sessiontoken, org_id=ORG_ID, activity_id=activity_id)
+    if jsonResponse is None:
+        print("API Error")
+        sys.exit(1)
+
+    table = PrettyTable(['Activity_ID', 'State', 'Activity'])
+    table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
+    print(table)
+
+
 
 #     # ============================
 #     # VTC - AWS Operations

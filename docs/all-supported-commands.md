@@ -7,19 +7,18 @@
 - [1. CSP - Cloud Service Portal related commands](#1-csp-commands)
 - [2. SDDC - Software Defined Datacenter related commands](#2-sddc-commands)
 - [3. TKG - Tanzu Kubernetes Service related commands](#3-tkg-commands)
-- [4. Networking related commands](#4-networking-related-commands)
-  - [4.1 Segment - Virtual Machine network segment related commands](#41-segment-commands)
-  - [4.2 VPN -  Virtual private network related commands](#42-vpn-commands)
-  - [4.3 NAT - Network Address Translation related commands](#43-nat-commands)
-  - [4.4 VTC -  VMware Transit Connect related commands](#44-vtc-commands)
+- [4. VTC -  VMware Transit Connect related commands](#4-vtc-commands)
 - [5. NSX related commands](#5-nsx-related-commands)
-  - [5.1 T1 - T1 gateways related commands](#51-t1-commands)
-  - [5.2 GWFW - NSX Gateway Firewall related commands](#52-gwfw-commands)
-  - [5.3 DFW - NSX Distributed Firewall related commands](#53-dfw-commands)
-  - [5.4 NSXAF - NSX Advanced Firewall related commands](#54-nsxaf-commands)
-  - [5.5 Inventory - NSX Inventory related commands](#55-inventory-commands)
-  - [5.6 System - NSX-T System related commands](#56-system-commands)
-  - [5.7 serach-nsx - NSX Manager inventory related commands](#57-serach-nsx-commands)
+  - [5.1 Segment - Virtual Machine network segment related commands](#51-segment-commands)
+  - [5.2 VPN -  Virtual private network related commands](#52-vpn-commands)
+  - [5.3 NAT - Network Address Translation related commands](#53-nat-commands)
+  - [5.4 T1 - T1 gateways related commands](#54-t1-commands)
+  - [5.5 GWFW - NSX Gateway Firewall related commands](#55-gwfw-commands)
+  - [5.6 DFW - NSX Distributed Firewall related commands](#56-dfw-commands)
+  - [5.7 NSXAF - NSX Advanced Firewall related commands](#57-nsxaf-commands)
+  - [5.8 Inventory - NSX Inventory related commands](#58-inventory-commands)
+  - [5.9 System - NSX-T System related commands](#59-system-commands)
+  - [5.10 serach-nsx - NSX Manager inventory related commands](#510-serach-nsx-commands)
 - [6. VCDR - VMware Cloud Disaster Recovery related commands](#6-vcdr-commands)
 - [7. Flexcomp - VMware Cloud Flex Compute related commands](#7-flex-compute-commands)
 
@@ -174,8 +173,38 @@ optional arguments:
   -h, --help                show this help message and exit
 ```
 
-## 4. Networking related commands
-### 4.1 Segment commands
+## 4 VTC commands
+```shell
+usage:  vtc [-h]
+            {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
+            ...
+
+positional arguments:
+  {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
+                                        vtc sub-command help
+    connect-aws                         Connect an vTGW to an AWS account
+    disconnect-aws                      Disconnect a vTGW from an AWS account
+    attach-dxgw                         Attach a Direct Connect Gateway to a
+                                        vTGW
+    detach-dxgw                         Detach a Direct Connect Gateway from a
+                                        vTGW
+    get-sddc-info                       Display a list of all SDDCs
+    get-nsx-info                        Display NSX credentials and URLs
+    attach-sddc                         Attach an SDDC to a vTGW
+    detach-sddc                         Detach an SDDC from a vTGW
+    create-sddc-group                   Create an SDDC group
+    delete-sddc-group                   Delete an SDDC group
+    get-group-info                      Display details for an SDDC group
+    attach-vpc                          Attach a VPC to a vTGW
+    detach-vpc                          Detach VPC from a vTGW
+    vpc-prefixes                        Add or remove vTGW static routes
+
+optional arguments:
+  -h, --help                            show this help message and exit
+```
+
+## 5. NSX related commands
+### 5.1 Segment commands
 ```shell
 usage:  segment [-h] {create,delete,show,update} ...
 
@@ -191,7 +220,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 4.2 VPN commands
+### 5.2 VPN commands
 ```shell
 usage:  vpn [-h]
             {new-l2vpn,remove-l2VPN,remove-vpn,remove-vpn-ike-profile,remove-vpn-ipsec-tunnel-profile,show-l2vpn,show-l2vpn-services,show-vpn,show-vpn-ike-profile,show-vpn-internet-ip,show-vpn-ipsec-tunnel-profile,show-vpn-ipsec-endpoints,rbvpn-prefix-list,rbvpn-neighbors}
@@ -226,7 +255,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 4.3 NAT commands
+### 5.3 NAT commands
 ```shell
 usage:  nat [-h] {new-nat-rule,remove-nat-rule,show-nat} ...
 
@@ -240,38 +269,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 4.4 VTC commands
-```shell
-usage:  vtc [-h]
-            {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
-            ...
-
-positional arguments:
-  {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
-                                        vtc sub-command help
-    connect-aws                         Connect an vTGW to an AWS account
-    disconnect-aws                      Disconnect a vTGW from an AWS account
-    attach-dxgw                         Attach a Direct Connect Gateway to a
-                                        vTGW
-    detach-dxgw                         Detach a Direct Connect Gateway from a
-                                        vTGW
-    get-sddc-info                       Display a list of all SDDCs
-    get-nsx-info                        Display NSX credentials and URLs
-    attach-sddc                         Attach an SDDC to a vTGW
-    detach-sddc                         Detach an SDDC from a vTGW
-    create-sddc-group                   Create an SDDC group
-    delete-sddc-group                   Delete an SDDC group
-    get-group-info                      Display details for an SDDC group
-    attach-vpc                          Attach a VPC to a vTGW
-    detach-vpc                          Detach VPC from a vTGW
-    vpc-prefixes                        Add or remove vTGW static routes
-
-optional arguments:
-  -h, --help                            show this help message and exit
-```
-
-## 5. NSX related commands
-### 5.1 T1 commands
+### 5.4 T1 commands
 ```shell
 usage:  t1 [-h] {create,delete,update} ...
 
@@ -285,7 +283,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 5.2 GWFW commands
+### 5.5 GWFW commands
 ```shell
 usage:  gwfw [-h]
              {new-cgw-rule,new-mgw-rule,remove-cgw-rule,remove-mgw-rule,show-cgw-rule,show-mgw-rule}
@@ -304,7 +302,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 5.3 DFW commands
+### 5.6 DFW commands
 ```shell
 usage:  dfw [-h]
             {new-dfw-rule,new-dfw-section,remove-dfw-rule,remove-dfw-section,show-dfw-section,show-dfw-section-rules}
@@ -324,7 +322,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 5.4 NSXAF commands
+### 5.7 NSXAF commands
 ```shell
 usage:  nsxaf [-h]
               {show-nsxaf-status,show-ids-cluster-status,enable-cluster-ids,disable-cluster-ids,enable-all-cluster-ids,disable-all-cluster-ids,enable-ids-auto-update,ids-update-signatures,show-ids-signature-versions,show-ids-profiles,search-product-affected,create-ids-profile,show-ids-policies,create-ids-policy,show-ids-rules,create-ids-rule}
@@ -361,7 +359,7 @@ positional arguments:
 optional arguments:
   -h, --help                            show this help message and exit
 ```
-### 5.5 Inventory commands
+### 5.8 Inventory commands
 ```shell
 usage:  inventory [-h]
                   {new-group,remove-group,show-group,show-group-association,new-service,remove-service,show-services}
@@ -382,7 +380,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 5.6 System commands
+### 5.9 System commands
 ```shell
 usage:  system [-h]
                {show-dns-services,show-dns-zones,new-sddc-public-ip,remove-sddc-public-ip,set-sddc-public-ip,show-sddc-public-ip,mtu,asn,dx-admin-cost,show-egress-interface-counters,show-routes}
@@ -414,7 +412,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
-### 5.7 serach-nsx commands
+### 5.10 serach-nsx commands
 ```shell
 usage:  search-nsx [-h] [--nsxm [NSXM]]
                    [-ot {BgpNeighborConfig,BgpRoutingConfig,Group,IdsSignature,PrefixList,RouteBasedIPSecVPNSession,Segment,Service,StaticRoute,Tier0,Tier1,VirtualMachine,VirtualNetworkInterface}]
