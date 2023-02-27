@@ -985,12 +985,15 @@ def get_sddc_dfw_section_json(proxy_url, session_token):
 # Firewall Service
 # ============================
 
-def new_sddc_service_json(proxy,sessiontoken,service_id,json_data):
+def new_sddc_service_json(proxy,sessiontoken,service_id,json_data, patch_mode=False):
     myHeader = {'csp-auth-token': sessiontoken}
     # removing 'sks-nsxt-manager' from proxy url to get correct URL
     proxy_url_short = proxy.rstrip("sks-nsxt-manager")
     myURL = f'{proxy_url_short}policy/api/v1/infra/services/{service_id}'
-    response = requests.put(myURL, headers=myHeader, json=json_data)
+    if patch_mode:
+        response = requests.patch(myURL, headers=myHeader, json=json_data)
+    else:
+        response = requests.put(myURL, headers=myHeader, json=json_data)
     if response.status_code == 200:
         return response.status_code
     else:
