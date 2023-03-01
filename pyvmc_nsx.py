@@ -1623,17 +1623,16 @@ def get_ipsec_vpn_endpoints(proxy_url, session_token):
         print(json_response['error_message'])
 
 
-def new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name):
+def new_sddc_ipsec_session_json(proxy_url, session_token, json_data, display_name):
     """Creates new IPSEC VPN session and returns HTML status code"""
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{display_name}'
-    response = requests.put(myURL, headers=myHeader, json=json_data)
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/ipsec-vpn-services/default/sessions/{display_name}'
+    response = requests.put(my_url, headers=my_header, json=json_data)
     if response.status_code == 200:
         return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 def new_ipsec_vpn_profile_json(proxy_url, session_token, display_name, json_data):

@@ -4340,33 +4340,33 @@ def new_sddc_ipsec_vpn_dpd_profile(**kwargs):
         sys.exit(1)
 
 
-def new_sddc_ipsec_vpn_session(proxy_url, session_token, display_name, endpoint, peer_ip):
-    """ Creates the configured IPSec VPN Tunnel Profile """
-    json_data = {
-    "resource_type":"RouteBasedIPSecVpnSession",
-    "display_name": display_name,
-    "id": display_name,
-    "tcp_mss_clamping":{"direction":"NONE"},
-    "peer_address":peer_ip,
-    "peer_id":peer_ip,
-    "psk":"None",
-    "tunnel_profile_path": ("/infra/ipsec-vpn-tunnel-profiles/" + display_name),
-    "ike_profile_path":("/infra/ipsec-vpn-ike-profiles/" + display_name),
-    "local_endpoint_path":"/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/" + endpoint,
-    "tunnel_interfaces":[
-        {
-        "ip_subnets":[
-            {
-                "ip_addresses":[
-                    "169.254.31.249"
-                ],
-                "prefix_length":30
-            }
-        ]
-        }]
-    }
-    json_response_status_code = new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name)
-    return json_response_status_code
+# def new_sddc_ipsec_vpn_session(proxy_url, session_token, display_name, endpoint, peer_ip):
+#     """ Creates the configured IPSec VPN Tunnel Profile """
+#     json_data = {
+#     "resource_type":"RouteBasedIPSecVpnSession",
+#     "display_name": display_name,
+#     "id": display_name,
+#     "tcp_mss_clamping":{"direction":"NONE"},
+#     "peer_address":peer_ip,
+#     "peer_id":peer_ip,
+#     "psk":"None",
+#     "tunnel_profile_path": ("/infra/ipsec-vpn-tunnel-profiles/" + display_name),
+#     "ike_profile_path":("/infra/ipsec-vpn-ike-profiles/" + display_name),
+#     "local_endpoint_path":"/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/" + endpoint,
+#     "tunnel_interfaces":[
+#         {
+#         "ip_subnets":[
+#             {
+#                 "ip_addresses":[
+#                     "169.254.31.249"
+#                 ],
+#                 "prefix_length":30
+#             }
+#         ]
+#         }]
+#     }
+#     json_response_status_code = new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name)
+#     return json_response_status_code
 
 
 def new_t1_vpn_service(**kwargs):
@@ -4592,6 +4592,109 @@ def new_t1_l2vpn_session(**kwargs):
             sys.exit(1)
     else:
         print('There was an error in the creation of the IPSEC Session')
+        sys.exit(1)
+
+
+def new_sddc_ipsec_vpn(**kwargs):
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    dpd_profile = kwargs['dpd_profile']
+    ike_profile = kwargs['ike_profile']
+    tunnel_profile = kwargs['tunnel_profile']
+    vpn_type = kwargs['vpn_type']
+    remote_addr = kwargs['remote_address']
+    psk = kwargs['psk']
+    bgp_tunnel_address = kwargs['bgp_ip_address']
+    bgp_subnet_prefix = kwargs['bgp_subnet_prefix']
+    dest_addr = kwargs['destination_addr']
+    src_addr = kwargs['source_addr']
+    json_data = {}
+
+    if validate_ip_address(remote_addr):
+        pass
+    else:
+        sys.exit(f'The provided local address {remote_addr} is not a valid IPV4 address')
+
+    json_data['display_name'] = display_name
+
+    #   Build the JSON payload for both route-based and policy-based VPNs
+    match vpn_type:
+        case 'route-based':
+            if bgp_tunnel_address is not None and bgp_subnet_prefix is not None:
+                # Build the Route-based VPN JSON payload
+                json_data = {
+                    "resource_type": "RouteBasedIPSecVpnSession",
+                    "display_name": display_name,
+                    "id": display_name,
+                    "tunnel_profile_path": f'/infra/ipsec-vpn-tunnel-profiles/{tunnel_profile}',
+                    "ike_profile_path": f'/infra/ipsec-vpn-ike-profiles/{ike_profile}',
+                    "dpd_profile_path": f'/infra/ipsec-vpn-dpd-profiles/{dpd_profile}',
+                    "local_endpoint_path": f'/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/Public-IP1',
+                    "psk": psk,
+                    "peer_address": remote_addr,
+                    "peer_id": remote_addr,
+                    "tunnel_interfaces": [{
+                        "ip_subnets": [{
+                            "ip_addresses": bgp_tunnel_address,
+                            "prefix_length": bgp_subnet_prefix
+                        }]
+                    }]
+                }
+            else:
+                sys.exit(
+                    f'A BGP tunnel address and subnet prefix must be defined for a route-based VPN. Please include "-b" and "-s" in your command definition.')
+        case 'policy-based':
+            if dest_addr is not None and src_addr is not None:
+                # Build the Source and Destination subnet arrays
+                dest_array = []
+                src_array = []
+                for d in dest_addr:
+                    dest_subnet = {
+                        "subnet": d
+                    }
+                    dest_array.append(dest_subnet)
+
+                for s in src_addr:
+                    src_subnet = {
+                        "subnet": s
+                    }
+                    src_array.append(src_subnet)
+
+                #           Build the Policy-based VPN JSON payload
+                json_data = {
+                    "resource_type": "PolicyBasedIPSecVpnSession",
+                    "display_name": display_name,
+                    "id": display_name,
+                    "tunnel_profile_path": f'/infra/ipsec-vpn-tunnel-profiles/{tunnel_profile}',
+                    "ike_profile_path": f'/infra/ipsec-vpn-ike-profiles/{ike_profile}',
+                    "dpd_profile_path": f'/infra/ipsec-vpn-dpd-profiles/{dpd_profile}',
+                    "local_endpoint_path": f'/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/Public-IP1',
+                    "authentication_mode": "PSK",
+                    "psk": psk,
+                    "peer_address": remote_addr,
+                    "peer_id": remote_addr,
+                    "rules": [
+                        {
+                            "resource_type": "IPSecVpnRule",
+                            "display_name": display_name,
+                            "id": display_name,
+                            "sources": src_array,
+                            "destinations": dest_array
+                        }
+                    ]
+                }
+                print(json.dumps(json_data, indent=2))
+            else:
+                sys.exit(f'A policy-based VPN must have at least one source network and destination network defined. Please include "-src" and "-dest" in your command definition.')
+        case other:
+            print(f'The VPN Type selected {vpn_type} is not valid')
+            sys.exit(1)
+    json_response_status_code = new_sddc_ipsec_session_json(proxy, session_token, json_data, display_name)
+    if json_response_status_code == 200:
+        sys.exit(f'SDDC IPSec VPN Session {display_name} has been created successfully.')
+    else:
+        print('There was an error')
         sys.exit(1)
 
 
@@ -5209,6 +5312,20 @@ def main():
     new_t1_l2vpn_session_parser.set_defaults(func=new_t1_l2vpn_session)
 
     new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_ipsec_vpn_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
+    new_sddc_ipsec_vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the remote site')
+    new_sddc_ipsec_vpn_parser.add_argument('-d', '--dpd-profile', required=True, help='Provide the name of the DPD profile to be used for this VPN tunnel')
+    new_sddc_ipsec_vpn_parser.add_argument('-i', '--ike-profile', required=True, help='Provide the name of the IKE profile to be used for this VPN tunnel')
+    new_sddc_ipsec_vpn_parser.add_argument('-t', '--tunnel-profile', required=True, help='Provide the name of the Tunnel profile to be used for this VPN tunnel')
+    new_sddc_ipsec_vpn_parser.add_argument('-p', '--psk', required=True, help='Provide the pre-shared key for the IPSec VPN session')
+    new_sddc_ipsec_vpn_parser.add_argument('-b', '--bgp-ip-address', nargs='+', help='Define the BGP IPV4 interface. Route-based VPN only')
+    new_sddc_ipsec_vpn_parser.add_argument('-s', '--bgp-subnet-prefix', help='Define the BGP subnet prefix length. Route-based VPN only')
+    new_sddc_ipsec_vpn_parser.add_argument('-dest', '--destination-addr', nargs='+', help='Define the destination subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
+    new_sddc_ipsec_vpn_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
+    new_sddc_ipsec_vpn_parser.set_defaults(func=new_sddc_ipsec_vpn)
+
+
+
     new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
     remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
     remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
