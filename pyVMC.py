@@ -38,9 +38,9 @@ import requests                         # need this for Get/Post/Delete
 import configparser                     # parsing config file
 import argparse
 import operator
-import os
 import time
 import json
+import os
 import sys
 import ipaddress
 import pandas as pd
@@ -596,9 +596,10 @@ def createSDDC(**kwargs) -> None:
     amount = kwargs["amount"]
     hostType = kwargs["host-type"]
     subnetId = kwargs["subnet-id"]
+    size = kwargs["size"]
     validate_only = kwargs["validate_only"]
 
-    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,validate_only)
+    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,size,validate_only)    
     if json_response == None:
         sys.exit(1) # an error
 
@@ -606,7 +607,8 @@ def createSDDC(**kwargs) -> None:
         return
         
     if not validate_only:
-        printTask("SDDC Creation", json_response)
+        print("SDDC Creation:") 
+        print(json.dumps(json_response, indent = 4))
     
     return
 #
@@ -624,7 +626,8 @@ def deleteSDDC(**kwargs) -> None:
     if (json_response == None):
         sys.exit(1)
     
-    printTask("SDDC Deletion", json_response)
+    print("SDDC Deletion info:") 
+    print(json.dumps(json_response, indent=4))
 
     return None
 
@@ -775,6 +778,7 @@ def getSDDCShadowAccount(**kwargs):
 #
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
 
+#
 def getAccessToken(**kwargs):
     auth_method = kwargs['auth_method']
     strCSPProdURL = kwargs['strCSPProdURL']
@@ -814,9 +818,6 @@ def getAccessToken(**kwargs):
     jsonResponse = response.json()
     access_token = jsonResponse['access_token']
     return access_token
-
-
-
 
 # ============================
 # SDDC - SDDC
@@ -1110,21 +1111,56 @@ def get_resource_id(strProdURL, group_id, org_id, session_token):
 # ============================
 
 
-def create_sddc_group(name, deployment_id, org_id, session_token):
-    json_response = create_sddc_group_json(strProdURL, name, deployment_id, org_id, session_token)
-    task_id = json_response ['operation_id']
-    return task_id
-
-
-def delete_sddc_group(resource_id, org_id, session_token):
-    response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
-    json_response = response.json()
-    if not response.ok :
-        print ("    Error: " + json_response['message'])
-        task_id = 0
+def create_sddc_group(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    name = kwargs['name']
+    if "deployment_groups" not in kwargs:
+        deployment_groups = None
     else:
-        task_id = json_response ['id']
-    return task_id
+        deployment_groups = kwargs['deployment_groups']
+    org_id = kwargs["ORG_ID"]
+    session_token = kwargs["sessiontoken"]
+    description = kwargs["description"]
+    dont_wait = kwargs['dont_wait'] 
+    verbose = kwargs['verbose']   
+    apitoken = kwargs['Refresh_Token']
+    interval = kwargs['interval']
+    first_group = kwargs["SDDC_ID"] # Adds the SDDC in the config file as first item in the deployment group
+    #
+    json_response = create_sddc_group_json(strProdURL, name, description, first_group, org_id, session_token)
+    if json_response == None:
+        sys.exit(1)
+
+    task_id = json_response ['operation_id']
+    if dont_wait:
+        print(f"The task id for the SSDC group {name} creation is: {task_id}")
+        if verbose:
+            print(json.dumps(json_response, indent = 4))
+    else:
+        # watch the task and loop til done
+        # 
+        get_task_status(strProdURL,task_id, org_id, session_token, apitoken, verbose, interval)
+    
+    return
+
+
+def delete_sddc_group(**kwargs):
+    ''' delete an existing SDDC resource group'''
+    
+    strProdURL = kwargs["strProdURL"]
+    resource_id = kwargs['resource_id']  # the id of the group.
+    org_id = kwargs["ORG_ID"]
+    session_token = kwargs['sessiontoken']
+
+    response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
+    if response == None:
+        sys.exit(1)
+        
+    json_response = response.json()
+    
+    print(f"The Task ID for the deletion of {resource_id} is {json_response ['id']}")
+
+    return
 
 
 def get_group_id(group, org_id, session_token):
@@ -1137,17 +1173,30 @@ def get_group_id(group, org_id, session_token):
     return group_id
 
 
-def get_sddc_groups(strProdURL, org_id, session_token):
+def get_sddc_groups(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+
     json_response = get_sddc_groups_json(strProdURL, org_id, session_token)
+
+    if json_response == None:
+        sys.exit(1)
+
     if (json_response['empty'] == True):
         print("     No SDDC Group found\n")
         return None
     else:
-        sddc_groups = []
+        print(f"SDDC Groups in Org: {org_id}:")
+        group_table = PrettyTable(['id', 'Group Name', 'description', 'Deployment Type', 'State','Creator'])
         for i in range(json_response['total_elements']):
-            sddc_groups.append(json_response['content'])
-            print(str(i+1) + ": " + json_response['content'][i]['name'] + ": " + json_response['content'][i]['id'])
-    return sddc_groups[0]
+            row = json_response['content'][i]
+            group_table.add_row([row['id'],row['name'],row['description'],
+               row['deployment_type']['deployment_type'] if ('deployment_type' in row) else 'NA' ,
+               row['state']['display_name'],row['creator']['user_name']])
+
+        print(group_table)
+    return
 
 
 def get_group_info(group_id, resource_id, org_id, session_token):
@@ -1255,29 +1304,42 @@ def get_route_tables(strProdURL, resource_id, org_id, session_token):
     return
 
 
-def get_task_status(task_id, org_id, session_token):
+#
+#
+def get_task_status(strProdURL,task_id, org_id, session_token, API_Token,verbose, interval):
+    """Take the inputs on a task and then LOOP Until done """ 
+    # this is broken. Fix HERE.
     json_response = get_task_status_json(strProdURL,task_id, org_id, session_token)
+    if json_response == None:
+        sys.exit(1) 
     status = json_response ['state']['name']
     print(status)
     start = time.time()
     new_session_token = ""
     while(status != "COMPLETED"):
-        sys.stdout.write(".")
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        if verbose: 
+            print(f'\nPrinting Info on task {task_id} at {current_time}')
+            print(json.dumps(json_response, indent = 4))
+        else:
+            sys.stdout.write(".")
         sys.stdout.flush()
-        time.sleep(2)
+        time.sleep(interval)
         elapse = time.time() - start
         if elapse >= 1700 : # session_token is only valid for 1800 sec. Over 1700, will need a new token.
             if not new_session_token :
                 sys.stdout.write("Generating a new session_token")
-                new_session_token = getAccessToken(Refresh_Token)
+                new_session_token = getAccessToken(API_Token)
                 session_token = new_session_token
         json_response = get_task_status_json(strProdURL,task_id, org_id, session_token)
+        if json_response == None:
+            sys.exit(1)
         status = json_response ['state']['name']
         if status == "FAILED":
             print("\nTask FAILED ")
             print("error message: " + json_response['state']['error_msg'])
             print("error code: " + json_response['state']['error_code'])
-            print("message key: " + json_response['state']['name_message']['message_key'])
+            print("Internal error message: " + json_response['state']['internal_error_msg']) 
             break
     elapse = time.time() - start
     minutes = elapse // 60
@@ -5013,6 +5075,7 @@ def main():
     # where to get the canonical list https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
     create_sddc_parser.add_argument('host-type', choices=['i3.metal','i3en.metal','i4i.metal'], help="string literal for host type")
     create_sddc_parser.add_argument('subnet-id', help='subnet ID for the apropriate subnet for new SDDC in subnet format, eg subnet-xxxxxx')
+    create_sddc_parser.add_argument('size', choices=['nsx_small','medium','large','nsx_large'], help='add size argument to help size vCenter and NSX Manager')
     create_sddc_parser.add_argument('--validate-only', action='store_true',  help="(optional) Validate the input parameters but do not create the SDDC")
     create_sddc_parser.set_defaults(func = createSDDC)
     
@@ -5302,9 +5365,22 @@ def main():
 # VTC - SDDC-Group Operations
 # ============================
 
-    # create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents=[auth_flag,], help = 'Create an SDDC group')
-    # delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents=[auth_flag,], help = 'Delete an SDDC group')
-    # get_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents=[auth_flag,], help = 'Display details for an SDDC group')
+    create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [auth_flag,vmc_url_flag,sddc_id_parser_flag, org_id_flag], help = 'Create an SDDC group')
+    create_sddc_group_parser.add_argument("name", help= "The Name for the SDDC Group")
+    create_sddc_group_parser.add_argument("-desc","--description", required=True, help= "The Description for the SDDC Group. please make sure to enclose this in quotes if your desdfription has spaces in it")
+    create_sddc_group_parser.add_argument("-d","--deployment_groups", nargs='*', default=[], help="Pass in the deployment IDs to be added to the cluster. Use 0-n times.")
+    create_sddc_group_parser.add_argument("-nowait","--dont-wait", action='store_true',required=False, help= "Don't wait on the result. Show the task ID")
+    create_sddc_group_parser.add_argument("-v","--verbose", action='store_true', required=False, help= "Show verbose output")
+    create_sddc_group_parser.add_argument("-i","--interval", type=int, required=False, default=15, help="polling interval for watching tasks")
+    
+    create_sddc_group_parser.set_defaults(func = create_sddc_group)
+
+    delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [auth_flag,vmc_url_flag,org_id_flag], help = 'Delete an SDDC group')
+    delete_sddc_group_parser.add_argument("resource_id",help="Resource UID for the SDDC group to delete. It MUIST be a GUID for an SDDC Group")
+    delete_sddc_group_parser.set_defaults(func = delete_sddc_group)
+    
+    sddc_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents = [auth_flag,vmc_url_flag,org_id_flag], help = 'Display details for an SDDC group')
+    sddc_group_info_parser.set_defaults(func = get_sddc_groups)
 
 # ============================
 # VTC - VPC Operations
@@ -5925,6 +6001,7 @@ def main():
 
     # Update the dictionary with the session token
     params.update({"sessiontoken": sessiontoken})
+    params.update({"Refresh_Token": Refresh_Token})
 
     # If flags are present for VMC, add the appropriate URL to the parameters payload. Command line arguments overload
     try:
@@ -6132,41 +6209,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #     # ============================
 #     # VTC - SDDC-Group Operations
 #     # ============================
-
-
-#     elif intent_name == "create-sddc-group":
-#         if len(sys.argv) != 3:
-#             print("Incorrect syntax. Please provide the name of the new SDDC.")
-#         else:
-#             print("\n=====Creating SDDC Group=========")
-#             group_name = sys.argv[2]
-#             get_deployments(ORG_ID, session_token)
-#             sddc = input('   Select one SDDC to attach: ')
-#             deployment_id = get_deployment_id(sddc, ORG_ID, session_token)
-#             task_id = create_sddc_group(group_name, deployment_id, ORG_ID, session_token)
-#             get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "delete-sddc-group":
-#         print("===== SDDC Group info =========")
-#         group_exists = get_sddc_groups( ORG_ID, session_token)
-#         print("=====Deleting SDDC Group=========")
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         if (check_empty_group(group_id, ORG_ID, session_token)):
-#             resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#             task_id = delete_sddc_group(resource_id, ORG_ID, session_token)
-#             get_task_status(task_id, ORG_ID, session_token)
-#         else:
-#             print("SDDC Group not empty: detach all members")
-
-#     elif intent_name == "get-group-info":
-#         print("===== SDDC Group info =========")
-#         group_exists = get_sddc_groups( ORG_ID, session_token)
-#         if group_exists:
-#             group = input('   Select SDDC Group: ')
-#             group_id = get_group_id(group, ORG_ID, session_token)
-#             resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#             get_group_info(group_id, resource_id, ORG_ID, session_token)
 
 
 #     # ============================
