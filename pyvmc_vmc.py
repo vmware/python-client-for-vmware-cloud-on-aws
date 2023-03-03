@@ -94,7 +94,7 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
 # SDDC
 # ============================
 
-def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId,size,validate_only):    
+def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId,mgt,size,validate_only):    
     myHeader = {'csp-auth-token': sessiontoken}
     #
     # docs on data structure
@@ -116,7 +116,8 @@ def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region
         'host_instance_type' : hostType, #host type from Enumerated options.
         'sddc_type': '1NODE' if amount == 1 else "",  
         'size' : size,
-        'region': region                # region where we have permissions to deploy.
+        'region': region,                # region where we have permissions to deploy.
+        'vpc_cidr': mgt
     }
     #
     # API Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/post/
