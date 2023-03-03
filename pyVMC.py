@@ -587,19 +587,20 @@ def printTask(event_name: str, task) -> None:
 
 def createSDDC(**kwargs) -> None:
     """Creates an SDDC based on the parameters. The caller should have permissions to do this."""
-    orgID = kwargs["ORG_ID"]
-    sessiontoken = kwargs["sessiontoken"]
-    name = kwargs["name"]
-    linkedAccountId = kwargs["linked-account-guid"]
-    region = kwargs["region"]
-    strProdURL = kwargs["strProdURL"]
-    amount = kwargs["amount"]
-    hostType = kwargs["host-type"]
-    subnetId = kwargs["subnet-id"]
-    size = kwargs["size"]
-    validate_only = kwargs["validate_only"]
+    strProdURL = kwargs['strProdURL']
+    orgID = kwargs['ORG_ID']
+    sessiontoken = kwargs['sessiontoken']
+    name = kwargs['name']
+    linkedAccountId = kwargs['aws_account_guid']
+    region = kwargs['region']
+    amount = kwargs['number']
+    hostType = kwargs['host_type']
+    subnetId = kwargs['aws_subnet_id']
+    mgt = kwargs['mgt_subnet']
+    size = kwargs['sddc_size']
+    validate_only = kwargs['validate_only']
 
-    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,size,validate_only)    
+    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,mgt,size,validate_only)    
     if json_response == None:
         sys.exit(1) # an error
 
@@ -5063,16 +5064,16 @@ def main():
 
   # Create-sddc
     create_sddc_parser=sddc_parser_subs.add_parser('create', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Create an SDDC')
-    create_sddc_parser.add_argument('name', help= 'name for newly created SDDC')
-    create_sddc_parser.add_argument('linked-account-guid', help='GUID for linked/connected account')
-    # add link to list of possibilities?
-    create_sddc_parser.add_argument('region', help='string literal for AWS region')
-    create_sddc_parser.add_argument('amount',type=int, help="number of hosts in new region")
+    create_sddc_parser.add_argument('-n','--name', required = True, help= 'name for newly created SDDC')
+    create_sddc_parser.add_argument('-aws','--aws_account_guid', required = True, help='GUID for linked/connected AWS account')
+    create_sddc_parser.add_argument('-r','--region',required = True,  help='string literal for AWS region; see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions')
+    create_sddc_parser.add_argument('-num','--number',type=int,required = True,  help="number of hosts in new region")
     # where to get the canonical list https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
-    create_sddc_parser.add_argument('host-type', choices=['i3.metal','i3en.metal','i4i.metal'], help="string literal for host type")
-    create_sddc_parser.add_argument('subnet-id', help='subnet ID for the apropriate subnet for new SDDC in subnet format, eg subnet-xxxxxx')
-    create_sddc_parser.add_argument('size', choices=['nsx_small','medium','large','nsx_large'], help='add size argument to help size vCenter and NSX Manager')
-    create_sddc_parser.add_argument('--validate-only', action='store_true',  help="(optional) Validate the input parameters but do not create the SDDC")
+    create_sddc_parser.add_argument('-t','--host_type', choices=['i3.metal','i3en.metal','i4i.metal'], required = True, help="string literal for host type")
+    create_sddc_parser.add_argument('-sid','--aws_subnet_id', required = True, help='subnet ID for the apropriate subnet for new SDDC in subnet format, eg subnet-xxxxxx')
+    create_sddc_parser.add_argument('-mgt','--mgt_subnet', required = True, help='CIDR for SDDC management subnet.  Accepts only /16, /20, or /23')
+    create_sddc_parser.add_argument('-s','--sddc_size', required = False, choices=['nsx_small','medium','large','nsx_large'], help='add size argument to help size vCenter and NSX Manager')
+    create_sddc_parser.add_argument('-v','--validate-only', action='store_true',  help="(optional) Validate the input parameters but do not create the SDDC")
     create_sddc_parser.set_defaults(func = createSDDC)
     
     delete_sddc_parser=sddc_parser_subs.add_parser('delete', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Delete an SDDC')
