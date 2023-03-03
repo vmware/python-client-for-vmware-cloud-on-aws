@@ -1096,7 +1096,7 @@ def get_deployments(org_id, session_token, strProdURL):
     return
 
 
-def get_deployment_id(sddc, org_id, session_token):
+def get_deployment_id(strProdURL, sddc, org_id, session_token):
     json_response = get_deployment_id_json(strProdURL, org_id, session_token)
     deployment_id = json_response['content'][int(sddc)-1]['id']
     return deployment_id
@@ -1126,7 +1126,6 @@ def create_sddc_group(**kwargs):
     dont_wait = kwargs['dont_wait'] 
     verbose = kwargs['verbose']   
     apitoken = kwargs['Refresh_Token']
-    interval = kwargs['interval']
  
     json_response = create_sddc_group_json(strProdURL, name, description, deployment_groups, org_id, session_token)
     if json_response == None:
@@ -1140,7 +1139,7 @@ def create_sddc_group(**kwargs):
     else:
         # watch the task and loop til done
         # 
-        get_task_status(strProdURL,task_id, org_id, session_token, apitoken, verbose, interval)
+        get_task_status(strProdURL,task_id, org_id, session_token, apitoken, verbose)
     
     return
 
@@ -1148,22 +1147,21 @@ def delete_sddc_group(**kwargs):
     ''' delete an existing SDDC resource group'''
     
     strProdURL = kwargs["strProdURL"]
-    resource_id = kwargs['resource_id']  # the id of the group.
+    group_id = kwargs['group_id']  # the id of the group.
     org_id = kwargs["ORG_ID"]
     session_token = kwargs['sessiontoken']
 
-    response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
-    if response == None:
-        sys.exit(1)
+    if (check_empty_group(strProdURL,group_id, org_id, session_token)):
+        resource_id = get_resource_id(strProdURL,group_id, org_id, session_token)
+        response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
+        if response == None:
+            sys.exit(1)
+        print(f"The Task ID for the deletion of {resource_id} is {response ['id']}")
+    else:
+        print("SDDC Group not empty: detach all members")
 
-    json_response = response.json()
 
-    print(f"The Task ID for the deletion of {resource_id} is {json_response ['id']}")
-
-    return
-
-
-def get_group_id(group, org_id, session_token):
+def get_group_id(strProdURL, group, org_id, session_token):
     if DEBUG_MODE:
         print(f'DEBUG: In get_group_id(), group={group}')
     json_response = get_group_id_json(strProdURL, group, org_id, session_token)
@@ -1269,7 +1267,7 @@ def get_group_info(group_id, resource_id, org_id, session_token):
     return
 
 
-def check_empty_group(group_id, org_id, session_token):
+def check_empty_group(strProdURL, group_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/inventory/{}/core/deployment-groups/{}".format(strProdURL, org_id, group_id)
     response = requests.get(myURL, headers=myHeader)
@@ -1305,9 +1303,8 @@ def get_route_tables(strProdURL, resource_id, org_id, session_token):
 
 #
 #
-def get_task_status(strProdURL,task_id, org_id, session_token, API_Token,verbose, interval):
+def get_task_status(strProdURL,task_id, org_id, session_token, API_Token,verbose):
     """Take the inputs on a task and then LOOP Until done """ 
-    # this is broken. Fix HERE.
     json_response = get_task_status_json(strProdURL,task_id, org_id, session_token)
     if json_response == None:
         sys.exit(1) 
@@ -1323,7 +1320,7 @@ def get_task_status(strProdURL,task_id, org_id, session_token, API_Token,verbose
         else:
             sys.stdout.write(".")
         sys.stdout.flush()
-        time.sleep(interval)
+        time.sleep(2)
         elapse = time.time() - start
         if elapse >= 1700 : # session_token is only valid for 1800 sec. Over 1700, will need a new token.
             if not new_session_token :
@@ -5365,17 +5362,15 @@ def main():
 # ============================
 
     create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [auth_flag, vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'Create an SDDC group')
-    create_sddc_group_parser.add_argument("name", help= "The Name for the SDDC Group")
-    create_sddc_group_parser.add_argument("-desc","--description", required=True, help= "The Description for the SDDC Group. please make sure to enclose this in quotes if your desdfription has spaces in it")
+    create_sddc_group_parser.add_argument("-n","--name", required=True, help= "The Name for the SDDC Group")
+    create_sddc_group_parser.add_argument("-desc","--description", help= "The Description for the SDDC Group. please make sure to enclose this in quotes if your description has spaces in it")
     create_sddc_group_parser.add_argument("-d","--deployment_groups", nargs='*', default=[], help="Pass in the deployment IDs to be added to the cluster. Use 0-n times.")
     create_sddc_group_parser.add_argument("-nowait","--dont-wait", action='store_true',required=False, help= "Don't wait on the result. Show the task ID")
     create_sddc_group_parser.add_argument("-v","--verbose", action='store_true', required=False, help= "Show verbose output")
-    create_sddc_group_parser.add_argument("-i","--interval", type=int, required=False, default=15, help="polling interval for watching tasks")
-    
     create_sddc_group_parser.set_defaults(func = create_sddc_group)
 
     delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [auth_flag, vmc_url_flag,org_id_flag], help = 'Delete an SDDC group')
-    delete_sddc_group_parser.add_argument("resource_id",help="Resource UID for the SDDC group to delete. It MUIST be a GUID for an SDDC Group")
+    delete_sddc_group_parser.add_argument("group_id",help="SDDC ID for the SDDC group to delete. Use 'get-group-info' to view a list of SDDC and their IDs.")
     delete_sddc_group_parser.set_defaults(func = delete_sddc_group)
     
     sddc_group_info_parser=vtc_parser_subs.add_parser('get-group-info', parents = [auth_flag, vmc_url_flag,org_id_flag], help = 'Display details for an SDDC group')
