@@ -642,7 +642,7 @@ def get_group_info_json(strProdURL, org_id, group_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
-def ext_get_group_info_json(strProdURL, org_id, resource_id):
+def ext_get_group_info_json(strProdURL, org_id, resource_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}/?trait=AwsVpcAttachmentsTrait,AwsRealizedSddcConnectivityTrait,AwsDirectConnectGatewayAssociationsTrait,AwsNetworkConnectivityTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
