@@ -1732,14 +1732,13 @@ def new_t1_l2vpn_session_json(proxy_url, session_token, json_data, display_name,
 
 def new_l2vpn_json(proxy_url, session_token, display_name, json_data):
     my_header = {'csp-auth-token': session_token}
-    my_url = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{display_name}'
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/l2vpn-services/default/sessions/{display_name}'
     response = requests.put(my_url, headers=my_header, json=json_data)
     if response.status_code == 200:
         return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 def delete_ipsec_vpn_json(proxy_url, session_token, vpn_id):

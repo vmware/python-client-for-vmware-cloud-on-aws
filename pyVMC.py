@@ -4168,20 +4168,6 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
 # ============================
 
 
-def newSDDCL2VPN(proxy_url, session_token, display_name):
-    """ Creates the configured L2 VPN """
-    json_data = {
-    "transport_tunnels": [
-        "/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/" + display_name
-    ],
-    "resource_type": "L2VPNSession",
-    "id": display_name,
-    "display_name": "L2VPN",
-}
-    json_response_status_code = new_l2vpn_json(proxy_url, session_token, display_name, json_data)
-    return json_response_status_code
-
-
 def getSDDCL2VPNSession(proxy_url, sessiontoken):
     """Prints out L2VPN sessions"""
     i = get_l2vpn_session_json(proxy_url, sessiontoken)
@@ -4260,6 +4246,16 @@ def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
     i = get_l2vpn_session_json(proxy_url, sessiontoken)
     sddc_l2vpn_path = i['results'][0]['path']
     return sddc_l2vpn_path
+
+
+def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
+    """Returns table of VPN Statistics"""
+    json_response = get_vpn_stats_json(proxy_url, sessiontoken, tunnelID)
+    sddc_vpn_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
+    table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
+    for i in sddc_vpn_statistics:
+        table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
+    return table
 
 
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
@@ -4397,35 +4393,6 @@ def new_sddc_ipsec_vpn_dpd_profile(**kwargs):
     else:
         print('There was an error')
         sys.exit(1)
-
-
-# def new_sddc_ipsec_vpn_session(proxy_url, session_token, display_name, endpoint, peer_ip):
-#     """ Creates the configured IPSec VPN Tunnel Profile """
-#     json_data = {
-#     "resource_type":"RouteBasedIPSecVpnSession",
-#     "display_name": display_name,
-#     "id": display_name,
-#     "tcp_mss_clamping":{"direction":"NONE"},
-#     "peer_address":peer_ip,
-#     "peer_id":peer_ip,
-#     "psk":"None",
-#     "tunnel_profile_path": ("/infra/ipsec-vpn-tunnel-profiles/" + display_name),
-#     "ike_profile_path":("/infra/ipsec-vpn-ike-profiles/" + display_name),
-#     "local_endpoint_path":"/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/" + endpoint,
-#     "tunnel_interfaces":[
-#         {
-#         "ip_subnets":[
-#             {
-#                 "ip_addresses":[
-#                     "169.254.31.249"
-#                 ],
-#                 "prefix_length":30
-#             }
-#         ]
-#         }]
-#     }
-#     json_response_status_code = new_ipsec_vpn_session_json(proxy_url, session_token, json_data, display_name)
-#     return json_response_status_code
 
 
 def new_t1_vpn_service(**kwargs):
@@ -4757,14 +4724,67 @@ def new_sddc_ipsec_vpn(**kwargs):
         sys.exit(1)
 
 
-def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
-    """Returns table of VPN Statistics"""
-    json_response = get_vpn_stats_json(proxy_url, sessiontoken, tunnelID)
-    sddc_vpn_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
-    table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
-    for i in sddc_vpn_statistics:
-        table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
-    return table
+def new_sddc_l2vpn(**kwargs):
+    """ Creates the configured L2 VPN """
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    remote_addr = kwargs['remote_address']
+    endpoint = kwargs['endpoint']
+
+    #Create IPSec VPN tunnel
+    ipsec_json = {
+        "tunnel_interfaces": [
+            {
+                "ip_subnets": [
+                    {
+                        "ip_addresses": [
+                            "169.254.31.253"
+                        ],
+                        "prefix_length": 30
+                    }
+                ],
+                "resource_type": "IPSecVpnTunnelInterface",
+                "id": "default-tunnel-interface",
+                "display_name": "default-tunnel-interface"
+            }
+        ],
+        "resource_type": "RouteBasedIPsecVpnSession",
+        "id": "__l2vpn__internal__",
+        "display_name": "L2VPN",
+        "local_endpoint_path": f"/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/{endpoint}",
+        "authentication_mode": "PSK",
+        "ike_profile_path": "/infra/ipsec-vpn-ike-profiles/__l2vpn__internal__",
+        "tunnel_profile_path": "/infra/ipsec-vpn-tunnel-profiles/__l2vpn__internal__",
+        "dpd_profile_path": "/infra/ipsec-vpn-dpd-profiles/__l2vpn__internal__",
+        "tcp_mss_clamping": {
+            "direction": "NONE"
+        },
+        "peer_address": {remote_addr},
+        "peer_id": {remote_addr}
+    }
+    json_respon_status_code = new_sddc_ipsec_session_json(proxy, session_token, ipsec_json, "__l2vpn__internal__")
+    if json_respon_status_code == 200:
+        l2vpn_json = {
+            "transport_tunnels": [
+                "/infra/tier-0s/vmc/ipsec-vpn-services/default/sessions/__l2vpn__internal__"
+            ],
+            "tcp_mss_clamping": {
+                "direction": "BOTH"
+            },
+            "resource_type": "L2VPNSession",
+            "id": "__l2vpn__internal__",
+            "display_name": {display_name}
+        }
+        json_response_status_code = new_l2vpn_json(proxy, session_token, "__l2vpn__internal__", l2vpn_json)
+        if json_response_status_code == 200:
+            sys.exit(f"SDDC L2VPN {display_name} has been created successfully")
+        else:
+            print(f"There was an error creating {display_name} L2VPN")
+            sys.exit(1)
+    else:
+        print(f"There was an error creating the IPSec tunnel for {display_name} L2VPN")
+        sys.exit(1)
 
 
 # ============================
@@ -5384,9 +5404,11 @@ def main():
     new_sddc_ipsec_vpn_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
     new_sddc_ipsec_vpn_parser.set_defaults(func=new_sddc_ipsec_vpn)
 
-
-
     new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    new_sddc_l2vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the local site')
+    new_sddc_l2vpn_parser.add_argument('-e', '--endpoint', choices=['Public-IP', 'Private-IP'], required=True, help='Choose between the Public IP endpoint and the Private IP endpoint')
+    new_sddc_l2vpn_parser.set_defaults(func=new_sddc_l2vpn)
+
     remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
     remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
     remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
