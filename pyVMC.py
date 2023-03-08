@@ -5451,7 +5451,6 @@ def main():
 # NSX-T - VPN (SDDC and Tier-1)
 # ============================
     parent_vpn_parser = argparse.ArgumentParser(add_help=False)
-    parent_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
 
     # create the parser for the "vpn" command
     vpn_parser = subparsers.add_parser('vpn', help='Create, delete, update, and show virtual private network (VPN) settings.')
@@ -5460,6 +5459,7 @@ def main():
 
     # create individual parsers for each sub-command
     new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
+    new_ike_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, type=str.upper, help='IKE version for this profile. Default is IKE-V2')
     new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IKE digest algorithm.Default is SHA2-256')
@@ -5467,6 +5467,7 @@ def main():
     new_ike_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_ike_profile)
 
     new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IPSEC Tunnel Profile')
+    new_ipsec_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_ipsec_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ipsec_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256', 'NO_ENCRYPTION_AUTH_AES_GMAC_128', 'NO_ENCRYPTION_AUTH_AES_GMAC_192', 'NO_ENCRYPTION_AUTH_AES_GMAC_256', 'NO_ENCRYPTION'], default='AES_256', required=True, nargs='+', type=str.upper, help='IPSEC Encryption Algorithm options. Default is AES-256')
     new_ipsec_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IPSec Digest Algorithm.')
@@ -5474,6 +5475,7 @@ def main():
     new_ipsec_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_tunnel_profile)
 
     new_dpd_profile_parser = vpn_parser_subs.add_parser('new-dpd-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC DPD profile')
+    new_dpd_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_dpd_profile_parser.add_argument('-m', '--probe-mode', choices=['PERIODIC', 'ON-DEMAND'], default='PERIODIC', type=str.upper, required=True, help='DPD Probe Mode is used to query the liveliness of the peer.')
     new_dpd_profile_parser.add_argument('-i', '--interval', type=int, help='DPD Probe interval defines an interval for DPD probes (in seconds).  Default for periodic is 60s and On-Demand is 10s.')
     new_dpd_profile_parser.add_argument('-d', '--disable', action='store_false', help='Disable dead peer detection')
@@ -5481,17 +5483,20 @@ def main():
     new_dpd_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_dpd_profile)
 
     new_t1_vpn_service_parser = vpn_parser_subs.add_parser('new-t1-vpn-service', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN service')
+    new_t1_vpn_service_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_vpn_service_parser.add_argument('-t1', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this VPN service should be attached to')
     new_t1_vpn_service_parser.add_argument('-s', '--service-type', required=True, choices=['ipsec', 'l2vpn'], help='Select whether this service is for an IPSec VPN or L2VPN')
     new_t1_vpn_service_parser.set_defaults(func=new_t1_vpn_service)
 
     new_local_endpoint_parser = vpn_parser_subs.add_parser('new-local-endpoint', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 VPN local endpoint')
+    new_local_endpoint_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_local_endpoint_parser.add_argument('-t', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this Local Endpoint is associated with')
     new_local_endpoint_parser.add_argument('-s', '--vpn-service', required=True, help='Select which VPN service this Local Endpoint will be associated with')
     new_local_endpoint_parser.add_argument('-l', '--local-address', required=True, help='Define the local IPv4 address for the Local Endpoint')
     new_local_endpoint_parser.set_defaults(func=new_t1_local_endpoint)
 
     new_t1_ipsec_session_parser = vpn_parser_subs.add_parser('new-t1-ipsec-session', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN session')
+    new_t1_ipsec_session_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_ipsec_session_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
     new_t1_ipsec_session_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='Define which Tier-1 Gateway this ')
     new_t1_ipsec_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the VPN service to which this session should be attached')
@@ -5508,6 +5513,7 @@ def main():
     new_t1_ipsec_session_parser.set_defaults(func=new_t1_ipsec_session)
 
     new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
+    new_t1_l2vpn_session_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_l2vpn_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the IPSec VPN Service')
     new_t1_l2vpn_session_parser.add_argument('-ls', '--l2vpn-service', required=True, help='Define the L2VPN Service')
     new_t1_l2vpn_session_parser.add_argument('-le', '--local-endpoint', required=True, help='Define the local endpoint for the L2VPN')
@@ -5519,6 +5525,7 @@ def main():
     new_t1_l2vpn_session_parser.set_defaults(func=new_t1_l2vpn_session)
 
     new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_ipsec_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_sddc_ipsec_vpn_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
     new_sddc_ipsec_vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the remote site')
     new_sddc_ipsec_vpn_parser.add_argument('-d', '--dpd-profile', required=True, help='Provide the name of the DPD profile to be used for this VPN tunnel')
@@ -5532,37 +5539,45 @@ def main():
     new_sddc_ipsec_vpn_parser.set_defaults(func=new_sddc_ipsec_vpn)
 
     new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-sddc-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    new_sddc_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_sddc_l2vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the local site')
     new_sddc_l2vpn_parser.add_argument('-e', '--endpoint', choices=['Public-IP', 'Private-IP'], required=True, help='Choose between the Public IP endpoint and the Private IP endpoint')
     new_sddc_l2vpn_parser.set_defaults(func=new_sddc_l2vpn)
 
     remove_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('remove-sddc-ipsec-vpn', parents=[nsx_url_flag], help='remove a SDDC IPSec VPN')
+    remove_sddc_ipsec_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_sddc_ipsec_vpn_parser.set_defaults(func=remove_sddc_ipsec_vpn)
 
     remove_sddc_l2vpn_parser = vpn_parser_subs.add_parser('remove-sddc-l2VPN', parents=[nsx_url_flag], help='remove a SDDC L2VPN')
+    remove_sddc_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_sddc_l2vpn_parser.set_defaults(func=remove_sddc_l2vpn)
 
     remove_tier1_vpn_parser = vpn_parser_subs.add_parser('remove-tier1-ipsec-vpn', parents=[nsx_url_flag], help='remove a Tier-1 IPSec VPN')
+    remove_tier1_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_tier1_vpn_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway that the VPN is attached to')
     remove_tier1_vpn_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the VPN service the VPN is asscotiated with')
     remove_tier1_vpn_parser.set_defaults(func=remove_tier1_ipsec_vpn)
 
     remove_tier1_l2vpn_parser = vpn_parser_subs.add_parser('remove-tier1-l2vpn', parents=[nsx_url_flag], help='remove a Tier-1 L2VPN')
+    remove_tier1_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_tier1_l2vpn_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
     remove_tier1_l2vpn_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the L2VPN service')
     remove_tier1_l2vpn_parser.set_defaults(func=remove_tier1_l2vpn)
 
     remove_tier1_vpn_local_endpoint_parser = vpn_parser_subs.add_parser('remove-t1-vpn-local-endpoint', parents=[nsx_url_flag], help='remove a Tier-1 Local Endpoint')
+    remove_tier1_vpn_local_endpoint_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_tier1_vpn_local_endpoint_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
     remove_tier1_vpn_local_endpoint_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the L2VPN service')
     remove_tier1_vpn_local_endpoint_parser.set_defaults(func=remove_tier1_vpn_local_endpoint)
 
     remove_tier1_vpn_service_parser = vpn_parser_subs.add_parser('remove-t1-vpn-service', parents=[nsx_url_flag], help='Remove a Tier-1 VPN Service')
+    remove_tier1_vpn_service_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_tier1_vpn_service_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
     remove_tier1_vpn_service_parser.add_argument('-vt', '--vpn-type', choices=['ipsec', 'l2vpn'], type=str.lower, required=True, help='Chose the VPN service type, ipsec or l2vpn')
     remove_tier1_vpn_service_parser.set_defaults(func=remove_tier1_vpn_service)
 
     remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_vpn_profile_parser.add_argument('-p', '--profile-type', choices=['ike', 'ipsec', 'dpd'], type=str.lower, required=True, help="Chose which type of profile you would like to remove.")
     remove_vpn_profile_parser.set_defaults(func=remove_vpn_profile)
 
