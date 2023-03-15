@@ -6,6 +6,7 @@
 ################################################################################
 
 import json
+import sys
 import requests
 
 #In order to use the following function, all the functions in this file will have to be modified to use.  
@@ -695,10 +696,9 @@ def attach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     """Detach a VPC from a vTGW"""
@@ -708,10 +708,9 @@ def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     """Add or remove vTGW static routes"""
@@ -723,7 +722,6 @@ def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     # print(pretty_data)
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
