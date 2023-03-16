@@ -4168,94 +4168,220 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
 # ============================
 
 
-def getSDDCL2VPNSession(proxy_url, sessiontoken):
+def show_sddc_l2vpn(**kwargs):
     """Prints out L2VPN sessions"""
-    i = get_l2vpn_session_json(proxy_url, sessiontoken)
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    i = get_l2vpn_session_json(proxy, session_token)
     sddc_l2vpn_sessions = i['results']
     table = PrettyTable(['Name', 'ID', 'Enabled?'])
     for i in sddc_l2vpn_sessions:
         table.add_row([i['display_name'], i['id'], i['enabled']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCL2VPNServices(proxy_url, sessiontoken):
-    """Prints out L2VPN services"""
-    i = get_l2vpn_service_json(proxy_url, sessiontoken)
-    table = PrettyTable(['Name', 'ID', 'mode'])
-    table.add_row([i['display_name'], i['id'], i['mode']])
-    return table
-
-
-def getSDDCVPN(proxy_url,sessiontoken):
+def show_sddc_ipsec_vpn(**kwargs):
     """Prints out SDDC VPN session information"""
-    json_response = get_sddc_vpn_info_json(proxy_url, sessiontoken)
-    sddc_VPN = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    json_response = get_sddc_vpn_info_json(proxy, session_token)
+    sddc_vpn = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
-    for i in sddc_VPN:
-        table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
-    return table
+    for i in sddc_vpn:
+        table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
+def show_vpn_ike_profile(**kwargs):
     """Prints out VPN IKE profiles for the SDDC"""
-    json_response = get_vpn_ike_profile_json(proxy_url, sessiontoken)
-    sddc_VPN_ipsec_profiles = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_ike_profile_json(proxy, session_token)
+    sddc_vpn_ipsec_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'IKE Version', 'Digest', 'DH Group', 'Encryption'])
-    for i in sddc_VPN_ipsec_profiles:
+    for i in sddc_vpn_ipsec_profiles:
         table.add_row([i['display_name'], i['id'], i['ike_version'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
+def show_sddc_ipsec_profile(**kwargs):
     """Prints out VPN IPSEC profiles for the SDDC"""
-    json_response = get_vpn_ipsec_profile_json(proxy_url, sessiontoken)
-    sddc_VPN_ipsec_tunnel_profiles = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_ipsec_profile_json(proxy, session_token)
+    sddc_vpn_ipsec_tunnel_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Digest', 'DH Group', 'Encryption'])
-    for i in sddc_VPN_ipsec_tunnel_profiles:
+    for i in sddc_vpn_ipsec_tunnel_profiles:
         table.add_row([i['display_name'], i['id'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCVPNInternetIP(proxy_url, sessiontoken):
-    """Prints out Public IP assigned to VPN"""
-    json_response = vpn_public_ip_json(proxy_url, sessiontoken)
-    vpn_internet_ip = json_response['vpn_internet_ips'][0]
-    print(vpn_internet_ip)
+def show_sddc_dpd_profile(**kwargs):
+    """Prints out VPN DPD profiles for the SDDC"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_dpd_profile_json(proxy, session_token)
+    dpd_profiles = json_response['results']
+    table = PrettyTable(['Name', 'ID', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    for d in dpd_profiles:
+        table.add_row([d['display_name'], d['id'], d['dpd_probe_mode'], d['dpd_probe_interval'], d['retry_count']])
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecEndpoints(proxy_url, session_token):
+def show_sddc_vpn_endpoints(**kwargs):
     """ Gets the IPSec Local Endpoints """
-    json_response = get_ipsec_vpn_endpoints(proxy_url, session_token)
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_ipsec_vpn_endpoints_json(proxy, session_token)
     sddc_vpn_ipsec_endpoints = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Address'])
     for i in sddc_vpn_ipsec_endpoints:
         table.add_row([i['display_name'], i['id'], i['local_address']])
-    return table
+    print(table)
+    sys.exit(0)
 
 
-def getSDDCVPNServices(proxy_url, session_token, vpn_id):
-    """Returns Table of available VPN services"""
-    i = get_ipsec_vpn_services(proxy_url, session_token, vpn_id)
-    table = PrettyTable(['Name', 'Id', 'Peer'])
-    table.add_row([i['display_name'], i['id'], i['peer_address']])
-    return table
+def show_tier1_vpn_services(**kwargs):
+    """Gets the VPN Services for all Tier-1 Gateways"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    #retrieve list of Tier-1 IDs
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+    table = PrettyTable(['Name', 'Service Type', 'Tier-1 Gateway'])
+    for l in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        l2vpn_json = get_tier1_l2vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                table.add_row([i['display_name'], 'IPSEC', l])
+        else:
+            pass
+        if l2vpn_json['result_count'] > 0:
+            l2vpn_serv = l2vpn_json['results']
+            for i in l2vpn_serv:
+                table.add_row([i['display_name'], 'L2VPN', l])
+        else:
+            pass
+    sys.exit(table)
 
 
-def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
-    """Prints out L2VPN Session Path"""
-    i = get_l2vpn_session_json(proxy_url, sessiontoken)
-    sddc_l2vpn_path = i['results'][0]['path']
-    return sddc_l2vpn_path
+def show_tier1_vpn_le(**kwargs):
+    """Prints all the Tier-1 VPN Local Endpoints per gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+    table = PrettyTable(['Name', 'Local Address', 'Tier-1 Gateway', 'IPSec Service'])
+    for l  in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                ipsec_serv_name = i['display_name']
+                le_json = get_tier1_vpn_le_json(proxy, session_token, l, ipsec_serv_name)
+                if le_json['result_count'] > 0:
+                    le = le_json['results']
+                    for v in le:
+                        table.add_row([v['display_name'], v['local_address'], l, ipsec_serv_name])
+                else:
+                    pass
+        else:
+            pass
+    sys.exit(table)
 
 
-def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
-    """Returns table of VPN Statistics"""
-    json_response = get_vpn_stats_json(proxy_url, sessiontoken, tunnelID)
-    sddc_vpn_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
-    table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
-    for i in sddc_vpn_statistics:
-        table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
-    return table
+def show_tier1_ipsec_vpn(**kwargs):
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Authentication Mode', 'Local Endpoint', 'Tier-1 Gateway', 'VPN Service'])
+
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+
+    for l  in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                ipsec_serv_name = i['display_name']
+                vpn_json = get_tier1_vpn_session_json(proxy, session_token, l, ipsec_serv_name)
+                vpn_data = vpn_json['results']
+                for v in vpn_data:
+                    rt = v['resource_type']
+                    le_path = v['local_endpoint_path']
+                    le = get_tier1_le_details_json(proxy, session_token, le_path)
+                    match rt:
+                        case "RouteBasedIPSecVpnSession":
+                            vt = "Route Based"
+                        case "PolicyBasedIPSecVpnSession":
+                            vt = "Policy Based"
+                    table.add_row([v['display_name'], vt, v['peer_address'], v['authentication_mode'], le['local_address'], l, ipsec_serv_name])
+    sys.exit(table)
+
+
+def show_tier1_vpn_details(**kwargs):
+    """Print details of a single Tier-1 VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    t1g = kwargs['tier1_gateway']
+    vpn_serv = kwargs['vpn_service']
+    display_name = kwargs['display_name']
+
+    vpn_json = get_tier1_vpn_details_json(proxy, session_token, t1g, vpn_serv, display_name)
+    ike_path = vpn_json['ike_profile_path']
+    tun_path = vpn_json['tunnel_profile_path']
+    dpd_path = vpn_json['dpd_profile_path']
+    le_path = vpn_json['local_endpoint_path']
+
+    match vpn_json['resource_type']:
+        case "PolicyBasedIPSecVpnSession":
+            rt = "Policy Based"
+            rules_json = vpn_json['rules']
+            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Prole', 'DPD Settings', 'Src Addresses', 'Dest Addresses'])
+            src_addr = []
+            dst_addr = []
+            for r in rules_json:
+                sources = r['sources']
+                destinations = r['destinations']
+                for s in sources:
+                    src_addr.append(s['subnet'])
+                for d in destinations:
+                    dst_addr.append(d['subnet'])
+        case "RouteBasedIPSecVpnSession":
+            rt = "Route Based"
+            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Settings', 'DPD Settings', 'BGP Tunnel CIDR'])
+            ip_subnets = vpn_json['tunnel_interfaces'][0]['ip_subnets']
+            for i in ip_subnets:
+                ip = i['ip_address'][0]
+                prefix = i['prefix_length']
+                bgp_cidr = f"{ip}/{prefix}"
+
+
+
+
+
+
+        case other:
+            print('Incorrect VPN Resource Type')
+            sys.exit(1)
 
 
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
@@ -4784,6 +4910,133 @@ def new_sddc_l2vpn(**kwargs):
             sys.exit(1)
     else:
         print(f"There was an error creating the IPSec tunnel for {display_name} L2VPN")
+        sys.exit(1)
+
+
+def remove_sddc_ipsec_vpn(**kwargs):
+    """Removes a SDDC IPSec VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+
+    json_response_status_code = delete_ipsec_vpn_json(proxy, session_token, display_name)
+    if json_response_status_code == 200:
+        sys.exit(f"IPSec VPN {display_name} has been deleted")
+    else:
+        print(f"There was an error deleting {display_name}")
+        sys.exit(1)
+
+
+def remove_sddc_l2vpn(**kwargs):
+    """Removes a SDDC L2VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+
+    json_response_status_code = delete_l2vpn_json(proxy, session_token, "__l2vpn__internal__")
+    if json_response_status_code == 200:
+        sys.exit(f"L2VPN {display_name} has been deleted")
+    else:
+        print(f"There was an error deleting {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_ipsec_vpn(**kwargs):
+    """Removes a IPSec VPN attached to a Tier-1 Gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_ipsec_vpn_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 IPSec VPN Session {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 IPSec VPN Session {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_l2vpn(**kwargs):
+    """Remove a L2VPN attached to a Tier-1 gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_l2vpn_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 L2VPN Session {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 L2VPN Session {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_vpn_local_endpoint(**kwargs):
+    """Removes a Tier-1 VPN Local Endpoint"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_vpn_le_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN Local Endpoint {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN Local Endpoint {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_vpn_service(**kwargs):
+    """Removes a Tier-1 VPN Service"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    service_type = kwargs['vpn_type']
+
+    match service_type:
+        case "ipsec":
+            vpn_service = "ipsec-vpn-services"
+        case "l2vpn":
+            vpn_service = "l2vpn-services"
+        case other:
+            print("Invalid service type selected")
+            sys.exit(1)
+
+    json_response_status_code = delete_tier1_vpn_service_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN service {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN service {display_name}")
+        sys.exit(1)
+
+
+def remove_vpn_profile(**kwargs):
+    """Removes a custom-built VPN IKE Profile"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    profile_type = kwargs['profile_type']
+
+    match profile_type:
+        case "ike":
+            profile = "ipsec-vpn-ike-profiles"
+        case "ipsec":
+            profile = "ipsec-vpn-tunnel-profiles"
+        case "dpd":
+            profile = "ipsec-vpn-dpd-profiles"
+        case other:
+            print("Invalid profile type")
+            sys.exit(1)
+
+    json_response_status_code = delete_vpn_profile(proxy, session_token, display_name, profile)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN service {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN service {display_name}")
         sys.exit(1)
 
 
@@ -5324,7 +5577,6 @@ def main():
 # NSX-T - VPN (SDDC and Tier-1)
 # ============================
     parent_vpn_parser = argparse.ArgumentParser(add_help=False)
-    parent_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
 
     # create the parser for the "vpn" command
     vpn_parser = subparsers.add_parser('vpn', help='Create, delete, update, and show virtual private network (VPN) settings.')
@@ -5333,6 +5585,7 @@ def main():
 
     # create individual parsers for each sub-command
     new_ike_profile_parser = vpn_parser_subs.add_parser('new-ike-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IKE Profile')
+    new_ike_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_ike_profile_parser.add_argument('-i', '--ike-version', choices=['IKE_V1', 'IKE_V2', 'IKE_FLEX'], default='IKE_V2', required=True, type=str.upper, help='IKE version for this profile. Default is IKE-V2')
     new_ike_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ike_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IKE digest algorithm.Default is SHA2-256')
@@ -5340,6 +5593,7 @@ def main():
     new_ike_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_ike_profile)
 
     new_ipsec_profile_parser = vpn_parser_subs.add_parser('new-ipsec-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new VPN IPSEC Tunnel Profile')
+    new_ipsec_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_ipsec_profile_parser.add_argument('-dh', '--dh-group', choices=['GROUP2', 'GROUP5', 'GROUP14', 'GROUP15', 'GROUP16', 'GROUP19', 'GROUP20', 'GROUP21'], default='GROUP14', nargs='+', required=True, type=str.upper, help='The Diffie-Hellman Group for this IKE Profile.  Multiple DH Groups can be selected per profile.  Default is DH14.')
     new_ipsec_profile_parser.add_argument('-e', '--encrypt-algo', choices=['AES_128', 'AES_256', 'AES_GCM_128', 'AES_GCM_192', 'AES_GCM_256', 'NO_ENCRYPTION_AUTH_AES_GMAC_128', 'NO_ENCRYPTION_AUTH_AES_GMAC_192', 'NO_ENCRYPTION_AUTH_AES_GMAC_256', 'NO_ENCRYPTION'], default='AES_256', required=True, nargs='+', type=str.upper, help='IPSEC Encryption Algorithm options. Default is AES-256')
     new_ipsec_profile_parser.add_argument('-a', '--digest-algo', choices=['SHA1', 'SHA2_256', 'SHA2_384', 'SHA2_512'], nargs='+', type=str.upper, help='IPSec Digest Algorithm.')
@@ -5347,6 +5601,7 @@ def main():
     new_ipsec_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_tunnel_profile)
 
     new_dpd_profile_parser = vpn_parser_subs.add_parser('new-dpd-profile', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC DPD profile')
+    new_dpd_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_dpd_profile_parser.add_argument('-m', '--probe-mode', choices=['PERIODIC', 'ON-DEMAND'], default='PERIODIC', type=str.upper, required=True, help='DPD Probe Mode is used to query the liveliness of the peer.')
     new_dpd_profile_parser.add_argument('-i', '--interval', type=int, help='DPD Probe interval defines an interval for DPD probes (in seconds).  Default for periodic is 60s and On-Demand is 10s.')
     new_dpd_profile_parser.add_argument('-d', '--disable', action='store_false', help='Disable dead peer detection')
@@ -5354,17 +5609,20 @@ def main():
     new_dpd_profile_parser.set_defaults(func=new_sddc_ipsec_vpn_dpd_profile)
 
     new_t1_vpn_service_parser = vpn_parser_subs.add_parser('new-t1-vpn-service', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN service')
+    new_t1_vpn_service_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_vpn_service_parser.add_argument('-t1', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this VPN service should be attached to')
     new_t1_vpn_service_parser.add_argument('-s', '--service-type', required=True, choices=['ipsec', 'l2vpn'], help='Select whether this service is for an IPSec VPN or L2VPN')
     new_t1_vpn_service_parser.set_defaults(func=new_t1_vpn_service)
 
     new_local_endpoint_parser = vpn_parser_subs.add_parser('new-local-endpoint', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 VPN local endpoint')
+    new_local_endpoint_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_local_endpoint_parser.add_argument('-t', '--tier1-gateway', required=True, help='Select which Tier-1 gateway this Local Endpoint is associated with')
     new_local_endpoint_parser.add_argument('-s', '--vpn-service', required=True, help='Select which VPN service this Local Endpoint will be associated with')
     new_local_endpoint_parser.add_argument('-l', '--local-address', required=True, help='Define the local IPv4 address for the Local Endpoint')
     new_local_endpoint_parser.set_defaults(func=new_t1_local_endpoint)
 
     new_t1_ipsec_session_parser = vpn_parser_subs.add_parser('new-t1-ipsec-session', parents=[auth_flag,nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateway VPN session')
+    new_t1_ipsec_session_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_ipsec_session_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
     new_t1_ipsec_session_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='Define which Tier-1 Gateway this ')
     new_t1_ipsec_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the VPN service to which this session should be attached')
@@ -5381,6 +5639,7 @@ def main():
     new_t1_ipsec_session_parser.set_defaults(func=new_t1_ipsec_session)
 
     new_t1_l2vpn_session_parser = vpn_parser_subs.add_parser('new-t1-l2vpn-session', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new Tier-1 gateay L2VPN session')
+    new_t1_l2vpn_session_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_t1_l2vpn_session_parser.add_argument('-vs', '--vpn-service', required=True, help='Define the IPSec VPN Service')
     new_t1_l2vpn_session_parser.add_argument('-ls', '--l2vpn-service', required=True, help='Define the L2VPN Service')
     new_t1_l2vpn_session_parser.add_argument('-le', '--local-endpoint', required=True, help='Define the local endpoint for the L2VPN')
@@ -5392,6 +5651,7 @@ def main():
     new_t1_l2vpn_session_parser.set_defaults(func=new_t1_l2vpn_session)
 
     new_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('new-sddc-ipsec-vpn', parents=[nsx_url_flag, parent_vpn_parser], help='Create a new IPSEC VPN tunnel for the SDDC')
+    new_sddc_ipsec_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_sddc_ipsec_vpn_parser.add_argument('-v', '--vpn-type', choices=['route-based', 'policy-based'], required=True, help='Define whether this will be a route-based (BGP) VPN or a policy-based (static) VPN. If a route-based VPN, you must also define "-b" and "-s".')
     new_sddc_ipsec_vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the remote site')
     new_sddc_ipsec_vpn_parser.add_argument('-d', '--dpd-profile', required=True, help='Provide the name of the DPD profile to be used for this VPN tunnel')
@@ -5404,23 +5664,83 @@ def main():
     new_sddc_ipsec_vpn_parser.add_argument('-src', '--source-addr', nargs='+', help='Define the source subnets for the VPN.  Must be in IPV4 CIDR format.  Multiple entries supported with spaces inbetween.  Policy-based VPN only')
     new_sddc_ipsec_vpn_parser.set_defaults(func=new_sddc_ipsec_vpn)
 
-    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    new_sddc_l2vpn_parser = vpn_parser_subs.add_parser('new-sddc-l2vpn', parents=[nsx_url_flag], help='create a new L2VPN for the SDDC')
+    new_sddc_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     new_sddc_l2vpn_parser.add_argument('-r', '--remote-address', required=True, help='Provide the IPv4 address of the local site')
     new_sddc_l2vpn_parser.add_argument('-e', '--endpoint', choices=['Public-IP', 'Private-IP'], required=True, help='Choose between the Public IP endpoint and the Private IP endpoint')
     new_sddc_l2vpn_parser.set_defaults(func=new_sddc_l2vpn)
 
-    remove_l2VPN_parser = vpn_parser_subs.add_parser('remove-l2VPN', parents=[nsx_url_flag], help='remove a L2VPN')
-    remove_vpn_parser = vpn_parser_subs.add_parser('remove-vpn', parents=[nsx_url_flag], help='remove a VPN')
-    remove_vpn_ike_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
-    remove_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help='To remove a VPN IPSec Tunnel profile')
-    show_l2vpn_parser = vpn_parser_subs.add_parser('show-l2vpn', parents=[nsx_url_flag], help='show l2 vpn')
-    show_l2vpn_services_parser = vpn_parser_subs.add_parser('show-l2vpn-services', parents=[nsx_url_flag], help='show l2 vpn services')
-    show_vpn_parser = vpn_parser_subs.add_parser('show-vpn', parents=[nsx_url_flag], help='show the configured VPN')
-    show_vpn_stats_parser = vpn_parser_subs.add_parser('show-vpn-stats', parents=[nsx_url_flag], help='show the VPN statistics')
-    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profile', parents=[nsx_url_flag], help='show the VPN IKE profiles')
-    show_vpn_internet_ip_parser = vpn_parser_subs.add_parser('show-vpn-internet-ip', parents=[nsx_url_flag], help='show the public IP used for VPN services')
-    show_vpn_ipsec_tunnel_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-tunnel-profile', parents=[nsx_url_flag], help = 'show the VPN tunnel profile')
-    show_vpn_ipsec_endpoints_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-endpoints', parents=[nsx_url_flag], help='show the VPN IPSec endpoints')
+    remove_sddc_ipsec_vpn_parser = vpn_parser_subs.add_parser('remove-sddc-ipsec-vpn', parents=[nsx_url_flag], help='remove a SDDC IPSec VPN')
+    remove_sddc_ipsec_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_sddc_ipsec_vpn_parser.set_defaults(func=remove_sddc_ipsec_vpn)
+
+    remove_sddc_l2vpn_parser = vpn_parser_subs.add_parser('remove-sddc-l2VPN', parents=[nsx_url_flag], help='remove a SDDC L2VPN')
+    remove_sddc_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_sddc_l2vpn_parser.set_defaults(func=remove_sddc_l2vpn)
+
+    remove_tier1_vpn_parser = vpn_parser_subs.add_parser('remove-tier1-ipsec-vpn', parents=[nsx_url_flag], help='remove a Tier-1 IPSec VPN')
+    remove_tier1_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_tier1_vpn_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway that the VPN is attached to')
+    remove_tier1_vpn_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the VPN service the VPN is asscotiated with')
+    remove_tier1_vpn_parser.set_defaults(func=remove_tier1_ipsec_vpn)
+
+    remove_tier1_l2vpn_parser = vpn_parser_subs.add_parser('remove-tier1-l2vpn', parents=[nsx_url_flag], help='remove a Tier-1 L2VPN')
+    remove_tier1_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_tier1_l2vpn_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
+    remove_tier1_l2vpn_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the L2VPN service')
+    remove_tier1_l2vpn_parser.set_defaults(func=remove_tier1_l2vpn)
+
+    remove_tier1_vpn_local_endpoint_parser = vpn_parser_subs.add_parser('remove-t1-vpn-local-endpoint', parents=[nsx_url_flag], help='remove a Tier-1 Local Endpoint')
+    remove_tier1_vpn_local_endpoint_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_tier1_vpn_local_endpoint_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
+    remove_tier1_vpn_local_endpoint_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the IPSec service')
+    remove_tier1_vpn_local_endpoint_parser.set_defaults(func=remove_tier1_vpn_local_endpoint)
+
+    remove_tier1_vpn_service_parser = vpn_parser_subs.add_parser('remove-t1-vpn-service', parents=[nsx_url_flag], help='Remove a Tier-1 VPN Service')
+    remove_tier1_vpn_service_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_tier1_vpn_service_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
+    remove_tier1_vpn_service_parser.add_argument('-vt', '--vpn-type', choices=['ipsec', 'l2vpn'], type=str.lower, required=True, help='Chose the VPN service type, ipsec or l2vpn')
+    remove_tier1_vpn_service_parser.set_defaults(func=remove_tier1_vpn_service)
+
+    remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    remove_vpn_profile_parser.add_argument('-p', '--profile-type', choices=['ike', 'ipsec', 'dpd'], type=str.lower, required=True, help="Chose which type of profile you would like to remove.")
+    remove_vpn_profile_parser.set_defaults(func=remove_vpn_profile)
+
+    show_sddc_vpn_parser = vpn_parser_subs.add_parser('show-sddc-vpn', parents=[nsx_url_flag], help='show the SDDC VPNs')
+    show_sddc_vpn_parser.set_defaults(func=show_sddc_ipsec_vpn)
+
+    show_sddc_vpn_endpoint = vpn_parser_subs.add_parser('show-vpn-endpoints', parents=[nsx_url_flag], help='Show the SDDC VPN endpoints')
+    show_sddc_vpn_endpoint.set_defaults(func=show_sddc_vpn_endpoints)
+
+    show_sddc_l2vpn_parser = vpn_parser_subs.add_parser('show-sddc-l2vpn', parents=[nsx_url_flag], help='show the SDDC L2VPN')
+    show_sddc_l2vpn_parser.set_defaults(func=show_sddc_l2vpn)
+
+    show_vpn_ike_profile_parser = vpn_parser_subs.add_parser('show-vpn-ike-profiles', parents=[nsx_url_flag], help='show the VPN IKE profiles')
+    show_vpn_ike_profile_parser.set_defaults(func=show_vpn_ike_profile)
+
+    show_vpn_ipsec_profile_parser = vpn_parser_subs.add_parser('show-vpn-ipsec-profiles', parents=[nsx_url_flag], help='Show the VPN IPSec Tunnel Profiles')
+    show_vpn_ipsec_profile_parser.set_defaults(func=show_sddc_ipsec_profile)
+
+    show_vpn_dpd_profile_parser = vpn_parser_subs.add_parser('show-vpn-dpd-profiles', parents=[nsx_url_flag], help='Show the VPN DPD Profiles')
+    show_vpn_dpd_profile_parser.set_defaults(func=show_sddc_dpd_profile)
+
+    show_t1_vpn_services = vpn_parser_subs.add_parser('show-tier1-vpn-services', parents=[nsx_url_flag], help='Show Tier-1 VPN Services')
+    show_t1_vpn_services.set_defaults(func=show_tier1_vpn_services)
+
+    show_t1_vpn_local_endpoints = vpn_parser_subs.add_parser('show-tier1-vpn-local-endpoints', parents=[nsx_url_flag], help='Show Tier-1 Local Endpoints')
+    show_t1_vpn_local_endpoints.set_defaults(func=show_tier1_vpn_le)
+
+    show_t1_ipsec_vpn_parser = vpn_parser_subs.add_parser('show-tier1-vpn', parents=[nsx_url_flag], help='Show Tier-1 IPSec VPN sessions')
+    show_t1_ipsec_vpn_parser.set_defaults(func=show_tier1_ipsec_vpn)
+
+    show_t1_ipsec_vpn_details_parser = vpn_parser_subs.add_parser('show-tier1-vpn-details', parents=[nsx_url_flag], help='Show IPSec VPN details for a provided Tier1 VPN name')
+    show_t1_ipsec_vpn_details_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
+    show_t1_ipsec_vpn_details_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway')
+    show_t1_ipsec_vpn_details_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the IPSec VPN service')
+    show_t1_ipsec_vpn_details_parser.set_defaults(func=show_tier1_vpn_details)
+
+    show_tier1_l2vpn_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn', parents=[nsx_url_flag], help='Show Tier-1 L2VPN sessions')
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
