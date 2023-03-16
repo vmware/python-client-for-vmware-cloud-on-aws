@@ -1390,6 +1390,7 @@ def delete_t1_json(proxy_url, sessiontoken, t1_id):
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
     return response.status_code
 
+
 def get_t1_json(proxy, session_token):
     """Returns JSON body with all SDDC Tier-1 Gateways"""
     my_header = my_header = {'csp-auth-token': session_token}
@@ -1401,6 +1402,7 @@ def get_t1_json(proxy, session_token):
     else:
         nsx_error_handling(response)
         sys.exit(1)
+
 
 # ============================
 # Segments
@@ -1600,7 +1602,6 @@ def get_ipsec_vpn_endpoints_json(proxy_url, session_token):
         nsx_error_handling(response)
         sys.exit(1)
 
-
 def get_tier1_ipsec_vpn_services_json(proxy_url, session_token, t1g):
     """Returns JSON body with Tier-1 VPN Services"""
     my_header = {'csp-auth-token': session_token}
@@ -1619,7 +1620,6 @@ def get_tier1_l2vpn_services_json(proxy_url, session_token, t1g):
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy_url}/policy/api/v1/infra/tier-1s/{t1g}/l2vpn-services'
     response = requests.get(my_url, headers=my_header)
-    json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
@@ -1820,7 +1820,7 @@ def delete_l2vpn_json(proxy_url, session_token, vpn_id):
         nsx_error_handling(response)
         return None
 
-
+      
 def delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{vpn_id}'
@@ -1829,9 +1829,8 @@ def delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id):
@@ -1842,11 +1841,10 @@ def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
-
+  
 def delete_tier1_ipsec_vpn_json(proxy, session_token, display_name, t1g, vpn_service):
     """Deletes a Tier-1 IPSec VPN Session"""
     my_header = {'csp-auth-token': session_token}

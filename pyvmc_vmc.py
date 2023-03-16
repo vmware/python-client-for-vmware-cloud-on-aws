@@ -6,6 +6,7 @@
 ################################################################################
 
 import json
+import sys
 import requests
 
 #In order to use the following function, all the functions in this file will have to be modified to use.  
@@ -492,17 +493,17 @@ def get_nsx_info_json( strProdURL, org_id, deployment_id, session_token):
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
 
-def get_deployment_id_json(strProdURL, org_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/inventory/{}/core/deployments".format(strProdURL, org_id)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    if response.status_code == 200:
-        return json_response
-    else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+# def get_deployment_id_json(strProdURL, org_id, session_token):
+#     myHeader = {'csp-auth-token': session_token}
+#     myURL = "{}/api/inventory/{}/core/deployments".format(strProdURL, org_id)
+#     response = requests.get(myURL, headers=myHeader)
+#     json_response = response.json()
+#     if response.status_code == 200:
+#         return json_response
+#     else:
+#         print("There was an error. Check the syntax.")
+#         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+#         print(json_response['error_message'])
 
 def get_deployments_json(strProdURL,org_id, session_token):
     """Display a list of all SDDCs"""
@@ -529,9 +530,9 @@ def get_group_id_json(strProdURL, group, org_id, session_token):
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
 
-def get_resource_id_json(strProdURL, org_id, group_id, session_token):
+def get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/network-connectivity-configs/?group_id={}".format(strProdURL, org_id, group_id)
+    myURL = "{}/api/network/{}/core/network-connectivity-configs/?group_id={}".format(strProdURL, org_id, sddc_group_id)
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
@@ -695,10 +696,9 @@ def attach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     """Detach a VPC from a vTGW"""
@@ -708,10 +708,9 @@ def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     """Add or remove vTGW static routes"""
@@ -723,7 +722,6 @@ def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     # print(pretty_data)
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
