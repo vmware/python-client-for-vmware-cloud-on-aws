@@ -1411,22 +1411,6 @@ Once your section has been updated to use argparse and keword arguments (kwargs)
 #             if task_id:
 #                 get_task_status(task_id, ORG_ID, session_token)
 
-#     elif intent_name == "vpc-prefixes":
-#         print("===== Adding/Removing VPC Static Routes =========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         vpc_list = get_available_att(resource_id, ORG_ID, session_token)
-#         if vpc_list == []:
-#             print('   No VPC attached')
-#         else:
-#             n = input('   Select VPC: ')
-#             routes = input ('   Enter route(s) to add (space separated), or press Enter to remove all: ')
-#             user_list = routes.split()
-#             task_id = add_vpc_prefixes(user_list, vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
-#             get_task_status(task_id, ORG_ID, session_token)
-
 
 #     # ============================
 #     # NSX-T - VPN

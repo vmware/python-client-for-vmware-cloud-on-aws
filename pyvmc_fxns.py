@@ -44,94 +44,147 @@ from pyvmc_flexcomp import *
 
 def read_config():
     if not exists("./config.ini"):
-        print('config.ini is missing - rename config.ini.example to config.ini and populate the required values inside the file.')
-        sys.exit(1)
-
-    config_params = {}
-    try:
-        config = configparser.ConfigParser()
-        config.read("./config.ini")
-        auth_info = False
-        Refresh_Token = ""
-        clientId = ""
-        clientSecret = ""
-
-        strProdURL      = config.get("vmcConfig", "strProdURL")
-        strCSPProdURL   = config.get("vmcConfig", "strCSPProdURL")
-        ORG_ID          = config.get("vmcConfig", "org_id")
-        SDDC_ID         = config.get("vmcConfig", "sddc_id")
-        strVCDRProdURL  = config.get("vmcConfig", "strVCDRProdURL")
-
-        config_params.update({"strProdURL": strProdURL})
-        config_params.update({"strCSPProdURL": strCSPProdURL})
-        config_params.update({"ORG_ID": ORG_ID})
-        config_params.update({"SDDC_ID": SDDC_ID})
-        config_params.update({"strVCDRProdURL": strVCDRProdURL})
-
-        if config.has_option("vmcConfig", "refresh_Token"):
-            Refresh_Token = config.get("vmcConfig", "refresh_Token")
-            config_params.update({"Refresh_Token": Refresh_Token})
-            auth_info = True
-
-        if config.has_option("vmcConfig", "oauth_clientSecret") and config.has_option("vmcConfig", "oauth_clientId"):
-            clientId = config.get("vmcConfig", "oauth_clientId")
-            clientSecret = config.get("vmcConfig", "oauth_clientSecret")
-            config_params.update({"clientId": clientId})
-            config_params.update({"clientSecret": clientSecret})
-            auth_info = True
-
-        if config.has_section("vtcConfig"):
-            aws_acc         = config.get("vtcConfig", "MyAWS")
-            region          = config.get("vtcConfig", "AWS_region")
-            dxgw_id         = config.get("vtcConfig", "DXGW_id")
-            dxgw_owner      = config.get("vtcConfig", "DXGW_owner")
-            config_params.update({"aws_acc": aws_acc})
-            config_params.update({"region": region})
-            config_params.update({"dxgw_id": dxgw_id})
-            config_params.update({"dxgw_owner": dxgw_owner})
-            
-        else:
-            print('config.ini is outdated - the vtcConfig section is missing. Please insert the vtcConfig section in config.ini.example into your config.ini file. All transit gateway commands will fail without this configuration change.')
-
-        if config.has_section("tkgConfig"):
-            egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
-            ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
-            namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
-            service_CIDR    = config.get("tkgConfig", "service_CIDR")
-            config_params.update({"egress_CIDR": egress_CIDR})
-            config_params.update({"ingress_CIDR": ingress_CIDR})
-            config_params.update({"namespace_CIDR": namespace_CIDR})
-            config_params.update({"service_CIDR": service_CIDR})
-
-        else:
-            print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
-
-        if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or not auth_info or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
+        print()
+        print('config.ini is missing')
+        response = input("Would you like to build a default config.ini now? (please type 'yes' or 'no')")
+        if response.lower() == 'no' or response.lower() == 'n':
             print()
-            print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
-            print()
+            print('You may rename config.ini.example to config.ini and manually populate the required values inside the file.')
+            sys.exit(0)
+        elif response.lower() == 'yes' or response.lower() == 'y':
+            build_initial_config()
+            sys.exit(0)
+    else:
+        config_params = {}
+        try:
+            config = configparser.ConfigParser()
+            config.read("./config.ini")
+            auth_info = False
+            Refresh_Token = ""
+            clientId = ""
+            clientSecret = ""
+
+            strProdURL      = config.get("vmcConfig", "strProdURL")
+            strCSPProdURL   = config.get("vmcConfig", "strCSPProdURL")
+            ORG_ID          = config.get("vmcConfig", "org_id")
+            SDDC_ID         = config.get("vmcConfig", "sddc_id")
+            strVCDRProdURL  = config.get("vmcConfig", "strVCDRProdURL")
+
+            config_params.update({"strProdURL": strProdURL})
+            config_params.update({"strCSPProdURL": strCSPProdURL})
+            config_params.update({"ORG_ID": ORG_ID})
+            config_params.update({"SDDC_ID": SDDC_ID})
+            config_params.update({"strVCDRProdURL": strVCDRProdURL})
+
+            if config.has_option("vmcConfig", "refresh_Token"):
+                Refresh_Token = config.get("vmcConfig", "refresh_Token")
+                config_params.update({"Refresh_Token": Refresh_Token})
+                auth_info = True
+
+            if config.has_option("vmcConfig", "oauth_clientSecret") and config.has_option("vmcConfig", "oauth_clientId"):
+                clientId = config.get("vmcConfig", "oauth_clientId")
+                clientSecret = config.get("vmcConfig", "oauth_clientSecret")
+                config_params.update({"clientId": clientId})
+                config_params.update({"clientSecret": clientSecret})
+                auth_info = True
+
+            if config.has_section("vtcConfig"):
+                aws_acc         = config.get("vtcConfig", "MyAWS")
+                region          = config.get("vtcConfig", "AWS_region")
+                dxgw_id         = config.get("vtcConfig", "DXGW_id")
+                dxgw_owner      = config.get("vtcConfig", "DXGW_owner")
+                config_params.update({"aws_acc": aws_acc})
+                config_params.update({"region": region})
+                config_params.update({"dxgw_id": dxgw_id})
+                config_params.update({"dxgw_owner": dxgw_owner})
+                
+            else:
+                print('config.ini is outdated - the vtcConfig section is missing. Please insert the vtcConfig section in config.ini.example into your config.ini file. All transit gateway commands will fail without this configuration change.')
+
+            if config.has_section("tkgConfig"):
+                egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
+                ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
+                namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
+                service_CIDR    = config.get("tkgConfig", "service_CIDR")
+                config_params.update({"egress_CIDR": egress_CIDR})
+                config_params.update({"ingress_CIDR": ingress_CIDR})
+                config_params.update({"namespace_CIDR": namespace_CIDR})
+                config_params.update({"service_CIDR": service_CIDR})
+
+            else:
+                print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
+
+            if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or not auth_info or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
+                print()
+                print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
+                print()
+                sys.exit(1)
+            if "x-x-x-x" in strVCDRProdURL or " " in strVCDRProdURL:
+                print()
+                print("Please correct the entry for strVCDRProdURL in config.ini before proceeding.")
+                print()
+                sys.exit(1)
+
+        except:
+            print(
+                '''There are problems with your config.ini file.  
+                Please be sure you have the latest version and ensure at least the following values are populated:
+                - strProdURL     - this should read: "https://vmc.vmware.com"
+                - strCSPProdURL  - this should read: "https://console.cloud.vmware.com"
+                - Refresh_Token  - this should be a properly scoped refresh refresh token from the VMware Cloud Services Console.
+                - oauth_clientId - this should be OAuth Client ID properly scoped from VMware Cloud Services Console.
+                - oauth_clientSecret - this should be OAuth Client Secret.
+                - ORG_ID         - this should be the ID of your VMware Cloud Organization, found in the VMware Cloud Services Portal.
+                - SDDC_ID        - if applicable, this should be the ID of the VMware Cloud SDDC (Software Defined Datacenter) you wish to work with.
+                - strVCDRProdURL - if applicable, this should be the URL of your VMware Cloud DR Orchestrator.
+                ''')
             sys.exit(1)
-        if "x-x-x-x" in strVCDRProdURL or " " in strVCDRProdURL:
-            print()
-            print("Please correct the entry for strVCDRProdURL in config.ini before proceeding.")
-            print()
-            sys.exit(1)
+        return config_params
 
-    except:
-        print(
-            '''There are problems with your config.ini file.  
-            Please be sure you have the latest version and ensure at least the following values are populated:
-            - strProdURL     - this should read: "https://vmc.vmware.com"
-            - strCSPProdURL  - this should read: "https://console.cloud.vmware.com"
-            - Refresh_Token  - this should be a properly scoped refresh refresh token from the VMware Cloud Services Console.
-            - oauth_clientId - this should be OAuth Client ID properly scoped from VMware Cloud Services Console.
-            - oauth_clientSecret - this should be OAuth Client Secret.
-            - ORG_ID         - this should be the ID of your VMware Cloud Organization, found in the VMware Cloud Services Portal.
-            - SDDC_ID        - if applicable, this should be the ID of the VMware Cloud SDDC (Software Defined Datacenter) you wish to work with.
-            - strVCDRProdURL - if applicable, this should be the URL of your VMware Cloud DR Orchestrator.
-            ''')
-        sys.exit(1)
-    return config_params
+
+def build_initial_config():
+    config = configparser.ConfigParser()
+    config['vmcConfig'] = {
+        'strProdURL':'https://vmc.vmware.com',
+        'strCSPProdURL':'https://console.cloud.vmware.com',
+        'strVCDRProdURL':'https://vcdr-xxx-xxx-xxx-xxx.app.vcdr.vmware.com/',
+        'refresh_Token':'',
+        'oauth_clientId':'',
+        'oauth_clientSecret':'',
+        'org_id':'',
+        'sddc_id': ''
+        }
+
+    config['vtcConfig'] = {
+        'MyAWS': '',
+        'AWS_region': '',
+        'DXGW_id': '',
+        'DXGW_owner': ''
+    }
+
+    config['tkgConfig'] = {
+        'egress_CIDR': '',
+        'ingress_CIDR': '',
+        'namespace_CIDR': '',
+        'service_CIDR': ''
+    }
+
+    rt = input('Please enter your refresh token:')
+    oid = input('Please enter your organization ID:')
+    sid = input('Please enter your SDDC ID:')
+    config['vmcConfig']['refresh_token'] = rt
+    config['vmcConfig']['org_id'] = oid
+    config['vmcConfig']['sddc_id'] = sid
+
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
+    show_config()
+    print()
+    print("Your config.ini has been populated with the default URLs necessary for basic functionality,")
+    print(" as well as your Org and SDDC IDs, and your refresh token (if you chose to do so).")
+    print()
+    print("Please confirm your config.ini file using 'show-config' or review your file manually, then try your command again.")
+    return
 
 
 def show_config(**kwargs):
@@ -140,20 +193,13 @@ def show_config(**kwargs):
         sys.exit(1)
 
     try:
-        config = configparser.ConfigParser()
-        config.read("./config.ini")
-        for i in config.sections():
-            print(i)
-            print(config.items(i))
+        config_file=open("./config.ini","r")
+        content=config_file.read()
+        print("content of the config file is:")
+        print(content)
     except:
         print('There are problems with your config.ini file.')
         sys.exit(1)
-
-    
-
-    # config_params = {}
-    # config_params = read_config()
-    # print(json.dumps(config_params, indent=2))
 
 
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
