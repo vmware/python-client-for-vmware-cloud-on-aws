@@ -115,6 +115,9 @@ def main():
     # create a subparser for config sub-commands
     config_parser_subs = config_parser.add_subparsers(help='config sub-command help')
 
+    config_show_parser = config_parser_subs.add_parser('build', help = "Show the current configuration of pyVMC.")
+    config_show_parser.set_defaults(func = build_initial_config)
+
     config_show_parser = config_parser_subs.add_parser('show', help = "Show the current configuration of pyVMC.")
     config_show_parser.set_defaults(func = show_config)
 

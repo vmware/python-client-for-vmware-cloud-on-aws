@@ -142,7 +142,7 @@ def read_config():
         return config_params
 
 
-def build_initial_config():
+def build_initial_config(**kwargs):
     config = configparser.ConfigParser()
     config['vmcConfig'] = {
         'strProdURL':'https://vmc.vmware.com',
