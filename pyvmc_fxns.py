@@ -1305,7 +1305,7 @@ def delete_sddc_group(**kwargs):
     org_id = kwargs["ORG_ID"]
     session_token = kwargs['sessiontoken']
 
-    if (check_empty_group(strProdURL,group_id, org_id, session_token)):
+    if (check_empty_group(strProdURL,sddc_group_id, org_id, session_token)):
         res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
         resource_id = get_resource_id(**res_params)
         response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
@@ -4347,94 +4347,214 @@ def createLotsNetworks(proxy_url, sessiontoken,network_number):
 # ============================
 
 
-def getSDDCL2VPNSession(proxy_url, sessiontoken):
+def show_sddc_l2vpn(**kwargs):
     """Prints out L2VPN sessions"""
-    i = get_l2vpn_session_json(proxy_url, sessiontoken)
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    i = get_l2vpn_session_json(proxy, session_token)
     sddc_l2vpn_sessions = i['results']
     table = PrettyTable(['Name', 'ID', 'Enabled?'])
     for i in sddc_l2vpn_sessions:
         table.add_row([i['display_name'], i['id'], i['enabled']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCL2VPNServices(proxy_url, sessiontoken):
-    """Prints out L2VPN services"""
-    i = get_l2vpn_service_json(proxy_url, sessiontoken)
-    table = PrettyTable(['Name', 'ID', 'mode'])
-    table.add_row([i['display_name'], i['id'], i['mode']])
-    return table
-
-
-def getSDDCVPN(proxy_url,sessiontoken):
+def show_sddc_ipsec_vpn(**kwargs):
     """Prints out SDDC VPN session information"""
-    json_response = get_sddc_vpn_info_json(proxy_url, sessiontoken)
-    sddc_VPN = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    json_response = get_sddc_vpn_info_json(proxy, session_token)
+    sddc_vpn = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Local Address', 'Remote Address'])
-    for i in sddc_VPN:
-        table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
-    return table
+    for i in sddc_vpn:
+        table.add_row([i['display_name'], i['id'], i['local_endpoint_path'].strip("/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/"), i['peer_address']])
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecProfiles(proxy_url, sessiontoken):
+def show_vpn_ike_profile(**kwargs):
     """Prints out VPN IKE profiles for the SDDC"""
-    json_response = get_vpn_ike_profile_json(proxy_url, sessiontoken)
-    sddc_VPN_ipsec_profiles = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_ike_profile_json(proxy, session_token)
+    sddc_vpn_ipsec_profiles = json_response['results']
     table = PrettyTable(['Name', 'ID', 'IKE Version', 'Digest', 'DH Group', 'Encryption'])
-    for i in sddc_VPN_ipsec_profiles:
+    for i in sddc_vpn_ipsec_profiles:
         table.add_row([i['display_name'], i['id'], i['ike_version'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecTunnelProfiles(proxy_url, sessiontoken):
+def show_sddc_ipsec_profile(**kwargs):
     """Prints out VPN IPSEC profiles for the SDDC"""
-    json_response = get_vpn_ipsec_profile_json(proxy_url, sessiontoken)
-    sddc_VPN_ipsec_tunnel_profiles = json_response['results']
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_ipsec_profile_json(proxy, session_token)
+    sddc_vpn_ipsec_tunnel_profiles = json_response['results']
+
     table = PrettyTable(['Name', 'ID', 'Digest', 'DH Group', 'Encryption'])
-    for i in sddc_VPN_ipsec_tunnel_profiles:
+    for i in sddc_vpn_ipsec_tunnel_profiles:
         table.add_row([i['display_name'], i['id'], i['digest_algorithms'], i['dh_groups'], i['encryption_algorithms']])
-    return table
+    sys.exit(table)
 
 
-def getSDDCVPNInternetIP(proxy_url, sessiontoken):
-    """Prints out Public IP assigned to VPN"""
-    json_response = vpn_public_ip_json(proxy_url, sessiontoken)
-    vpn_internet_ip = json_response['vpn_internet_ips'][0]
-    print(vpn_internet_ip)
+def show_sddc_dpd_profile(**kwargs):
+    """Prints out VPN DPD profiles for the SDDC"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_vpn_dpd_profile_json(proxy, session_token)
+    dpd_profiles = json_response['results']
+    table = PrettyTable(['Name', 'ID', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    for d in dpd_profiles:
+        table.add_row([d['display_name'], d['id'], d['dpd_probe_mode'], d['dpd_probe_interval'], d['retry_count']])
+    sys.exit(table)
 
 
-def getSDDCVPNIpsecEndpoints(proxy_url, session_token):
+def show_sddc_vpn_endpoints(**kwargs):
     """ Gets the IPSec Local Endpoints """
-    json_response = get_ipsec_vpn_endpoints(proxy_url, session_token)
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    json_response = get_ipsec_vpn_endpoints_json(proxy, session_token)
     sddc_vpn_ipsec_endpoints = json_response['results']
     table = PrettyTable(['Name', 'ID', 'Address'])
     for i in sddc_vpn_ipsec_endpoints:
         table.add_row([i['display_name'], i['id'], i['local_address']])
-    return table
+    print(table)
+    sys.exit(0)
 
 
-def getSDDCVPNServices(proxy_url, session_token, vpn_id):
-    """Returns Table of available VPN services"""
-    i = get_ipsec_vpn_services(proxy_url, session_token, vpn_id)
-    table = PrettyTable(['Name', 'Id', 'Peer'])
-    table.add_row([i['display_name'], i['id'], i['peer_address']])
-    return table
+def show_tier1_vpn_services(**kwargs):
+    """Gets the VPN Services for all Tier-1 Gateways"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    #retrieve list of Tier-1 IDs
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+    table = PrettyTable(['Name', 'Service Type', 'Tier-1 Gateway'])
+    for l in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        l2vpn_json = get_tier1_l2vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                table.add_row([i['display_name'], 'IPSEC', l])
+        else:
+            pass
+        if l2vpn_json['result_count'] > 0:
+            l2vpn_serv = l2vpn_json['results']
+            for i in l2vpn_serv:
+                table.add_row([i['display_name'], 'L2VPN', l])
+        else:
+            pass
+    sys.exit(table)
 
 
-def getSDDCL2VPNSessionPath(proxy_url, sessiontoken):
-    """Prints out L2VPN Session Path"""
-    i = get_l2vpn_session_json(proxy_url, sessiontoken)
-    sddc_l2vpn_path = i['results'][0]['path']
-    return sddc_l2vpn_path
+def show_tier1_vpn_le(**kwargs):
+    """Prints all the Tier-1 VPN Local Endpoints per gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+    table = PrettyTable(['Name', 'Local Address', 'Tier-1 Gateway', 'IPSec Service'])
+    for l  in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                ipsec_serv_name = i['display_name']
+                le_json = get_tier1_vpn_le_json(proxy, session_token, l, ipsec_serv_name)
+                if le_json['result_count'] > 0:
+                    le = le_json['results']
+                    for v in le:
+                        table.add_row([v['display_name'], v['local_address'], l, ipsec_serv_name])
+                else:
+                    pass
+        else:
+            pass
+    sys.exit(table)
 
 
-def getSDDCVPNSTATS(proxy_url, sessiontoken, tunnelID):
-    """Returns table of VPN Statistics"""
-    json_response = get_vpn_stats_json(proxy_url, sessiontoken, tunnelID)
-    sddc_vpn_statistics = json_response['results'][0]['policy_statistics'][0]['tunnel_statistics']
-    table = PrettyTable(['Status', 'Packets In', 'Packets Out'])
-    for i in sddc_vpn_statistics:
-        table.add_row([i['tunnel_status'], i['packets_in'], i['packets_out']])
-    return table
+def show_tier1_ipsec_vpn(**kwargs):
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Authentication Mode', 'Local Endpoint', 'Tier-1 Gateway', 'VPN Service'])
+
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+
+    for l  in tier1_lst:
+        ipsec_json = get_tier1_ipsec_vpn_services_json(proxy, session_token, l)
+        if ipsec_json['result_count'] > 0:
+            ipsec_serv = ipsec_json['results']
+            for i in ipsec_serv:
+                ipsec_serv_name = i['display_name']
+                vpn_json = get_tier1_vpn_session_json(proxy, session_token, l, ipsec_serv_name)
+                vpn_data = vpn_json['results']
+                for v in vpn_data:
+                    rt = v['resource_type']
+                    le_path = v['local_endpoint_path']
+                    le = get_tier1_le_details_json(proxy, session_token, le_path)
+                    match rt:
+                        case "RouteBasedIPSecVpnSession":
+                            vt = "Route Based"
+                        case "PolicyBasedIPSecVpnSession":
+                            vt = "Policy Based"
+                    table.add_row([v['display_name'], vt, v['peer_address'], v['authentication_mode'], le['local_address'], l, ipsec_serv_name])
+    sys.exit(table)
+
+
+def show_tier1_vpn_details(**kwargs):
+    """Print details of a single Tier-1 VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    t1g = kwargs['tier1_gateway']
+    vpn_serv = kwargs['vpn_service']
+    display_name = kwargs['display_name']
+
+    vpn_json = get_tier1_vpn_details_json(proxy, session_token, t1g, vpn_serv, display_name)
+    ike_path = vpn_json['ike_profile_path']
+    tun_path = vpn_json['tunnel_profile_path']
+    dpd_path = vpn_json['dpd_profile_path']
+    le_path = vpn_json['local_endpoint_path']
+
+    match vpn_json['resource_type']:
+        case "PolicyBasedIPSecVpnSession":
+            rt = "Policy Based"
+            rules_json = vpn_json['rules']
+            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Prole', 'DPD Settings', 'Src Addresses', 'Dest Addresses'])
+            src_addr = []
+            dst_addr = []
+            for r in rules_json:
+                sources = r['sources']
+                destinations = r['destinations']
+                for s in sources:
+                    src_addr.append(s['subnet'])
+                for d in destinations:
+                    dst_addr.append(d['subnet'])
+        case "RouteBasedIPSecVpnSession":
+            rt = "Route Based"
+            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Settings', 'DPD Settings', 'BGP Tunnel CIDR'])
+            ip_subnets = vpn_json['tunnel_interfaces'][0]['ip_subnets']
+            for i in ip_subnets:
+                ip = i['ip_address'][0]
+                prefix = i['prefix_length']
+                bgp_cidr = f"{ip}/{prefix}"
+        case other:
+            print('Incorrect VPN Resource Type')
+            sys.exit(1)
 
 
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
@@ -4964,6 +5084,133 @@ def new_sddc_l2vpn(**kwargs):
     else:
         print(f"There was an error creating the IPSec tunnel for {display_name} L2VPN")
         sys.exit(1)
+
+
+def remove_sddc_ipsec_vpn(**kwargs):
+    """Removes a SDDC IPSec VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+
+    json_response_status_code = delete_ipsec_vpn_json(proxy, session_token, display_name)
+    if json_response_status_code == 200:
+        sys.exit(f"IPSec VPN {display_name} has been deleted")
+    else:
+        print(f"There was an error deleting {display_name}")
+        sys.exit(1)
+
+
+def remove_sddc_l2vpn(**kwargs):
+    """Removes a SDDC L2VPN"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+
+    json_response_status_code = delete_l2vpn_json(proxy, session_token, "__l2vpn__internal__")
+    if json_response_status_code == 200:
+        sys.exit(f"L2VPN {display_name} has been deleted")
+    else:
+        print(f"There was an error deleting {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_ipsec_vpn(**kwargs):
+    """Removes a IPSec VPN attached to a Tier-1 Gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_ipsec_vpn_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 IPSec VPN Session {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 IPSec VPN Session {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_l2vpn(**kwargs):
+    """Remove a L2VPN attached to a Tier-1 gateway"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_l2vpn_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 L2VPN Session {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 L2VPN Session {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_vpn_local_endpoint(**kwargs):
+    """Removes a Tier-1 VPN Local Endpoint"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    vpn_service = kwargs['vpn_service']
+
+    json_response_status_code = delete_tier1_vpn_le_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN Local Endpoint {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN Local Endpoint {display_name}")
+        sys.exit(1)
+
+
+def remove_tier1_vpn_service(**kwargs):
+    """Removes a Tier-1 VPN Service"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    tier1_gateway = kwargs['tier1_gateway']
+    service_type = kwargs['vpn_type']
+
+    match service_type:
+        case "ipsec":
+            vpn_service = "ipsec-vpn-services"
+        case "l2vpn":
+            vpn_service = "l2vpn-services"
+        case other:
+            print("Invalid service type selected")
+            sys.exit(1)
+
+    json_response_status_code = delete_tier1_vpn_service_json(proxy, session_token, display_name, tier1_gateway, vpn_service)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN service {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN service {display_name}")
+        sys.exit(1)
+
+
+def remove_vpn_profile(**kwargs):
+    """Removes a custom-built VPN IKE Profile"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    display_name = kwargs['display_name']
+    profile_type = kwargs['profile_type']
+
+    match profile_type:
+        case "ike":
+            profile = "ipsec-vpn-ike-profiles"
+        case "ipsec":
+            profile = "ipsec-vpn-tunnel-profiles"
+        case "dpd":
+            profile = "ipsec-vpn-dpd-profiles"
+        case other:
+            print("Invalid profile type")
+            sys.exit(1)
+
+    json_response_status_code = delete_vpn_profile(proxy, session_token, display_name, profile)
+    if json_response_status_code == 200:
+        sys.exit(f"Tier-1 VPN service {display_name} was deleted successfully")
+    else:
+        print(f"There was an error deleting Tier1 VPN service {display_name}")
+        sys.exit(1)        
 
 
 # ============================
