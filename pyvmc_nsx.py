@@ -1537,6 +1537,19 @@ def get_vpn_ipsec_profile_json(proxy_url, sessiontoken):
         sys.exit(1)
 
 
+def get_vpn_ipsec_profile_details_json(proxy, session_token, tunnel_path):
+    """Returns JSON body with VPN IPSec Tunnel profile details"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1{tunnel_path}'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
+
+
 def get_vpn_ike_profile_json(proxy_url, sessiontoken):
     """Returns JSON response with VPN IKE profiles for the SDDC"""
     my_header = {'csp-auth-token': sessiontoken}
@@ -1550,10 +1563,36 @@ def get_vpn_ike_profile_json(proxy_url, sessiontoken):
         sys.exit(1)
 
 
+def get_vpn_ike_profile_details_json(proxy, session_token, ike_path):
+    """Returns the JSON body for a provided VPN IKE profile path"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1{ike_path}'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
+
+
 def get_vpn_dpd_profile_json(proxy, sessiontoken):
     """Returns JSON bosy with VPN DPD profiles for the SDDC"""
     my_header = {'csp-auth-token': sessiontoken}
     my_url = f'{proxy}/policy/api/v1/infra/ipsec-vpn-dpd-profiles'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
+
+
+def get_vpn_dpd_profile_details_json(proxy, session_token, dpd_path):
+    """Returns JSON body with VPN DPD profile data based on supplied path URI"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1{dpd_path}'
     response = requests.get(my_url, headers=my_header)
     json_response = response.json()
     if response.status_code == 200:
@@ -1631,6 +1670,19 @@ def get_tier1_vpn_le_json(proxy, session_token, t1g, ipsec_serv):
     """Returns JSON bosy with Tier-1 Local Endpoint for provided gateway and IPSEC servoce"""
     my_header = {'csp-auth-token': session_token}
     my_url = f'{proxy}/policy/api/v1/infra/tier-1s/{t1g}/ipsec-vpn-services/{ipsec_serv}/local-endpoints'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
+
+
+def get_tier1_vpn_le_details_json(proxy, session_token, le_path):
+    """Returns JSON body containing Local Endpoint data for provided LE path"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy}/policy/api/v1{le_path}'
     response = requests.get(my_url, headers=my_header)
     json_response = response.json()
     if response.status_code == 200:
