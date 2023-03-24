@@ -1047,13 +1047,6 @@ def getSDDChosts(**kwargs):
     print(table)
 
 
-def getNSXTproxy(orgID, sddcID, sessiontoken):
-    """Returns the NSX Reverse Proxy URL"""
-    json_response = get_sddc_info_json(strProdURL, orgID, sessiontoken, sddcID)
-    proxy_url = json_response['resource_config']['nsx_api_public_endpoint_url']
-    return proxy_url
-
-
 # ============================
 # SDDC - TKG
 # ============================
@@ -2842,7 +2835,7 @@ def getSDDCT0routes(proxy_url, session_token):
     print('Route Type Legend:')
     print('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
     print()
-    print(df.sort_values(by=[ 'route_type', 'network'], ascending=True))
+    print(df.sort_values(by=[ 'route_type', 'network'], ascending=True).to_string())
     # route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     # for routes in t0_routes:
     #     route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
