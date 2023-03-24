@@ -4530,11 +4530,30 @@ def show_tier1_vpn_details(**kwargs):
     dpd_path = vpn_json['dpd_profile_path']
     le_path = vpn_json['local_endpoint_path']
 
+    le_json = get_tier1_vpn_le_details_json(proxy, session_token, le_path)
+    local_addr = le_json['local_address']
+
+    ike_json = get_vpn_ike_profile_details_json(proxy, session_token, ike_path)
+    ike_table = PrettyTable(['Profile Name', 'IKE Version', 'Digest Algoritms', 'Encryption Algorithms', 'Diffie-Helman Groups'])
+    ike_table.title = 'IKE Profile Details'
+    ike_table.add_row([ike_json['display_name'], ike_json['ike_version'], ike_json['digest_algorithms'], ike_json['encryption_algorithms'], ike_json['dh_groups']])
+
+    ipsec_json = get_vpn_ipsec_profile_details_json(proxy, session_token, tun_path)
+    ipsec_table = PrettyTable(['Profile Name', 'Digest Algorithm', 'Encryption Algorithm', 'Diffie-Helman Groups', 'PFS Status'])
+    ipsec_table.title = 'IPSec Tunnel Profile Details'
+    ipsec_table.add_row([ipsec_json['display_name'], ipsec_json['digest_algorithms'], ipsec_json['encryption_algorithms'], ipsec_json['dh_groups'], ipsec_json['enable_perfect_forward_secrecy']])
+
+    dpd_json = get_vpn_dpd_profile_details_json(proxy, session_token, dpd_path)
+    dpd_table = PrettyTable(['Profile Name', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    dpd_table.title = 'Dead Peer Detection Profile Details'
+    dpd_table.add_row([dpd_json['display_name'], dpd_json['dpd_probe_mode'], dpd_json['dpd_probe_interval'], dpd_json['retry_count']])
+
     match vpn_json['resource_type']:
         case "PolicyBasedIPSecVpnSession":
             rt = "Policy Based"
             rules_json = vpn_json['rules']
-            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Prole', 'DPD Settings', 'Src Addresses', 'Dest Addresses'])
+            vpn_table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'Src Addresses', 'Dest Addresses'])
+            vpn_table.title = 'VPN Details'
             src_addr = []
             dst_addr = []
             for r in rules_json:
@@ -4544,17 +4563,28 @@ def show_tier1_vpn_details(**kwargs):
                     src_addr.append(s['subnet'])
                 for d in destinations:
                     dst_addr.append(d['subnet'])
+            vpn_table.add_row([display_name, 'Policy-Based', vpn_json['peer_address'], local_addr, src_addr, dst_addr])
+
         case "RouteBasedIPSecVpnSession":
             rt = "Route Based"
-            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Settings', 'DPD Settings', 'BGP Tunnel CIDR'])
+            vpn_table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'BGP Tunnel CIDR', 'Local Endpoint', 'Authentication Mode'])
+            vpn_table.title = 'VPN Details'
             ip_subnets = vpn_json['tunnel_interfaces'][0]['ip_subnets']
             for i in ip_subnets:
-                ip = i['ip_address'][0]
+                ip = i['ip_addresses'][0]
                 prefix = i['prefix_length']
                 bgp_cidr = f"{ip}/{prefix}"
+            vpn_table.add_row([display_name, 'Route-Based', vpn_json['peer_address'], bgp_cidr, local_addr, vpn_json['authentication_mode']])
+
         case other:
             print('Incorrect VPN Resource Type')
             sys.exit(1)
+
+    print(vpn_table)
+    print(ike_table)
+    print(ipsec_table)
+    print(dpd_table)
+    sys.exit(0)
 
 
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
@@ -4638,7 +4668,7 @@ def new_sddc_ipsec_vpn_tunnel_profile(**kwargs):
     }
     json_response_status_code = new_ipsec_vpn_profile_json(proxy, session_token, display_name, json_data)
     if json_response_status_code == 200:
-        sys.exit(f'IKE Profile {display_name} was created successfully')
+        sys.exit(f'IPSec Tunnel Profile {display_name} was created successfully')
     else:
         print('There was an error')
         sys.exit(1)
