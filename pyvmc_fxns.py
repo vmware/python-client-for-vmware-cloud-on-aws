@@ -1126,27 +1126,52 @@ def disable_wcp( org_id, sddc_id, cluster_id, session_token):
 # ============================
 
 
-def connect_aws_account(account, region, resource_id, org_id, session_token):
-    response = connect_aws_account_json(strProdURL, account, region, resource_id, org_id, session_token)
+def connect_aws_account(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_acc']
+    region = kwargs['region']
+
+    resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    response = connect_aws_account_json(strProdURL, aws_acc, region, resource_id, org_id, session_token)
     json_response = response.json()
     if not response.ok :
-        print ("    Error: " + json_response['message'])
-        task_id = 0
-    else:
-        task_id = json_response ['id']
-    return task_id
+        print("    Error: " + json_response['message'])
+        sys.exit(1)
+    task_id = json_response ['id']
+
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
 
 
-def disconnect_aws_account(account, resource_id, org_id, session_token):
-    response = disconnect_aws_account_json(strProdURL, account, resource_id, org_id, session_token)
+def disconnect_aws_account(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_acc']
+
+    resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    response = disconnect_aws_account_json(strProdURL, aws_acc, resource_id, org_id, session_token)
     json_response = response.json()
     if not response.ok :
         print("    Error: " + json_response['message'])
         print("    Message: " + json_response['details'][0]['validation_error_message'])
-        task_id = 0
-    else:
-        task_id = json_response ['id']
-    return task_id
+        sys.exit(1)
+    task_id = json_response ['id']
+
+    task_params={'task_id':task_id,'ORG_ID':org_id, 'strProdURL':strProdURL,'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
+
+
 
 
 # ============================
@@ -1259,14 +1284,17 @@ def get_deployments(**kwargs):
 
 
 def get_resource_id(**kwargs):
-    session_token = kwargs['session_token']
+    session_token = kwargs['sessiontoken']
     strProdURL = kwargs['strProdURL']
     org_id = kwargs['org_id']
     sddc_group_id = kwargs['sddc_group_id']
     json_response = get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token)
-    resource_id = json_response[0]['id']
-    return resource_id
-
+    if json_response is not None:
+        resource_id = json_response[0]['id']
+        return resource_id
+    else:
+        print("No results returned.")
+        sys.exit(1)
 
 # ============================
 # VTC - SDDC Group Operations

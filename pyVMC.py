@@ -673,15 +673,20 @@ def main():
     parent_vtc_parser = argparse.ArgumentParser(add_help=False)
     #     name
 
-    # connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vtc_config_flag], help = 'Connect an vTGW to an AWS account')
-    # disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vtc_config_flag], help = 'Disconnect a vTGW from an AWS account')
+    connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Connect an vTGW to an AWS account')
+    connect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to AWS.  Use 'get-group-info' for a list of SDDC Groups with IDs.")
+    connect_aws_parser.set_defaults(func = connect_aws_account)
+
+    disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Disconnect a vTGW from an AWS account')
+    disconnect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to detach from AWS.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
+    disconnect_aws_parser.set_defaults(func = disconnect_aws_account)
 
 # ============================
 # VTC - DXGW Operations
 # ============================
 
-    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vtc_config_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
-    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vtc_config_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
+    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
+    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
 
 # ============================
 # VTC - SDDC Operations
