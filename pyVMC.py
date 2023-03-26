@@ -658,6 +658,10 @@ def main():
 # VTC - VMware Transit Connect
 # ============================
 
+    #create a parent parser for VTC commands (several commands share parameters for AWS Account ID)
+    # parent_vtc_parser = argparse.ArgumentParser(add_help=False)
+    # parent_vtc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+
     # create the parser for the "vtc" command
     vtc_parser=subparsers.add_parser('vtc', formatter_class=MyFormatter, help='Commands related to VMware Transit Connect (VTC).')
     # create a subparser for csp sub-commands
@@ -671,11 +675,14 @@ def main():
 # VTC - AWS Operations
 # ============================
 
-    connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Connect an vTGW to an AWS account')
+    connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Connect an vTGW to an AWS account')
+    connect_aws_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    connect_aws_parser.add_argument('-rid', '--region_id', required = True, help= "The AWS region the VPC is deployed in.  Examples - 'us-east-1', 'us-west-2'")
     connect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to AWS.  Use 'get-group-info' for a list of SDDC Groups with IDs.")
     connect_aws_parser.set_defaults(func = connect_aws_account)
 
-    disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Disconnect a vTGW from an AWS account')
+    disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Disconnect a vTGW from an AWS account')
+    disconnect_aws_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     disconnect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to detach from AWS.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
     disconnect_aws_parser.set_defaults(func = disconnect_aws_account)
 
@@ -683,11 +690,16 @@ def main():
 # VTC - DXGW Operations
 # ============================
 
-    attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
+    attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
+    attach_dxgw_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    attach_dxgw_parser.add_argument('-did', '--dxgw_id',  required = True, help= "The AWS ID of the DXGW you wish to attach.")
+    attach_dxgw_parser.add_argument('-rid', '--region_id', required = True, help= "The AWS region the DXGW is deployed in.  Examples - 'us-east-1', 'us-west-2'")
+    attach_dxgw_parser.add_argument('-pl','--prefix_list', nargs='+', required = True, help= "A space-separated list of networks (e.g. 192.168.1.0/24) the SDDC advertises to DXGW and to on-prem.")
     attach_dxgw_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to the Direct Connect Gateway.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
     attach_dxgw_parser.set_defaults(func = attach_dxgw)
 
-    detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
+    detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
+    detach_dxgw_parser.add_argument('-did', '--dxgw_id',  required = True, help= "The AWS ID of the DXGW you wish to detach.")
     detach_dxgw_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to detach from the Direct Connect Gateway.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
     detach_dxgw_parser.set_defaults(func = detach_dxgw)
 
@@ -736,15 +748,18 @@ def main():
 # VTC - VPC Operations
 # ============================
 
-    attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Attach a VPC to a vTGW')
+    attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Attach a VPC to a vTGW')
+    attach_vpc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     attach_vpc_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to.  Use 'get-group-info' for a list of SDDCs Groups with IDs.")
     attach_vpc_parser.set_defaults(func = attach_vpc)
 
-    detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Detach VPC from a vTGW')
+    detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Detach VPC from a vTGW')
+    detach_vpc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     detach_vpc_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to.  Use 'get-group-info' for a list of SDDCs Groups with IDs.")
     detach_vpc_parser.set_defaults(func = detach_vpc)
 
-    vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Add or remove static routes to your vTGW.')
+    vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Add or remove static routes to your vTGW.')
+    vpc_prefixes_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     vpc_prefixes_parser.add_argument("-gid", "--sddc_group_id", required = True, help="ID for the SDDC group to add prefixes to. Use 'get-group-info' to view a list of SDDC groups and their IDs.")
     vpc_prefixes_parser.set_defaults(func = add_vpc_prefixes)
 
@@ -1316,16 +1331,6 @@ def main():
     try:
         args.vcdr_flag
         params.update({"strVCDRProdURL": config_params['strVCDRProdURL']})
-    except:
-        pass
-
-    # If flags are present for VTC Config, add the VTC Config parameters to the parameters payload.
-    try:
-        args.vtc_flag
-        params.update({"aws_acc":config_params['aws_acc']})
-        params.update({"region":config_params['region']})
-        params.update({"dxgw_id":config_params['dxgw_id']})
-        params.update({"dxgw_owner":config_params['dxgw_owner']})
     except:
         pass
 
