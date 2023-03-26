@@ -409,6 +409,7 @@ def attach_dxgw_json(strProdURL, routes, resource_id, org_id, dxgw_owner, dxgw_i
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token):
     """Detach a Direct Connect Gateway from a vTGW"""
@@ -433,6 +434,7 @@ def detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(response)
+        return None
 
 # ============================
 # VTC - SDDC Operations
@@ -492,6 +494,8 @@ def get_nsx_info_json( strProdURL, org_id, deployment_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
+
 
 # def get_deployment_id_json(strProdURL, org_id, session_token):
 #     myHeader = {'csp-auth-token': session_token}
@@ -517,6 +521,7 @@ def get_deployments_json(strProdURL,org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def get_group_id_json(strProdURL, group, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -529,6 +534,7 @@ def get_group_id_json(strProdURL, group, org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -541,6 +547,7 @@ def get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def get_sddc_groups_json(strProdURL, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -553,7 +560,7 @@ def get_sddc_groups_json(strProdURL, org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
-    return None
+        return None
 
 def get_task_status_json(strProdURL,task_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
