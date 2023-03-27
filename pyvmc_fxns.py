@@ -1373,7 +1373,7 @@ def delete_sddc_group(**kwargs):
     session_token = kwargs['sessiontoken']
 
     if (check_empty_group(strProdURL,sddc_group_id, org_id, session_token)):
-        res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+        res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
         resource_id = get_resource_id(**res_params)
         response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
         if response == None:
@@ -1599,7 +1599,7 @@ def attach_vpc(**kwargs):
     resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
     resource_id = get_resource_id(**resource_params)
 
-    pend_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'session_token':session_token}
+    pend_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'sessiontoken':session_token}
     vpc_list = get_pending_att(**pend_att_params)
 
     if vpc_list == []:
@@ -1680,7 +1680,7 @@ def get_pending_att(**kwargs):
     strProdURL = kwargs['strProdURL']
     resource_id=kwargs['resource_id']
     org_id=kwargs['org_id']
-    session_token=kwargs['session_token']
+    session_token=kwargs['sessiontoken']
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}?trait=AwsVpcAttachmentsTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
@@ -2991,7 +2991,7 @@ def getTGWroutes(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strProdURL = kwargs['strProdURL']
     sddc_group_id = kwargs['sddc_group_id']
-    res_params = {'session_token':sessiontoken, 'strProdURL':strProdURL, 'org_id':ORG_ID, 'sddc_group_id':sddc_group_id}
+    res_params = {'sessiontoken':sessiontoken, 'strProdURL':strProdURL, 'org_id':ORG_ID, 'sddc_group_id':sddc_group_id}
     resource_id = get_resource_id(**res_params)
     print(f'Route table for {sddc_group_id}')
     get_route_tables(strProdURL, resource_id, ORG_ID, sessiontoken)
