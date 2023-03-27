@@ -4708,6 +4708,99 @@ def show_tier1_vpn_details(**kwargs):
     sys.exit(0)
 
 
+def show_tier1_l2vpn(**kwargs):
+    """Prints table of all Tier-1 L2VPN sessions"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    l2vpn_table = PrettyTable(['Display Name', 'IPSec Transport Tunnel', 'Tier-1 Gateway', 'L2VPN Service', 'Peer Address', 'Local Endpoint'])
+
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+
+    for t in tier1_lst:
+        l2vpn_json = get_tier1_l2vpn_services_json(proxy, session_token, t)
+        if l2vpn_json['result_count'] > 0:
+            l2vpn_serv = l2vpn_json['results']
+            for i in l2vpn_serv:
+                l2vpn_serv_name = i['display_name']
+                l2vpn_sessions_json = get_tier1_l2vpn_json(proxy, session_token, t, l2vpn_serv_name)
+                l2vpn_sessions = l2vpn_sessions_json['results']
+                for l in l2vpn_sessions:
+                    transport = l['transport_tunnels']
+                    for x in transport:
+                        ipsec_path = x
+                    ipsec_vpn_json = get_tier1_l2vpn_ipsec_json(proxy, session_token, ipsec_path)
+                    ipsec_name = ipsec_vpn_json['display_name']
+                    peer_addr = ipsec_vpn_json['peer_address']
+                    le_json = get_tier1_vpn_le_details_json(proxy, session_token, ipsec_vpn_json['local_endpoint_path'])
+                    local_addr = le_json['local_address']
+
+                    l2vpn_table.add_row([l2vpn_serv_name, ipsec_name, t, l2vpn_serv_name, peer_addr, local_addr])
+    sys.exit(l2vpn_table)
+
+
+def show_tier1_l2vpn_details(**kwargs):
+    """Prints table of all associated information for a L2VPN session"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    t1g = kwargs['tier1_gateway']
+    l2vpn_serv = kwargs['vpn_service']
+    display_name = kwargs['display_name']
+
+    l2vpn_table = PrettyTable(['Display Name', 'IPSec Transport Tunnel', 'Tier-1 Gateway', 'L2VPN Service', 'Peer Address', 'Local Endpoint'])
+    l2vpn_table.title = 'L2VPN Session Details'
+    ipsec_tun_table = PrettyTable(['Display Name', 'BGP Address CIDR', 'Authentication Mode'])
+    ipsec_tun_table.title = 'L2VPN IPSec Transport Tunnel Details'
+    ike_table = PrettyTable(['Profile Name', 'IKE Version', 'Digest Algoritms', 'Encryption Algorithms', 'Diffie-Helman Groups'])
+    ike_table.title = 'IKE Profile Details'
+    ipsec_table = PrettyTable(['Profile Name', 'Digest Algorithm', 'Encryption Algorithm', 'Diffie-Helman Groups', 'PFS Status'])
+    ipsec_table.title = 'IPSec Tunnel Profile Details'
+    dpd_table = PrettyTable(['Profile Name', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    dpd_table.title = 'Dead Peer Detection Profile Details'
+
+    l2vpn_json = get_tier1_l2vpn_details_json(proxy, session_token, t1g, l2vpn_serv, display_name)
+    transport = l2vpn_json['transport_tunnels']
+    for x in transport:
+        ipsec_path = x
+    ipsec_vpn_json = get_tier1_l2vpn_ipsec_json(proxy, session_token, ipsec_path)
+    ike_path = ipsec_vpn_json['ike_profile_path']
+    tun_path = ipsec_vpn_json['tunnel_profile_path']
+    dpd_path = ipsec_vpn_json['dpd_profile_path']
+    le_path = ipsec_vpn_json['local_endpoint_path']
+
+    ip_subnets = ipsec_vpn_json['tunnel_interfaces'][0]['ip_subnets']
+    for i in ip_subnets:
+        ip = i['ip_addresses'][0]
+        prefix = i['prefix_length']
+        bgp_cidr = f"{ip}/{prefix}"
+
+    le_json = get_tier1_vpn_le_details_json(proxy, session_token, le_path)
+    local_addr = le_json['local_address']
+
+    l2vpn_table.add_row([l2vpn_json['display_name'], ipsec_vpn_json['display_name'], t1g, l2vpn_serv, ipsec_vpn_json['peer_address'], local_addr])
+    ipsec_tun_table.add_row([ipsec_vpn_json['display_name'], bgp_cidr, ipsec_vpn_json['authentication_mode']])
+
+    ike_json = get_vpn_ike_profile_details_json(proxy, session_token, ike_path)
+    ike_table.add_row([ike_json['display_name'], ike_json['ike_version'], ike_json['digest_algorithms'], ike_json['encryption_algorithms'], ike_json['dh_groups']])
+
+    ipsec_json = get_vpn_ipsec_profile_details_json(proxy, session_token, tun_path)
+    ipsec_table.add_row([ipsec_json['display_name'], ipsec_json['digest_algorithms'], ipsec_json['encryption_algorithms'], ipsec_json['dh_groups'], ipsec_json['enable_perfect_forward_secrecy']])
+
+    dpd_json = get_vpn_dpd_profile_details_json(proxy, session_token, dpd_path)
+    dpd_table.add_row([dpd_json['display_name'], dpd_json['dpd_probe_mode'], dpd_json['dpd_probe_interval'], dpd_json['retry_count']])
+
+    print(l2vpn_table)
+    print(ipsec_tun_table)
+    print(ike_table)
+    print(ipsec_table)
+    print(dpd_table)
+    sys.exit(0)
+
+
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
     """ Creates the configured IPSec VPN Ike Profile """
     proxy = kwargs['proxy']
