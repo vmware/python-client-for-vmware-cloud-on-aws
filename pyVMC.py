@@ -544,7 +544,15 @@ def main():
     show_t1_ipsec_vpn_details_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the IPSec VPN service')
     show_t1_ipsec_vpn_details_parser.set_defaults(func=show_tier1_vpn_details)
 
-    # show_tier1_l2vpn_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn', parents=[nsx_url_flag], help='Show Tier-1 L2VPN sessions')
+    show_tier1_l2vpn_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn', parents=[nsx_url_flag], help='Show Tier-1 L2VPN sessions')
+    show_tier1_l2vpn_parser.set_defaults(func=show_tier1_l2vpn)
+
+    show_tier1_l2vpn_details_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn-details', parents=[nsx_url_flag], help='Show Tier-1 L2VPN Session Details')
+    show_tier1_l2vpn_details_parser.add_argument('-n', '--display-name', required=True, help='The display name of the L2VPN object')
+    show_tier1_l2vpn_details_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway the L2VPN is attached to')
+    show_tier1_l2vpn_details_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the L2VPN service in use by the L2VPN session')
+    show_tier1_l2vpn_details_parser.set_defaults(func=show_tier1_l2vpn_details)
+
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
