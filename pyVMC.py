@@ -658,6 +658,10 @@ def main():
 # VTC - VMware Transit Connect
 # ============================
 
+    #create a parent parser for VTC commands (several commands share parameters for AWS Account ID)
+    # parent_vtc_parser = argparse.ArgumentParser(add_help=False)
+    # parent_vtc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+
     # create the parser for the "vtc" command
     vtc_parser=subparsers.add_parser('vtc', formatter_class=MyFormatter, help='Commands related to VMware Transit Connect (VTC).')
     # create a subparser for csp sub-commands
@@ -670,18 +674,34 @@ def main():
 # ============================
 # VTC - AWS Operations
 # ============================
-    parent_vtc_parser = argparse.ArgumentParser(add_help=False)
-    #     name
 
-    # connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vtc_config_flag], help = 'Connect an vTGW to an AWS account')
-    # disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vtc_config_flag], help = 'Disconnect a vTGW from an AWS account')
+    connect_aws_parser=vtc_parser_subs.add_parser('connect-aws', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Connect an vTGW to an AWS account')
+    connect_aws_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    connect_aws_parser.add_argument('-rid', '--region_id', required = True, help= "The AWS region the VPC is deployed in.  Examples - 'us-east-1', 'us-west-2'")
+    connect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to AWS.  Use 'get-group-info' for a list of SDDC Groups with IDs.")
+    connect_aws_parser.set_defaults(func = connect_aws_account)
+
+    disconnect_aws_parser=vtc_parser_subs.add_parser('disconnect-aws', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Disconnect a vTGW from an AWS account')
+    disconnect_aws_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    disconnect_aws_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to detach from AWS.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
+    disconnect_aws_parser.set_defaults(func = disconnect_aws_account)
 
 # ============================
 # VTC - DXGW Operations
 # ============================
 
-    # attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vtc_config_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
-    # detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vtc_config_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
+    attach_dxgw_parser=vtc_parser_subs.add_parser('attach-dxgw', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Attach a Direct Connect Gateway to a vTGW')
+    attach_dxgw_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    attach_dxgw_parser.add_argument('-did', '--dxgw_id',  required = True, help= "The AWS ID of the DXGW you wish to attach.")
+    attach_dxgw_parser.add_argument('-rid', '--region_id', required = True, help= "The AWS region the DXGW is deployed in.  Examples - 'us-east-1', 'us-west-2'")
+    attach_dxgw_parser.add_argument('-pl','--prefix_list', nargs='+', required = True, help= "A space-separated list of networks (e.g. 192.168.1.0/24) the SDDC advertises to DXGW and to on-prem.")
+    attach_dxgw_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to the Direct Connect Gateway.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
+    attach_dxgw_parser.set_defaults(func = attach_dxgw)
+
+    detach_dxgw_parser=vtc_parser_subs.add_parser('detach-dxgw', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Detach a Direct Connect Gateway from a vTGW')
+    detach_dxgw_parser.add_argument('-did', '--dxgw_id',  required = True, help= "The AWS ID of the DXGW you wish to detach.")
+    detach_dxgw_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to detach from the Direct Connect Gateway.  Use 'get-deployments' for a list of SDDC Groups with IDs.")
+    detach_dxgw_parser.set_defaults(func = detach_dxgw)
 
 # ============================
 # VTC - SDDC Operations
@@ -728,10 +748,18 @@ def main():
 # VTC - VPC Operations
 # ============================
 
-    # attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents=[auth_flag,], help = 'Attach a VPC to a vTGW')
-    # detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents=[auth_flag,], help = 'Detach VPC from a vTGW')
+    attach_vpc_parser=vtc_parser_subs.add_parser('attach-vpc', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Attach a VPC to a vTGW')
+    attach_vpc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    attach_vpc_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to.  Use 'get-group-info' for a list of SDDCs Groups with IDs.")
+    attach_vpc_parser.set_defaults(func = attach_vpc)
 
-    vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents=[auth_flag,vtc_config_flag,vmc_url_flag,org_id_flag], help = 'Add or remove static routes to your vTGW.')
+    detach_vpc_parser=vtc_parser_subs.add_parser('detach-vpc', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Detach VPC from a vTGW')
+    detach_vpc_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
+    detach_vpc_parser.add_argument('-gid', '--sddc_group_id', required=True, help = "The ID of the SDDC Group to attach to.  Use 'get-group-info' for a list of SDDCs Groups with IDs.")
+    detach_vpc_parser.set_defaults(func = detach_vpc)
+
+    vpc_prefixes_parser=vtc_parser_subs.add_parser('vpc-prefixes', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Add or remove static routes to your vTGW.')
+    vpc_prefixes_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     vpc_prefixes_parser.add_argument("-gid", "--sddc_group_id", required = True, help="ID for the SDDC group to add prefixes to. Use 'get-group-info' to view a list of SDDC groups and their IDs.")
     vpc_prefixes_parser.set_defaults(func = add_vpc_prefixes)
 
@@ -1306,16 +1334,6 @@ def main():
     except:
         pass
 
-    # If flags are present for VTC Config, add the VTC Config parameters to the parameters payload.
-    try:
-        args.vtc_flag
-        params.update({"aws_acc":config_params['aws_acc']})
-        params.update({"region":config_params['region']})
-        params.update({"dxgw_id":config_params['dxgw_id']})
-        params.update({"dxgw_owner":config_params['dxgw_owner']})
-    except:
-        pass
-
     # If flags are present for ORG_ID, add the ORG_ID to the parameters payload.
     try:
         args.org_flag
@@ -1414,92 +1432,6 @@ def vtcConnectAWS(**kwargs):
 
 
 
-#     # ============================
-#     # VTC - AWS Operations
-#     # ============================
-
-
-#     elif intent_name == "connect-aws":
-#         print("=====Connecting AWS account=========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         task_id = connect_aws_account(aws_acc, region, resource_id, ORG_ID, session_token)
-#         if task_id:
-#             get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "disconnect-aws":
-#         print("===== Disconnecting AWS account =========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         task_id = disconnect_aws_account(aws_acc, resource_id, ORG_ID, session_token)
-#         if task_id:
-#             get_task_status(task_id, ORG_ID, session_token)
-
-
-#     # ============================
-#     # VTC - DXGW Operations
-#     # ============================
-
-
-#     elif intent_name == "attach-dxgw":
-#         print("===== Add DXGW Association =========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         routes = input ('   Enter route(s) to add (space separated): ')
-#         user_list = routes.split()
-#         task_id = attach_dxgw(user_list, resource_id, ORG_ID, dxgw_owner, dxgw_id, region, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "detach-dxgw":
-#         print("===== Remove DXGW Association =========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         task_id = detach_dxgw(resource_id, ORG_ID, dxgw_id, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-
-
-#     # ============================
-#     # VTC - VPC Operations
-#     # ============================
-
-
-#     elif intent_name == "attach-vpc":
-#         print("=====Attaching VPCs=========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         vpc_list = get_pending_att(resource_id, ORG_ID, session_token)
-#         if vpc_list == []:
-#             print('   No VPC to attach')
-#         else:
-#             n = input('   Select VPC to attach: ')
-#             task_id = attach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
-#             if task_id:
-#                 get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "detach-vpc":
-#         print("=====Detaching VPCs=========")
-#         get_sddc_groups( ORG_ID, session_token)
-#         group = input('   Select SDDC Group: ')
-#         group_id = get_group_id(group, ORG_ID, session_token)
-#         resource_id = get_resource_id(group_id, ORG_ID, session_token)
-#         vpc_list = get_available_att(resource_id, ORG_ID, session_token)
-#         if vpc_list == []:
-#             print('   No VPC to detach')
-#         else:
-#             n = input('  Select VPC to detach: ')
-#             task_id = detach_vpc(vpc_list[int(n)-1], resource_id, ORG_ID, aws_acc, session_token)
-#             if task_id:
-#                 get_task_status(task_id, ORG_ID, session_token)
 
 
 #     # ============================
