@@ -88,19 +88,6 @@ def read_config():
                 config_params.update({"clientSecret": clientSecret})
                 auth_info = True
 
-            if config.has_section("vtcConfig"):
-                aws_acc         = config.get("vtcConfig", "MyAWS")
-                region          = config.get("vtcConfig", "AWS_region")
-                dxgw_id         = config.get("vtcConfig", "DXGW_id")
-                dxgw_owner      = config.get("vtcConfig", "DXGW_owner")
-                config_params.update({"aws_acc": aws_acc})
-                config_params.update({"region": region})
-                config_params.update({"dxgw_id": dxgw_id})
-                config_params.update({"dxgw_owner": dxgw_owner})
-                
-            else:
-                print('config.ini is outdated - the vtcConfig section is missing. Please insert the vtcConfig section in config.ini.example into your config.ini file. All transit gateway commands will fail without this configuration change.')
-
             if config.has_section("tkgConfig"):
                 egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
                 ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
@@ -154,13 +141,6 @@ def build_initial_config(**kwargs):
         'org_id':'',
         'sddc_id': ''
         }
-
-    config['vtcConfig'] = {
-        'MyAWS': '',
-        'AWS_region': '',
-        'DXGW_id': '',
-        'DXGW_owner': ''
-    }
 
     config['tkgConfig'] = {
         'egress_CIDR': '',
@@ -560,6 +540,7 @@ def showFlexcompNamespaces(**kwargs):
         table.add_row([i['id'], i['name'],i['provider'],i['region'],i['state']['display_name']])
     print(table.get_string(sortby="Name"))
 
+
 def showFlexcompRegions(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -574,6 +555,7 @@ def showFlexcompRegions(**kwargs):
     for k,v in result.items():
         table.add_row([k, v['region_description']])
     print(table)
+
 
 def showFlexcompTemplates(**kwargs):
     sessiontoken = kwargs['sessiontoken']
@@ -595,6 +577,7 @@ def showFlexcompTemplates(**kwargs):
         table.add_row([i['id'],i['name'],capacity])
     print(table)
 
+
 def validateNetworkFlexComp(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -614,6 +597,7 @@ def validateNetworkFlexComp(**kwargs):
     table.add_row([seg_result[0]["field_name"],seg_result[0]["message"],seg_result[0]["status"]])
     table.add_row([seg_result[1]["field_name"],seg_result[1]["message"],seg_result[1]["status"]])
     print(table)
+
 
 def createFlexcompNamespace(**kwargs):
     sessiontoken = kwargs['sessiontoken']
@@ -638,6 +622,7 @@ def createFlexcompNamespace(**kwargs):
     table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
     print(table)
 
+
 def deleteFlexcompNamespace(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -652,6 +637,7 @@ def deleteFlexcompNamespace(**kwargs):
     table = PrettyTable(['Activity_ID', 'State', 'Activity'])
     table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
     print(table)
+
 
 # ===================================
 # Cloud Flex Compute - VM operations
@@ -673,6 +659,7 @@ def showAllImagesFlexcomp(**kwargs):
         table.add_row([i['id'],i['name'],i['type'],i['state']['name'],i['os']])
     print(table)
 
+
 def showAllVMsFlexcomp(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -688,6 +675,7 @@ def showAllVMsFlexcomp(**kwargs):
         table.add_row([i['id'],i['name'],i['namespaceName'],i['state']['name'],i['vmMetadata']['powerState']])
     print(table)
 
+
 def vmPowerOperationsFlexcomp(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -702,6 +690,7 @@ def vmPowerOperationsFlexcomp(**kwargs):
     table = PrettyTable(['Activity_ID', 'State', 'Activity'])
     table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
     print(table)
+
 
 def createVMFlexcomp(**kwargs):
     sessiontoken = kwargs['sessiontoken']
@@ -726,6 +715,7 @@ def createVMFlexcomp(**kwargs):
     table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
     print(table)
 
+
 def vmDeleteFlexcomp(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
@@ -739,6 +729,7 @@ def vmDeleteFlexcomp(**kwargs):
     table = PrettyTable(['Activity_ID', 'State', 'Activity'])
     table.add_row([jsonResponse['id'], jsonResponse['state'], jsonResponse['activity_type_name']])
     print(table)
+
 
 # ============================
 # SDDC - Create/Delete/Task
@@ -767,6 +758,7 @@ def printTask(event_name: str, task) -> None:
 
     return
 
+
 def createSDDC(**kwargs) -> None:
     """Creates an SDDC based on the parameters. The caller should have permissions to do this."""
     strProdURL = kwargs['strProdURL']
@@ -794,9 +786,8 @@ def createSDDC(**kwargs) -> None:
         print(json.dumps(json_response, indent = 4))
     
     return
-#
-# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/delete/
-# 
+
+
 def deleteSDDC(**kwargs) -> None:
     """deletes an SDDC based on the parameters. The caller should have permissions to do this."""
     orgID = kwargs["ORG_ID"]
@@ -813,6 +804,7 @@ def deleteSDDC(**kwargs) -> None:
     print(json.dumps(json_response, indent=4))
 
     return None
+
 
 def watchSDDCTask(**kwargs):
     """watch task and print out status"""
@@ -832,6 +824,7 @@ def watchSDDCTask(**kwargs):
     
     return None
 
+
 def cancelSDDCTask(**kwargs):
     """cancel a task"""
     strProdURL = kwargs['strProdURL']
@@ -845,6 +838,8 @@ def cancelSDDCTask(**kwargs):
     
     printTask("Cancel Task",json_response)
     return None
+
+
 # ============================
 # SDDC - AWS Account and VPC
 # ============================
@@ -874,7 +869,6 @@ def setSDDCConnectedServices(**kwargs):
     print(f'S3 connected via ENI is {value}')
 
 
-# 
 def getCompatibleSubnets(**kwargs):
     """Lists all of the compatible subnets by Account ID and AWS Region"""
     orgID = kwargs["ORG_ID"]
@@ -902,7 +896,7 @@ def getCompatibleSubnets(**kwargs):
     print(f"Compatible Subnets for Org {orgID}")
     print(subnet_table)
 
-# Print Connected Accounts
+
 def getConnectedAccounts(**kwargs):
     """Prints all connected AWS accounts"""
     strProdURL = kwargs["strProdURL"]
@@ -919,6 +913,7 @@ def getConnectedAccounts(**kwargs):
     
     print("Connected Accounts")
     print(table)
+
 
 def getSDDCConnectedVPC(**kwargs):
     """Prints table with Connected VPC and Services information - Compatible with M18+ SDDCs only"""
@@ -944,7 +939,6 @@ def getSDDCConnectedVPC(**kwargs):
     print(table)
 
 
-# def getSDDCShadowAccount(proxy_url,sessiontoken):
 def getSDDCShadowAccount(**kwargs):
     """Returns SDDC Shadow Account"""
     proxy_url = kwargs["proxy"]
@@ -956,6 +950,7 @@ def getSDDCShadowAccount(**kwargs):
     sddc_shadow_account = json_response['shadow_account']
     print("Shadow Account is:")
     print(sddc_shadow_account)
+
 
 # ============================
 # SDDC - SDDC
@@ -975,6 +970,7 @@ def getSDDCState(**kwargs):
     table.add_row([sddc_state['name'], sddc_state['id'], sddc_state['sddc_state'], sddc_state['sddc_type'], sddc_state['resource_config']['region'], sddc_state['resource_config']['deployment_type']])
     print("\nThis is your current environment:")
     print (table)
+
 
 def getSDDCS(**kwargs):
     """Prints all SDDCs in an Org with their clusters and number of hosts"""
@@ -1002,7 +998,6 @@ def getSDDCS(**kwargs):
     print(table)
 
 
-#def getVMs(proxy_url, session_token):
 def getVMs(**kwargs):   
     """ Gets a list of all compute VMs, with their power state and their external ID. """
     proxy_url = kwargs["proxy"]
@@ -1019,6 +1014,7 @@ def getVMs(**kwargs):
         table.add_row([i['display_name'], i['power_state'], i['external_id']])
     print("Virtual Machine List:")
     print(table)
+
 
 def getSDDChosts(**kwargs):
     """Prints out all SDDC Hosts"""
@@ -1047,13 +1043,6 @@ def getSDDChosts(**kwargs):
     print(table)
 
 
-def getNSXTproxy(orgID, sddcID, sessiontoken):
-    """Returns the NSX Reverse Proxy URL"""
-    json_response = get_sddc_info_json(strProdURL, orgID, sessiontoken, sddcID)
-    proxy_url = json_response['resource_config']['nsx_api_public_endpoint_url']
-    return proxy_url
-
-
 # ============================
 # SDDC - TKG
 # ============================
@@ -1069,6 +1058,7 @@ def get_cluster_id(org_id, sddc_id, session_token):
     cluster_id = json_response['resource_config']['clusters'][0]['cluster_id']
     return cluster_id
 
+
 def validate_cluster( org_id, sddc_id, cluster_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/validate-cluster".format(strProdURL, org_id, sddc_id, cluster_id)
@@ -1081,6 +1071,7 @@ def validate_cluster( org_id, sddc_id, cluster_id, session_token):
     # print(pretty_data)
     task_id = json_response ['id']
     return task_id
+
 
 def validate_network( org_id, sddc_id, cluster_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -1098,6 +1089,7 @@ def validate_network( org_id, sddc_id, cluster_id, session_token):
     task_id = json_response ['id']
     return task_id
 
+
 def enable_wcp( org_id, sddc_id, cluster_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/enable-wcp".format(strProdURL, org_id, sddc_id, cluster_id)
@@ -1113,6 +1105,7 @@ def enable_wcp( org_id, sddc_id, cluster_id, session_token):
     # print(pretty_data)
     task_id = json_response ['id']
     return task_id
+
 
 def disable_wcp( org_id, sddc_id, cluster_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -1133,27 +1126,50 @@ def disable_wcp( org_id, sddc_id, cluster_id, session_token):
 # ============================
 
 
-def connect_aws_account(account, region, resource_id, org_id, session_token):
-    response = connect_aws_account_json(strProdURL, account, region, resource_id, org_id, session_token)
+def connect_aws_account(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_account_id']
+    region = kwargs['region_id']
+
+    resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    response = connect_aws_account_json(strProdURL, aws_acc, region, resource_id, org_id, session_token)
     json_response = response.json()
     if not response.ok :
-        print ("    Error: " + json_response['message'])
-        task_id = 0
-    else:
-        task_id = json_response ['id']
-    return task_id
+        print("    Error: " + json_response['message'])
+        sys.exit(1)
+    task_id = json_response ['id']
+
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
 
 
-def disconnect_aws_account(account, resource_id, org_id, session_token):
-    response = disconnect_aws_account_json(strProdURL, account, resource_id, org_id, session_token)
+def disconnect_aws_account(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_account_id']
+
+    resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    response = disconnect_aws_account_json(strProdURL, aws_acc, resource_id, org_id, session_token)
     json_response = response.json()
     if not response.ok :
         print("    Error: " + json_response['message'])
         print("    Message: " + json_response['details'][0]['validation_error_message'])
-        task_id = 0
-    else:
-        task_id = json_response ['id']
-    return task_id
+        sys.exit(1)
+    task_id = json_response ['id']
+
+    task_params={'task_id':task_id,'ORG_ID':org_id, 'strProdURL':strProdURL,'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
 
 
 # ============================
@@ -1161,15 +1177,55 @@ def disconnect_aws_account(account, resource_id, org_id, session_token):
 # ============================
 
 
-def attach_dxgw(routes, resource_id, org_id, dxgw_owner, dxgw_id, region, session_token):
-    json_response = attach_dxgw_json(strProdURL, routes, resource_id, org_id, dxgw_owner, dxgw_id, region, session_token)
-    task_id = json_response ['id']
-    return task_id
+def attach_dxgw(**kwargs):
+    print("===== Add DXGW Association =========")
 
-def detach_dxgw(resource_id, org_id, dxgw_id, session_token):
-    json_response = detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token)
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    dxgw_owner = kwargs['aws_account_id']
+    dxgw_id = kwargs['dxgw_id']
+    region = kwargs['region_id']
+    routes = kwargs['prefix_list']
+    res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+    resource_id = get_resource_id(**res_params)
+
+    json_response = attach_dxgw_json(strProdURL, routes, resource_id, org_id, dxgw_owner, dxgw_id, region, session_token)
+    if json_response is None:
+        print("Something went wrong.  Please check your config.ini file and parameters and try again.")
+        sys.exit(1)
+    else:
+        pass
     task_id = json_response ['id']
-    return task_id
+
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
+
+
+def detach_dxgw(**kwargs):
+    print("===== Remove DXGW Association =========")
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    dxgw_id = kwargs['dxgw_id']
+    sddc_group_id = kwargs['sddc_group_id']
+
+    res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+    resource_id = get_resource_id(**res_params)
+
+    json_response = detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token)
+    if json_response is None:
+        print("Something went wrong.  Please check your config.ini file and parameters and try again.")
+        sys.exit(1)
+    else:
+        pass
+    task_id = json_response ['id']
+
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
 
 
 # ============================
@@ -1184,9 +1240,14 @@ def attach_sddc(**kwargs):
     sddc_id = kwargs['sddc_id']
     sddc_group_id = kwargs['sddc_group_id']
 
-    res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+    res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
     resource_id = get_resource_id(**res_params)
     response = attach_sddc_json(strProdURL, sddc_id, resource_id, org_id, session_token)
+    if response is None:
+        print("Something went wrong.  Please check your config.ini file and parameters and try again.")
+        sys.exit(1)
+    else:
+        pass
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
@@ -1203,11 +1264,16 @@ def detach_sddc(**kwargs):
     sddc_id = kwargs['sddc_id']
     sddc_group_id = kwargs['sddc_group_id']
 
-    res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+    res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
     resource_id = get_resource_id(**res_params)
 
     print("===== Removing SDDC =========")
     response = remove_sddc_json(strProdURL,sddc_id, resource_id, org_id, session_token)
+    if response is None:
+        print("Something went wrong.  Please check your config.ini file and parameters and try again.")
+        sys.exit(1)
+    else:
+        pass
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
@@ -1215,6 +1281,7 @@ def detach_sddc(**kwargs):
     else:
         task_id = json_response ['config']['operation_id']
     print(f'Task ID is {task_id}. Use get-task-status for a progress update.')
+
 
 def get_nsx_info(**kwargs):
     strProdURL = kwargs["strProdURL"]
@@ -1251,6 +1318,7 @@ def get_deployments(**kwargs):
     table = PrettyTable(['ID', 'Name', 'Type', 'SAZ or MAZ', 'AZ'])
     if (json_response['empty'] == True):
         print("\n=====No SDDC found=========")
+        sys.exit(1)
     else:
         for i in range(json_response['total_elements']):
             row = json_response['content'][i] 
@@ -1259,20 +1327,18 @@ def get_deployments(**kwargs):
     return
 
 
-# def get_deployment_id(strProdURL, sddc, org_id, session_token):
-#     json_response = get_deployment_id_json(strProdURL, org_id, session_token)
-#     deployment_id = json_response['content'][int(sddc)-1]['id']
-#     return deployment_id
-
-
 def get_resource_id(**kwargs):
-    session_token = kwargs['session_token']
+    session_token = kwargs['sessiontoken']
     strProdURL = kwargs['strProdURL']
     org_id = kwargs['org_id']
     sddc_group_id = kwargs['sddc_group_id']
     json_response = get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token)
-    resource_id = json_response[0]['id']
-    return resource_id
+    if json_response is not None:
+        resource_id = json_response[0]['id']
+        return resource_id
+    else:
+        print("No results returned.")
+        sys.exit(1)
 
 
 # ============================
@@ -1297,6 +1363,7 @@ def create_sddc_group(**kwargs):
     
     task_id = json_response ['operation_id']
     print(f"The task id for the SSDC group {name} creation is: {task_id}. Use get-task-status for updates.")
+
 
 def delete_sddc_group(**kwargs):
     ''' delete an existing SDDC resource group'''
@@ -1349,6 +1416,7 @@ def get_sddc_groups(**kwargs):
                row['state']['display_name'],row['creator']['user_name']])
         print(group_table)
     return
+
 
 def get_group_info(group_id, resource_id, org_id, session_token):
     json_response = get_group_info_json(strProdURL, org_id, group_id, session_token)
@@ -1519,7 +1587,27 @@ def get_task_status(**kwargs):
 # VTC - VPC Operations
 # ============================
 
-def attach_vpc(att_id, resource_id, org_id, account, session_token):
+def attach_vpc(**kwargs):
+    print("=====Attaching VPCs=========")
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_account_id']
+
+    resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    pend_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'session_token':session_token}
+    vpc_list = get_pending_att(**pend_att_params)
+
+    if vpc_list == []:
+        print('   No VPC to attach')
+        sys.exit(1)
+    else:
+        n = input('   Select VPC to attach: ')
+
     json_body = {
         "type": "APPLY_ATTACHMENT_ACTION",
         "resource_id": resource_id,
@@ -1527,20 +1615,43 @@ def attach_vpc(att_id, resource_id, org_id, account, session_token):
         "config" : {
                 "type": "AwsApplyAttachmentActionConfig",
                 "account" : {
-                    "account_number": account,
+                    "account_number": aws_acc,
                     "attachments": [
                         {
                             "action": "ACCEPT",
-                            "attach_id": att_id
+                            "attach_id": vpc_list[int(n)-1]
                         }
                     ]
                 }
             }
         }
-    task_id = attach_vpc_json(strProdURL, session_token, json_body, org_id)
-    return task_id
+    json_response = attach_vpc_json(strProdURL, session_token, json_body, org_id)
+    task_id = json_response ['id']
 
-def detach_vpc(att_id, resource_id, org_id, account, session_token):
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
+
+
+def detach_vpc(**kwargs):
+    print("=====Detaching VPCs=========")
+    strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+    auth_flag = kwargs['oauth']
+    sddc_group_id = kwargs['sddc_group_id']
+    aws_acc = kwargs['aws_account_id']
+
+    resource_params = {'strProdURL':strProdURL,'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
+    resource_id = get_resource_id(**resource_params)
+
+    avail_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'sessiontoken':session_token}
+    vpc_list = get_available_att(**avail_att_params)
+    if vpc_list == []:
+        print('   No VPC to detach')
+        sys.exit(1)
+    else:
+        n = input('  Select VPC to detach: ')
+
     json_body = {
         "type": "APPLY_ATTACHMENT_ACTION",
         "resource_id": resource_id,
@@ -1548,20 +1659,28 @@ def detach_vpc(att_id, resource_id, org_id, account, session_token):
         "config" : {
                 "type": "AwsApplyAttachmentActionConfig",
                 "account" : {
-                    "account_number": account,
+                    "account_number": aws_acc,
                     "attachments": [
                         {
                             "action": "DELETE",
-                            "attach_id": att_id
+                            "attach_id": vpc_list[int(n)-1]
                         }
                     ]
                 }
             }
         }
-    task_id = attach_vpc_json(strProdURL, session_token, json_body, org_id)
-    return task_id
+    json_response = detach_vpc_json(strProdURL, session_token, json_body, org_id)
+    task_id = json_response ['id']
 
-def get_pending_att(resource_id, org_id, session_token):
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
+
+
+def get_pending_att(**kwargs):
+    strProdURL = kwargs['strProdURL']
+    resource_id=kwargs['resource_id']
+    org_id=kwargs['org_id']
+    session_token=kwargs['session_token']
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}?trait=AwsVpcAttachmentsTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
@@ -1590,7 +1709,7 @@ def get_available_att(**kwargs):
     strProdURL = kwargs['strProdURL']
     resource_id=kwargs['resource_id']
     org_id=kwargs['org_id']
-    session_token=kwargs['session_token']
+    session_token=kwargs['sessiontoken']
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}?trait=AwsVpcAttachmentsTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
@@ -1614,13 +1733,14 @@ def add_vpc_prefixes(**kwargs):
     org_id = kwargs['ORG_ID']
     session_token =  kwargs['sessiontoken']
     strProdURL = kwargs['strProdURL']
-    aws_acc = kwargs['aws_acc']
+    aws_acc = kwargs['aws_account_id']
+    auth_flag = kwargs['oauth']
     sddc_group_id = kwargs['sddc_group_id']
 
-    res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+    res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
     resource_id = get_resource_id(**res_params)
 
-    attachment_params = {'strProdURL':strProdURL, 'resource_id':resource_id, 'org_id':org_id, 'session_token':session_token}
+    attachment_params = {'strProdURL':strProdURL, 'resource_id':resource_id, 'org_id':org_id, 'sessiontoken':session_token}
     vpc_list = get_available_att(**attachment_params)
     if vpc_list == []:
         print('   No VPC attached')
@@ -1652,8 +1772,9 @@ def add_vpc_prefixes(**kwargs):
         }
 
     json_response = add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id)
-    task_id = json_response ['operation_id']
-    print(f"The task id is: {task_id}. Use get-task-status for updates.")
+    task_id = json_response ['id']
+    task_params={'task_id':task_id,'ORG_ID':org_id,'strProdURL':strProdURL, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**task_params)
 
 
 # ============================
@@ -2842,7 +2963,7 @@ def getSDDCT0routes(proxy_url, session_token):
     print('Route Type Legend:')
     print('t0c - Tier-0 Connected\nt0s - Tier-0 Static\nb   - BGP\nt0n - Tier-0 NAT\nt1s - Tier-1 Static\nt1c - Tier-1 Connected\nisr: Inter-SR')
     print()
-    print(df.sort_values(by=[ 'route_type', 'network'], ascending=True))
+    print(df.sort_values(by=[ 'route_type', 'network'], ascending=True).to_string())
     # route_table = PrettyTable(['Route Type', 'Network', 'Admin Distance', 'Next Hop'])
     # for routes in t0_routes:
     #     route_table.add_row([routes['route_type'],routes['network'],routes['admin_distance'],routes['next_hop']])
