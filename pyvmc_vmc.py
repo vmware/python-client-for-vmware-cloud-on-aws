@@ -327,9 +327,93 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
         return None
 
 
+def get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id):
+    """Returns cluster ID for given SDDC"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/vmc/api/orgs/{org_id}/sddcs/{sddc_id}'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code ==  200:
+        cluster_id = json_response['resource_config']['clusters'][0]['cluster_id']
+        return cluster_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
 # ============================
 # TKG
 # ============================
+
+
+def tkg_validate_cluster_json(vmc_url, org_id, sddc_id, cluster_id, session_token):
+    """Validates whether supplied cluster in provided SDDC can support a TKG deployment. Returns task-id"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/validate-cluster'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def get_tkg_supported_clusters_json(vmc_url, session_token, org_id, sddc_id):
+    """Gets all clusters in the SDDC with valid support for TKG.  Returns Task-ID"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/operations/compute-supported-clusters'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def tkg_validate_network_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body):
+    """Validates provided network CIDRs are eligible for TKG deployment in provided cluster"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/validate-network'
+    response = requests.post(my_url, json=json_body, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def enable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body):
+    """Enables TKG on selected cluster. Returns Task-ID"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/enable-wcp'
+    response = requests.post(my_url, json=json_body, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def disable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id):
+    """Disables TKG on selected cluster and returns task-id"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/disable-wcp'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
 
 
 # ============================

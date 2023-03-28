@@ -339,8 +339,15 @@ def main():
     tkg_parser_subs = tkg_parser.add_subparsers(help='sddc sub-command help')
 
     # create parsers for each of the inidividual subcommands
-    # enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents=[auth_flag,], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
-    # disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents=[auth_flag,], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents=[auth_flag, vmc_url_flag, org_id_flag, sddc_id_parser_flag], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
+    enable_tkg_parser.add_argument('-e', '--egress-cidr', required=True, help='Address range reserved for SNATed outbound traffic from containers and guest clusters.')
+    enable_tkg_parser.add_argument('-i', '--ingress-cidr', required=True, help='Address range allocated to receive inbound traffic through load balancers to containers.')
+    enable_tkg_parser.add_argument('-n', '--namespace-cidr', required=True, help='Address range assigned to namespace segments.  Must be at least a /23.')
+    enable_tkg_parser.add_argument('-s', '--service-cidr', required=True, help='Address range reserved for Tanzu supervisor services.')
+    enable_tkg_parser.set_defaults(func=enable_tkg)
+
+    disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents=[auth_flag,vmc_url_flag, org_id_flag, sddc_id_parser_flag], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    disable_tkg_parser.set_defaults(func=disable_tkg)
 
 # ============================
 # NSX-T - Segments
@@ -1380,131 +1387,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-"""
-This section has been retained for review purposes during the refactor effort.  
-Once your section has been updated to use argparse and keword arguments (kwargs), delete the corresponding if / elif statements below
-"""
-
-#     # ============================
-#     # SDDC - TKG
-#     # ============================
-
-
-#     elif intent_name == "enable-tkg":
-#         cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-#         print("    Validating Cluster: " + cluster_id)
-#         task_id = validate_cluster(ORG_ID, SDDC_ID, cluster_id, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-#         print("    Validating Network:")
-#         print("        Egress CIDR:    " + egress_CIDR)
-#         print("        Ingress CIDR:   " + ingress_CIDR)
-#         print("        Namespace CIDR: " + namespace_CIDR)
-#         print("        Service CIDR:   " + service_CIDR)
-#         task_id = validate_network(ORG_ID, SDDC_ID, cluster_id, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-#         print("    Enabling TKG:")
-#         task_id = enable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "disable-tkg":
-#         cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-#         print("    Disabling TKG:")
-#         task_id = disable_wcp(ORG_ID, SDDC_ID, cluster_id, session_token)
-#         get_task_status(task_id, ORG_ID, session_token)
-
-#     elif intent_name == "get-tkg-info":
-#         # The API for this command is broken, waiting for a fix to enable it
-#         print("    TKG info:")
-#         cluster_id = get_cluster_id(ORG_ID, SDDC_ID, session_token)
-#         get_tkg_info(ORG_ID, cluster_id, session_token)
-
-
-
-
-#     # ============================
-#     # NSX-T - VPN
-#     # ============================
-
-
-#     elif intent_name == "new-l2vpn":
-#         display_name = sys.argv[2]
-#         endpoint = sys.argv[3]
-#         peer_ip = sys.argv[4]
-#         print("Creating an IPSec VPN IKE Profile...")
-#         ike_profile = newSDDCIPSecVpnIkeProfile(proxy,session_token,display_name)
-#         print(ike_profile)
-#         print("Creating an IPSec VPN Tunnel Profile...")
-#         tunnel_profile = newSDDCIPSecVpnTunnelProfile(proxy,session_token,display_name)
-#         print(tunnel_profile)
-#         print("Creating an IPSec VPN Session...")
-#         vpn_session = newSDDCIPSecVpnSession(proxy,session_token,display_name,endpoint,peer_ip)
-#         print(vpn_session)
-#         print("Creating an L2 VPN Session...")
-#         l2vpn = newSDDCL2VPN(proxy, session_token, display_name)
-#         print(l2vpn)
-#     elif intent_name == "remove-l2vpn":
-#         id = sys.argv[2]
-#         status_code = delete_l2vpn_json(proxy, session_token, id)
-#         if status_code == 200:
-#             print(f'L2 VPN with ID {id} has been deleted successfully')
-#     elif intent_name == "new-vpn":
-#         vpn_name = input("Enter the VPN Name: ")
-#         remote_private_ip = input('Enter the remote private IP:')
-#         remote_public_ip = input('Enter the remote public IP:')
-#         source_networks = input('Enter your source networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
-#         destination_networks = input('Enter your destination networks, separated by commas (for example: 192.168.10.0/24,192.168.20.0/24)')
-#         print(vpn_name + remote_private_ip + remote_public_ip)
-#     elif intent_name == "remove-vpn":
-#         id = sys.argv[2]
-#         status_code = delete_ipsec_vpn_json(proxy, session_token, id)
-#         if status_code == 200:
-#             print(f'IPSEC VPN with ID {id} has been deleted successfully')
-#     elif intent_name == "remove-vpn-ike-profile":
-#         id = sys.argv[2]
-#         status_code = delete_ipsec_vpn_ike_profile_json(proxy, session_token, id)
-#         if status_code == 200:
-#             print(f'VPN IKE Profile {id} has been deleted successfully')
-#     elif intent_name == "remove-vpn-ipsec-tunnel-profile":
-#         id = sys.argv[2]
-#         status_code = delete_ipsec_vpn_profile_json(proxy, session_token, id)
-#         if status_code == 200:
-#             print(f'IPSEC VPN Profile {id} has been removed successufully')
-#     elif intent_name == "show-l2vpn":
-#         l2vpn = getSDDCL2VPNSession(proxy, session_token)
-#         print(l2vpn)
-#     elif intent_name == "show-l2vpn-services":
-#         l2vpn = getSDDCL2VPNServices(proxy, session_token)
-#         print(l2vpn)
-#     elif intent_name == "show-vpn":
-#         if len(sys.argv) == 2:
-#             SDDCVPN = getSDDCVPN(proxy, session_token)
-#             print(SDDCVPN)
-#         elif len(sys.argv) == 3:
-#             VPN_ID = sys.argv[2]
-#             SDDC_VPN_STATS = getSDDCVPNSTATS(proxy,session_token,VPN_ID)
-#             print(SDDC_VPN_STATS)
-#         else:
-#             print("Incorrect syntax. Check the help.")
-#     elif intent_name == "show-vpn-ike-profile":
-#         vpn_ipsec_profile = getSDDCVPNIpsecProfiles(proxy, session_token)
-#         print(vpn_ipsec_profile)
-#     elif intent_name == "show-vpn-internet-ip":
-#         getSDDCVPNInternetIP(proxy, session_token)
-#     elif intent_name == "show-vpn-ipsec-endpoints":
-#         vpn_ipsec_endpoints = getSDDCVPNIpsecEndpoints(proxy, session_token)
-#         print(vpn_ipsec_endpoints)
-#     elif intent_name == "show-vpn-ipsec-tunnel-profile":
-#         vpn_ipsec_tunnel_profile = getSDDCVPNIpsecTunnelProfiles(proxy, session_token)
-#         print(vpn_ipsec_tunnel_profile)
-#     elif intent_name == "show-vpn-detailed":
-#         if len(sys.argv) == 3:
-#             VPN_ID = sys.argv[2]
-#             SDDC_VPN_SERVICES = getSDDCVPNServices(proxy,session_token,VPN_ID)
-#             print(SDDC_VPN_SERVICES)
-#         else:
-#             print("Incorrect syntax. Check the help.")
-
-#     # elif intent_name == "new-service-entry":
-#     #    print("This is WIP")
