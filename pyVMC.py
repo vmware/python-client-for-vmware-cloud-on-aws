@@ -513,7 +513,7 @@ def main():
     remove_tier1_vpn_service_parser.add_argument('-vt', '--vpn-type', choices=['ipsec', 'l2vpn'], type=str.lower, required=True, help='Chose the VPN service type, ipsec or l2vpn')
     remove_tier1_vpn_service_parser.set_defaults(func=remove_tier1_vpn_service)
 
-    remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
     remove_vpn_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_vpn_profile_parser.add_argument('-p', '--profile-type', choices=['ike', 'ipsec', 'dpd'], type=str.lower, required=True, help="Chose which type of profile you would like to remove.")
     remove_vpn_profile_parser.set_defaults(func=remove_vpn_profile)
