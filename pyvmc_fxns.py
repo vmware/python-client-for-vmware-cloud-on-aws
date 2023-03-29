@@ -88,19 +88,6 @@ def read_config():
                 config_params.update({"clientSecret": clientSecret})
                 auth_info = True
 
-            if config.has_section("tkgConfig"):
-                egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
-                ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
-                namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
-                service_CIDR    = config.get("tkgConfig", "service_CIDR")
-                config_params.update({"egress_CIDR": egress_CIDR})
-                config_params.update({"ingress_CIDR": ingress_CIDR})
-                config_params.update({"namespace_CIDR": namespace_CIDR})
-                config_params.update({"service_CIDR": service_CIDR})
-
-            else:
-                print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
-
             if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or not auth_info or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
                 print()
                 print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
@@ -141,13 +128,6 @@ def build_initial_config(**kwargs):
         'org_id':'',
         'sddc_id': ''
         }
-
-    config['tkgConfig'] = {
-        'egress_CIDR': '',
-        'ingress_CIDR': '',
-        'namespace_CIDR': '',
-        'service_CIDR': ''
-    }
 
     rt = input('Please enter your refresh token:')
     oid = input('Please enter your organization ID:')
@@ -1048,77 +1028,59 @@ def getSDDChosts(**kwargs):
 # ============================
 
 
-def get_cluster_id(org_id, sddc_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(strProdURL, org_id, sddc_id)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    cluster_id = json_response['resource_config']['clusters'][0]['cluster_id']
-    return cluster_id
+def enable_tkg(**kwargs):
+    """Enable TKG on SDDC"""
+    vmc_url = kwargs['strProdURL']
+    auth_flag = kwargs['oauth']
+    org_id = kwargs['ORG_ID']
+    sddc_id = kwargs['SDDC_ID']
+    session_token = kwargs['sessiontoken']
+    egress_cidr = kwargs['egress_cidr']
+    ingress_cidr = kwargs['ingress_cidr']
+    namespace_cidr = kwargs['namespace_cidr']
+    service_cidr = kwargs['service_cidr']
 
-
-def validate_cluster( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/validate-cluster".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        # no need for a body
+    cluster_id = get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id)
+    json_body = {
+        "egress_cidr": [egress_cidr],
+        "ingress_cidr": [ingress_cidr],
+        "namespace_cidr": [namespace_cidr],
+        "service_cidr": service_cidr
     }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+    #Validate Cluster-1 in the SDDC will supported TKG
+    print("Validating cluster for TKG...")
+    cluster_val_id = tkg_validate_cluster_json(vmc_url, org_id, sddc_id, cluster_id, session_token)
+    ctask_params={'task_id':cluster_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ctask_params)
+
+    #Validate the supplied CIDRs are valid for TKG
+    print("Validatin CIDR ranges for TKG...")
+    network_val_id = tkg_validate_network_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body)
+    ntask_params={'task_id':network_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ntask_params)
+
+    #Enable TKG on the SDDC
+    print("Enabling TKG on cluster-1")
+    tkg_val_id = enable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body)
+    ttask_params={'task_id':tkg_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ttask_params)
+    sys.exit("TKG has been enabled")
 
 
-def validate_network( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/validate-network".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        "egress_cidr": [egress_CIDR],
-        "ingress_cidr": [ingress_CIDR],
-        "namespace_cidr": [namespace_CIDR],
-        "service_cidr": service_CIDR
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+def disable_tkg(**kwargs):
+    """Disable TKG on the SDDC"""
+    vmc_url = kwargs['strProdURL']
+    auth_flag = kwargs['oauth']
+    org_id = kwargs['ORG_ID']
+    sddc_id = kwargs['SDDC_ID']
+    session_token = kwargs['sessiontoken']
 
+    cluster_id = get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id)
 
-def enable_wcp( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/enable-wcp".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        "egress_cidr": [egress_CIDR],
-        "ingress_cidr": [ingress_CIDR],
-        "namespace_cidr": [namespace_CIDR],
-        "service_cidr": service_CIDR
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
-
-
-def disable_wcp( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/disable-wcp".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        # no need for a body
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+    tkg_val_id = disable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id)
+    ttask_params = {'task_id': tkg_val_id, 'ORG_ID': org_id, 'strProdURL': vmc_url, 'sessiontoken': session_token, 'oauth': auth_flag, 'verbose': False}
+    get_task_status(**ttask_params)
+    sys.exit("TKG has been disabled")
 
 
 # ============================
@@ -1575,8 +1537,8 @@ def get_task_status(**kwargs):
             print("\nTask FAILED ")
             print("error message: " + json_response['state']['error_msg'])
             print("error code: " + json_response['state']['error_code'])
-            print("Internal error message: " + json_response['state']['internal_error_msg']) 
-            break
+            #print("Internal error message: " + json_response['state']['internal_error_msg'])
+            sys.exit(1)
     elapse = time.time() - start
     minutes = elapse // 60
     seconds = elapse - (minutes * 60)

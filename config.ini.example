@@ -10,9 +10,3 @@ oauth_clientSecret = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 org_id          = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 sddc_id         = xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-[tkgConfig]
-egress_CIDR     = x.x.x.x/x
-ingress_CIDR    = x.x.x.x/x
-namespace_CIDR  = x.x.x.x/x
-service_CIDR    = x.x.x.x/x
