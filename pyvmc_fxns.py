@@ -129,13 +129,6 @@ def build_initial_config(**kwargs):
         'sddc_id': ''
         }
 
-    config['tkgConfig'] = {
-        'egress_CIDR': '',
-        'ingress_CIDR': '',
-        'namespace_CIDR': '',
-        'service_CIDR': ''
-    }
-
     rt = input('Please enter your refresh token:')
     oid = input('Please enter your organization ID:')
     sid = input('Please enter your SDDC ID:')
