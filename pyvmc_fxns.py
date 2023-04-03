@@ -88,19 +88,6 @@ def read_config():
                 config_params.update({"clientSecret": clientSecret})
                 auth_info = True
 
-            if config.has_section("tkgConfig"):
-                egress_CIDR     = config.get("tkgConfig", "egress_CIDR")
-                ingress_CIDR    = config.get("tkgConfig", "ingress_CIDR")
-                namespace_CIDR  = config.get("tkgConfig", "namespace_CIDR")
-                service_CIDR    = config.get("tkgConfig", "service_CIDR")
-                config_params.update({"egress_CIDR": egress_CIDR})
-                config_params.update({"ingress_CIDR": ingress_CIDR})
-                config_params.update({"namespace_CIDR": namespace_CIDR})
-                config_params.update({"service_CIDR": service_CIDR})
-
-            else:
-                print('config.ini is outdated - the tkgConfig section is missing. Please insert the tkgConfig section in config.ini.example into your config.ini file. All TKG commands will fail without this configuration change.')
-
             if len(strProdURL) == 0 or len(strCSPProdURL) == 0 or not auth_info or len(ORG_ID) == 0 or len(SDDC_ID) == 0 or len(strVCDRProdURL) == 0:
                 print()
                 print('strProdURL, strCSPProdURL, Refresh_Token, ORG_ID, and SDDC_ID must all be populated in config.ini')
@@ -141,13 +128,6 @@ def build_initial_config(**kwargs):
         'org_id':'',
         'sddc_id': ''
         }
-
-    config['tkgConfig'] = {
-        'egress_CIDR': '',
-        'ingress_CIDR': '',
-        'namespace_CIDR': '',
-        'service_CIDR': ''
-    }
 
     rt = input('Please enter your refresh token:')
     oid = input('Please enter your organization ID:')
@@ -1048,77 +1028,59 @@ def getSDDChosts(**kwargs):
 # ============================
 
 
-def get_cluster_id(org_id, sddc_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(strProdURL, org_id, sddc_id)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    cluster_id = json_response['resource_config']['clusters'][0]['cluster_id']
-    return cluster_id
+def enable_tkg(**kwargs):
+    """Enable TKG on SDDC"""
+    vmc_url = kwargs['strProdURL']
+    auth_flag = kwargs['oauth']
+    org_id = kwargs['ORG_ID']
+    sddc_id = kwargs['SDDC_ID']
+    session_token = kwargs['sessiontoken']
+    egress_cidr = kwargs['egress_cidr']
+    ingress_cidr = kwargs['ingress_cidr']
+    namespace_cidr = kwargs['namespace_cidr']
+    service_cidr = kwargs['service_cidr']
 
-
-def validate_cluster( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/validate-cluster".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        # no need for a body
+    cluster_id = get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id)
+    json_body = {
+        "egress_cidr": [egress_cidr],
+        "ingress_cidr": [ingress_cidr],
+        "namespace_cidr": [namespace_cidr],
+        "service_cidr": service_cidr
     }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+    #Validate Cluster-1 in the SDDC will supported TKG
+    print("Validating cluster for TKG...")
+    cluster_val_id = tkg_validate_cluster_json(vmc_url, org_id, sddc_id, cluster_id, session_token)
+    ctask_params={'task_id':cluster_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ctask_params)
+
+    #Validate the supplied CIDRs are valid for TKG
+    print("Validatin CIDR ranges for TKG...")
+    network_val_id = tkg_validate_network_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body)
+    ntask_params={'task_id':network_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ntask_params)
+
+    #Enable TKG on the SDDC
+    print("Enabling TKG on cluster-1")
+    tkg_val_id = enable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body)
+    ttask_params={'task_id':tkg_val_id,'ORG_ID':org_id,'strProdURL':vmc_url, 'sessiontoken':session_token, 'oauth':auth_flag, 'verbose':False}
+    get_task_status(**ttask_params)
+    sys.exit("TKG has been enabled")
 
 
-def validate_network( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/validate-network".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        "egress_cidr": [egress_CIDR],
-        "ingress_cidr": [ingress_CIDR],
-        "namespace_cidr": [namespace_CIDR],
-        "service_cidr": service_CIDR
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+def disable_tkg(**kwargs):
+    """Disable TKG on the SDDC"""
+    vmc_url = kwargs['strProdURL']
+    auth_flag = kwargs['oauth']
+    org_id = kwargs['ORG_ID']
+    sddc_id = kwargs['SDDC_ID']
+    session_token = kwargs['sessiontoken']
 
+    cluster_id = get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id)
 
-def enable_wcp( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/enable-wcp".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        "egress_cidr": [egress_CIDR],
-        "ingress_cidr": [ingress_CIDR],
-        "namespace_cidr": [namespace_CIDR],
-        "service_cidr": service_CIDR
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
-
-
-def disable_wcp( org_id, sddc_id, cluster_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/wcp/v1/orgs/{}/deployments/{}/clusters/{}/operations/disable-wcp".format(strProdURL, org_id, sddc_id, cluster_id)
-    body = {
-        # no need for a body
-    }
-    response = requests.post(myURL, json=body, headers=myHeader)
-    json_response = response.json()
-    # pretty_data = json.dumps(response.json(), indent=4)
-    # print(pretty_data)
-    task_id = json_response ['id']
-    return task_id
+    tkg_val_id = disable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id)
+    ttask_params = {'task_id': tkg_val_id, 'ORG_ID': org_id, 'strProdURL': vmc_url, 'sessiontoken': session_token, 'oauth': auth_flag, 'verbose': False}
+    get_task_status(**ttask_params)
+    sys.exit("TKG has been disabled")
 
 
 # ============================
@@ -1373,7 +1335,7 @@ def delete_sddc_group(**kwargs):
     session_token = kwargs['sessiontoken']
 
     if (check_empty_group(strProdURL,sddc_group_id, org_id, session_token)):
-        res_params = {'session_token':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
+        res_params = {'sessiontoken':session_token, 'strProdURL':strProdURL, 'org_id':org_id, 'sddc_group_id':sddc_group_id}
         resource_id = get_resource_id(**res_params)
         response = delete_sddc_group_json(strProdURL, resource_id, org_id, session_token)
         if response == None:
@@ -1575,8 +1537,8 @@ def get_task_status(**kwargs):
             print("\nTask FAILED ")
             print("error message: " + json_response['state']['error_msg'])
             print("error code: " + json_response['state']['error_code'])
-            print("Internal error message: " + json_response['state']['internal_error_msg']) 
-            break
+            #print("Internal error message: " + json_response['state']['internal_error_msg'])
+            sys.exit(1)
     elapse = time.time() - start
     minutes = elapse // 60
     seconds = elapse - (minutes * 60)
@@ -1599,7 +1561,7 @@ def attach_vpc(**kwargs):
     resource_params = {'sddc_group_id':sddc_group_id,'strProdURL':strProdURL,'org_id':org_id, 'sessiontoken':session_token}
     resource_id = get_resource_id(**resource_params)
 
-    pend_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'session_token':session_token}
+    pend_att_params = {'strProdURL':strProdURL,'resource_id':resource_id, 'org_id':org_id, 'sessiontoken':session_token}
     vpc_list = get_pending_att(**pend_att_params)
 
     if vpc_list == []:
@@ -1680,7 +1642,7 @@ def get_pending_att(**kwargs):
     strProdURL = kwargs['strProdURL']
     resource_id=kwargs['resource_id']
     org_id=kwargs['org_id']
-    session_token=kwargs['session_token']
+    session_token=kwargs['sessiontoken']
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}?trait=AwsVpcAttachmentsTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
@@ -2991,7 +2953,7 @@ def getTGWroutes(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strProdURL = kwargs['strProdURL']
     sddc_group_id = kwargs['sddc_group_id']
-    res_params = {'session_token':sessiontoken, 'strProdURL':strProdURL, 'org_id':ORG_ID, 'sddc_group_id':sddc_group_id}
+    res_params = {'sessiontoken':sessiontoken, 'strProdURL':strProdURL, 'org_id':ORG_ID, 'sddc_group_id':sddc_group_id}
     resource_id = get_resource_id(**res_params)
     print(f'Route table for {sddc_group_id}')
     get_route_tables(strProdURL, resource_id, ORG_ID, sessiontoken)
@@ -4651,11 +4613,30 @@ def show_tier1_vpn_details(**kwargs):
     dpd_path = vpn_json['dpd_profile_path']
     le_path = vpn_json['local_endpoint_path']
 
+    le_json = get_tier1_vpn_le_details_json(proxy, session_token, le_path)
+    local_addr = le_json['local_address']
+
+    ike_json = get_vpn_ike_profile_details_json(proxy, session_token, ike_path)
+    ike_table = PrettyTable(['Profile Name', 'IKE Version', 'Digest Algoritms', 'Encryption Algorithms', 'Diffie-Helman Groups'])
+    ike_table.title = 'IKE Profile Details'
+    ike_table.add_row([ike_json['display_name'], ike_json['ike_version'], ike_json['digest_algorithms'], ike_json['encryption_algorithms'], ike_json['dh_groups']])
+
+    ipsec_json = get_vpn_ipsec_profile_details_json(proxy, session_token, tun_path)
+    ipsec_table = PrettyTable(['Profile Name', 'Digest Algorithm', 'Encryption Algorithm', 'Diffie-Helman Groups', 'PFS Status'])
+    ipsec_table.title = 'IPSec Tunnel Profile Details'
+    ipsec_table.add_row([ipsec_json['display_name'], ipsec_json['digest_algorithms'], ipsec_json['encryption_algorithms'], ipsec_json['dh_groups'], ipsec_json['enable_perfect_forward_secrecy']])
+
+    dpd_json = get_vpn_dpd_profile_details_json(proxy, session_token, dpd_path)
+    dpd_table = PrettyTable(['Profile Name', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    dpd_table.title = 'Dead Peer Detection Profile Details'
+    dpd_table.add_row([dpd_json['display_name'], dpd_json['dpd_probe_mode'], dpd_json['dpd_probe_interval'], dpd_json['retry_count']])
+
     match vpn_json['resource_type']:
         case "PolicyBasedIPSecVpnSession":
             rt = "Policy Based"
             rules_json = vpn_json['rules']
-            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Prole', 'DPD Settings', 'Src Addresses', 'Dest Addresses'])
+            vpn_table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'Src Addresses', 'Dest Addresses'])
+            vpn_table.title = 'VPN Details'
             src_addr = []
             dst_addr = []
             for r in rules_json:
@@ -4665,17 +4646,121 @@ def show_tier1_vpn_details(**kwargs):
                     src_addr.append(s['subnet'])
                 for d in destinations:
                     dst_addr.append(d['subnet'])
+            vpn_table.add_row([display_name, 'Policy-Based', vpn_json['peer_address'], local_addr, src_addr, dst_addr])
+
         case "RouteBasedIPSecVpnSession":
             rt = "Route Based"
-            table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'Local Endpoint', 'IPSec Tunnel Settings', 'IKE Settings', 'DPD Settings', 'BGP Tunnel CIDR'])
+            vpn_table = PrettyTable(['Name', 'VPN Type', 'Peer Address', 'BGP Tunnel CIDR', 'Local Endpoint', 'Authentication Mode'])
+            vpn_table.title = 'VPN Details'
             ip_subnets = vpn_json['tunnel_interfaces'][0]['ip_subnets']
             for i in ip_subnets:
-                ip = i['ip_address'][0]
+                ip = i['ip_addresses'][0]
                 prefix = i['prefix_length']
                 bgp_cidr = f"{ip}/{prefix}"
+            vpn_table.add_row([display_name, 'Route-Based', vpn_json['peer_address'], bgp_cidr, local_addr, vpn_json['authentication_mode']])
+
         case other:
             print('Incorrect VPN Resource Type')
             sys.exit(1)
+
+    print(vpn_table)
+    print(ike_table)
+    print(ipsec_table)
+    print(dpd_table)
+    sys.exit(0)
+
+
+def show_tier1_l2vpn(**kwargs):
+    """Prints table of all Tier-1 L2VPN sessions"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+
+    l2vpn_table = PrettyTable(['Display Name', 'IPSec Transport Tunnel', 'Tier-1 Gateway', 'L2VPN Service', 'Peer Address', 'Local Endpoint'])
+
+    tier1_json = get_t1_json(proxy, session_token)
+    tier1 = tier1_json['results']
+    tier1_lst = []
+    for t in tier1:
+        tier1_lst.append(t['id'])
+
+    for t in tier1_lst:
+        l2vpn_json = get_tier1_l2vpn_services_json(proxy, session_token, t)
+        if l2vpn_json['result_count'] > 0:
+            l2vpn_serv = l2vpn_json['results']
+            for i in l2vpn_serv:
+                l2vpn_serv_name = i['display_name']
+                l2vpn_sessions_json = get_tier1_l2vpn_json(proxy, session_token, t, l2vpn_serv_name)
+                l2vpn_sessions = l2vpn_sessions_json['results']
+                for l in l2vpn_sessions:
+                    transport = l['transport_tunnels']
+                    for x in transport:
+                        ipsec_path = x
+                    ipsec_vpn_json = get_tier1_l2vpn_ipsec_json(proxy, session_token, ipsec_path)
+                    ipsec_name = ipsec_vpn_json['display_name']
+                    peer_addr = ipsec_vpn_json['peer_address']
+                    le_json = get_tier1_vpn_le_details_json(proxy, session_token, ipsec_vpn_json['local_endpoint_path'])
+                    local_addr = le_json['local_address']
+
+                    l2vpn_table.add_row([l2vpn_serv_name, ipsec_name, t, l2vpn_serv_name, peer_addr, local_addr])
+    sys.exit(l2vpn_table)
+
+
+def show_tier1_l2vpn_details(**kwargs):
+    """Prints table of all associated information for a L2VPN session"""
+    proxy = kwargs['proxy']
+    session_token = kwargs['sessiontoken']
+    t1g = kwargs['tier1_gateway']
+    l2vpn_serv = kwargs['vpn_service']
+    display_name = kwargs['display_name']
+
+    l2vpn_table = PrettyTable(['Display Name', 'IPSec Transport Tunnel', 'Tier-1 Gateway', 'L2VPN Service', 'Peer Address', 'Local Endpoint'])
+    l2vpn_table.title = 'L2VPN Session Details'
+    ipsec_tun_table = PrettyTable(['Display Name', 'BGP Address CIDR', 'Authentication Mode'])
+    ipsec_tun_table.title = 'L2VPN IPSec Transport Tunnel Details'
+    ike_table = PrettyTable(['Profile Name', 'IKE Version', 'Digest Algoritms', 'Encryption Algorithms', 'Diffie-Helman Groups'])
+    ike_table.title = 'IKE Profile Details'
+    ipsec_table = PrettyTable(['Profile Name', 'Digest Algorithm', 'Encryption Algorithm', 'Diffie-Helman Groups', 'PFS Status'])
+    ipsec_table.title = 'IPSec Tunnel Profile Details'
+    dpd_table = PrettyTable(['Profile Name', 'Probe Mode', 'Probe Interval', 'Retry Count'])
+    dpd_table.title = 'Dead Peer Detection Profile Details'
+
+    l2vpn_json = get_tier1_l2vpn_details_json(proxy, session_token, t1g, l2vpn_serv, display_name)
+    transport = l2vpn_json['transport_tunnels']
+    for x in transport:
+        ipsec_path = x
+    ipsec_vpn_json = get_tier1_l2vpn_ipsec_json(proxy, session_token, ipsec_path)
+    ike_path = ipsec_vpn_json['ike_profile_path']
+    tun_path = ipsec_vpn_json['tunnel_profile_path']
+    dpd_path = ipsec_vpn_json['dpd_profile_path']
+    le_path = ipsec_vpn_json['local_endpoint_path']
+
+    ip_subnets = ipsec_vpn_json['tunnel_interfaces'][0]['ip_subnets']
+    for i in ip_subnets:
+        ip = i['ip_addresses'][0]
+        prefix = i['prefix_length']
+        bgp_cidr = f"{ip}/{prefix}"
+
+    le_json = get_tier1_vpn_le_details_json(proxy, session_token, le_path)
+    local_addr = le_json['local_address']
+
+    l2vpn_table.add_row([l2vpn_json['display_name'], ipsec_vpn_json['display_name'], t1g, l2vpn_serv, ipsec_vpn_json['peer_address'], local_addr])
+    ipsec_tun_table.add_row([ipsec_vpn_json['display_name'], bgp_cidr, ipsec_vpn_json['authentication_mode']])
+
+    ike_json = get_vpn_ike_profile_details_json(proxy, session_token, ike_path)
+    ike_table.add_row([ike_json['display_name'], ike_json['ike_version'], ike_json['digest_algorithms'], ike_json['encryption_algorithms'], ike_json['dh_groups']])
+
+    ipsec_json = get_vpn_ipsec_profile_details_json(proxy, session_token, tun_path)
+    ipsec_table.add_row([ipsec_json['display_name'], ipsec_json['digest_algorithms'], ipsec_json['encryption_algorithms'], ipsec_json['dh_groups'], ipsec_json['enable_perfect_forward_secrecy']])
+
+    dpd_json = get_vpn_dpd_profile_details_json(proxy, session_token, dpd_path)
+    dpd_table.add_row([dpd_json['display_name'], dpd_json['dpd_probe_mode'], dpd_json['dpd_probe_interval'], dpd_json['retry_count']])
+
+    print(l2vpn_table)
+    print(ipsec_tun_table)
+    print(ike_table)
+    print(ipsec_table)
+    print(dpd_table)
+    sys.exit(0)
 
 
 def new_sddc_ipsec_vpn_ike_profile(**kwargs):
@@ -4759,7 +4844,7 @@ def new_sddc_ipsec_vpn_tunnel_profile(**kwargs):
     }
     json_response_status_code = new_ipsec_vpn_profile_json(proxy, session_token, display_name, json_data)
     if json_response_status_code == 200:
-        sys.exit(f'IKE Profile {display_name} was created successfully')
+        sys.exit(f'IPSec Tunnel Profile {display_name} was created successfully')
     else:
         print('There was an error')
         sys.exit(1)

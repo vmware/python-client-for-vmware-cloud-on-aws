@@ -339,8 +339,15 @@ def main():
     tkg_parser_subs = tkg_parser.add_subparsers(help='sddc sub-command help')
 
     # create parsers for each of the inidividual subcommands
-    # enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents=[auth_flag,], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
-    # disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents=[auth_flag,], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    enable_tkg_parser=tkg_parser_subs.add_parser('enable-tkg', parents=[auth_flag, vmc_url_flag, org_id_flag, sddc_id_parser_flag], help = 'Enable Tanzu Kubernetes Grid on an SDDC')
+    enable_tkg_parser.add_argument('-e', '--egress-cidr', required=True, help='Address range reserved for SNATed outbound traffic from containers and guest clusters.')
+    enable_tkg_parser.add_argument('-i', '--ingress-cidr', required=True, help='Address range allocated to receive inbound traffic through load balancers to containers.')
+    enable_tkg_parser.add_argument('-n', '--namespace-cidr', required=True, help='Address range assigned to namespace segments.  Must be at least a /23.')
+    enable_tkg_parser.add_argument('-s', '--service-cidr', required=True, help='Address range reserved for Tanzu supervisor services.')
+    enable_tkg_parser.set_defaults(func=enable_tkg)
+
+    disable_tkg_parser=tkg_parser_subs.add_parser('disable-tkg', parents=[auth_flag,vmc_url_flag, org_id_flag, sddc_id_parser_flag], help = 'Disable Tanzu Kubernetes Grid on an SDDC')
+    disable_tkg_parser.set_defaults(func=disable_tkg)
 
 # ============================
 # NSX-T - Segments
@@ -506,7 +513,7 @@ def main():
     remove_tier1_vpn_service_parser.add_argument('-vt', '--vpn-type', choices=['ipsec', 'l2vpn'], type=str.lower, required=True, help='Chose the VPN service type, ipsec or l2vpn')
     remove_tier1_vpn_service_parser.set_defaults(func=remove_tier1_vpn_service)
 
-    remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-ike-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
+    remove_vpn_profile_parser = vpn_parser_subs.add_parser('remove-vpn-profile', parents=[nsx_url_flag], help='remove a VPN IKE profile')
     remove_vpn_profile_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_vpn_profile_parser.add_argument('-p', '--profile-type', choices=['ike', 'ipsec', 'dpd'], type=str.lower, required=True, help="Chose which type of profile you would like to remove.")
     remove_vpn_profile_parser.set_defaults(func=remove_vpn_profile)
@@ -544,7 +551,15 @@ def main():
     show_t1_ipsec_vpn_details_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the IPSec VPN service')
     show_t1_ipsec_vpn_details_parser.set_defaults(func=show_tier1_vpn_details)
 
-    # show_tier1_l2vpn_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn', parents=[nsx_url_flag], help='Show Tier-1 L2VPN sessions')
+    show_tier1_l2vpn_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn', parents=[nsx_url_flag], help='Show Tier-1 L2VPN sessions')
+    show_tier1_l2vpn_parser.set_defaults(func=show_tier1_l2vpn)
+
+    show_tier1_l2vpn_details_parser = vpn_parser_subs.add_parser('show-tier1-l2vpn-details', parents=[nsx_url_flag], help='Show Tier-1 L2VPN Session Details')
+    show_tier1_l2vpn_details_parser.add_argument('-n', '--display-name', required=True, help='The display name of the L2VPN object')
+    show_tier1_l2vpn_details_parser.add_argument('-t1g', '--tier1-gateway', required=True, help='The name of the Tier-1 gateway the L2VPN is attached to')
+    show_tier1_l2vpn_details_parser.add_argument('-vs', '--vpn-service', required=True, help='The name of the L2VPN service in use by the L2VPN session')
+    show_tier1_l2vpn_details_parser.set_defaults(func=show_tier1_l2vpn_details)
+
 
 # ============================
 # NSX-T - Route-Based VPN Prefix Lists, Neighbors
@@ -1371,6 +1386,7 @@ def main():
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
 
 
@@ -1519,3 +1535,6 @@ def vtcConnectAWS(**kwargs):
 
 #     # elif intent_name == "new-service-entry":
 #     #    print("This is WIP")
+=======
+    main()
+>>>>>>> 12906965ea2bc0e66feee8bd1e9e58063e9f4eba
