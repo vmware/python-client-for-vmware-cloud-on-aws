@@ -33,7 +33,7 @@ def get_activity_status(strProdURL, session_token, org_id, activity_id):
 
 def get_flexcomp_namesapces(strProdURL, session_token, org_id):
     pyvmc_header = {"csp-auth-token": session_token}
-    url = strProdURL+"/api/c3s/"+org_id+"/core/elastic-namespaces"
+    url = strProdURL+"/api/infrastructure/"+org_id+"/core/namespaces"
     response = requests.get(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 200:
@@ -50,7 +50,7 @@ def flexcomp_validate_network(strProdURL, session_token, org_id, cidr, seg_name,
     temp_data = {}
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL+"/api/c3s/"+org_id+"/core/elastic-namespaces:validate-network"
+    url = strProdURL+"/api/infrastructure/"+org_id+"/core/namespaces:validate-network"
     data['ens_cidr'] = cidr
     data['segment_configs'] = []
     temp_data['segment_cidr'] = seg_cidr
@@ -74,7 +74,7 @@ def create_flexcomp_namespace(strProdURL, session_token, org_id, name, desc, ens
     data = {}
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL+"/api/c3s/"+org_id+"/core/elastic-namespaces:create"
+    url = strProdURL+"/api/infrastructure/"+org_id+"/core/namespaces:create"
     data['name'] = name
     data['region'] = region
     data['provider'] = "AWS"
@@ -115,7 +115,7 @@ def create_flexcomp_namespace(strProdURL, session_token, org_id, name, desc, ens
 def delete_flexcomp_namespace(strProdURL, session_token, org_id, nsId):
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL+"/api/c3s/"+org_id+"/core/elastic-namespaces/"+nsId+":delete"
+    url = strProdURL+"/api/infrastructure/"+org_id+"/core/namespaces/"+nsId+":delete"
     response = requests.post(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 201:
@@ -133,7 +133,7 @@ def delete_flexcomp_namespace(strProdURL, session_token, org_id, nsId):
 
 def get_namespace_region(strProdURL, session_token, org_id):
     pyvmc_header = {"csp-auth-token": session_token}
-    url = strProdURL+"/api/c3s/"+org_id+"/core/elastic-namespaces/regions"
+    url = strProdURL+"/api/infrastructure/"+org_id+"/core/namespaces/regions"
     response = requests.get(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 200:
@@ -147,7 +147,7 @@ def get_namespace_region(strProdURL, session_token, org_id):
 
 def get_namespace_profiles(strProdURL, session_token, org_id):
     pyvmc_header = {"csp-auth-token": session_token}
-    url = strProdURL + "/api/c3s/" + org_id + "/core/elastic-namespaces/profiles"
+    url = strProdURL + "/api/infrastructure/" + org_id + "/core/namespaces/profiles"
     response = requests.get(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 200:
@@ -179,7 +179,7 @@ def get_all_images(strProdURL, session_token, org_id):
 
 def get_all_vms(strProdURL, session_token, org_id):
     pyvmc_header = {"csp-auth-token": session_token}
-    url = strProdURL + "/api/c3s/" + org_id + "/core/cloud-vms"
+    url = strProdURL + "/api/workload/" + org_id + "/core/namespace/virtual-machines"
     response = requests.get(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 200:
@@ -204,7 +204,7 @@ def vm_power_operation(strProdURL, session_token, org_id, vmId, powerOperation):
 
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL + "/api/c3s/" + org_id + "/core/cloud-vms/"+vmId+":power-operation"
+    url = strProdURL + "/api/workload/" + org_id + "/core/namespace/virtual-machines/"+vmId+":power-operation"
 
     data['spec'] = {
         "powerOperation": powerOperation,
@@ -227,7 +227,7 @@ def create_vm_from_iso(strProdURL, session_token, org_id, name, namespace_name, 
     data = {}
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL + "/api/c3s/" + org_id + "/core/cloud-vms:create-vm"
+    url = strProdURL + "/api/workload/" + org_id + "/core/namespace/virtual-machines:create-vm"
     data['metadata'] = {
         "name": name,
         "namespace": namespace_name
@@ -253,34 +253,35 @@ def create_vm_from_iso(strProdURL, session_token, org_id, name, namespace_name, 
             }
         ],
         "placementRequirement": {
-            "hardwareType": "GENERAL_PURPOSE"
+            "hardwareType": "GENERAL_PURPOSE",
+            "zone": "zone-1"
         },
         "storage": {
             "unit": "GiB",
             "value": int(storage)
         }
     }
-    # data['spec']['cpu'] = {
-    #     "allocation": {"count": int(cpu)}
-    #     # "reservation": {
-    #     #     "value": 1.0,
-    #     #     "unit": "GHz"
-    #     # }
-    # }
-    # data['spec']['memory'] = {
-    #     "allocation": {
-    #         "value": int(mem),
-    #         "unit": "GiB"
-    #     }
-    #     # "reservation": {
-    #     #     "value": int(mem),
-    #     #     "unit": "GiB"
-    #     # }
-    # }
-    # data['spec']['storage'] = {
-    #     "value": int(storage),
-    #     "unit": "GiB"
-    # }
+    data['spec']['cpu'] = {
+        "allocation": {"count": int(cpu)}
+        # "reservation": {
+        #     "value": 1.0,
+        #     "unit": "GHz"
+        # }
+    }
+    data['spec']['memory'] = {
+        "allocation": {
+            "value": int(mem),
+            "unit": "GiB"
+        }
+        # "reservation": {
+        #     "value": int(mem),
+        #     "unit": "GiB"
+        # }
+    }
+    data['spec']['storage'] = {
+        "value": int(storage),
+        "unit": "GiB"
+    }
     payload = json.dumps(data)
     print(payload)
 
@@ -300,7 +301,7 @@ def create_vm_from_iso(strProdURL, session_token, org_id, name, namespace_name, 
 def delete_vm(strProdURL, session_token, org_id, vmId):
     pyvmc_header = {"csp-auth-token": session_token,
                     "Content-Type": "application/json"}
-    url = strProdURL + "/api/c3s/" + org_id + "/core/cloud-vms/"+vmId+":delete"
+    url = strProdURL + "/api/workload/" + org_id + "/core/namespace/virtual-machines/"+vmId+":delete"
     response = requests.post(url, headers=pyvmc_header)
     json_response = response.json()
     if response.status_code == 201:
