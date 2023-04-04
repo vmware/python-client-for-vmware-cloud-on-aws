@@ -161,7 +161,6 @@ def show_config(**kwargs):
         print('There are problems with your config.ini file.')
         sys.exit(1)
 
-
 #  https://developer.vmware.com/ap  is/csp/csp-iam/latest/csp/gateway/am/api/auth/api-tokens/authorize/post/
 
 def getAccessToken(**kwargs):
