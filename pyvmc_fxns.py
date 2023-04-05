@@ -5246,8 +5246,55 @@ def new_sddc_l2vpn(**kwargs):
     remote_addr = kwargs['remote_address']
     endpoint = kwargs['endpoint']
 
+    match endpoint:
+        case "Public-IP":
+            endpoint = "Public-IP1"
+        case "Private-IP":
+            endpoint = "Private-IP1"
+
+    ike_profile_json = {
+        "dh_groups": [
+            "GROUP14"
+        ],
+        "digest_algorithms": [
+            "SHA2_256"
+        ],
+        "encryption_algorithms": [
+            "AES_128"
+        ],
+        "ike_version": "IKE_V2",
+        "display_name": "__l2vpn__internal__",
+        "id": "__l2vpn__internal__",
+        "resource_type": "IPSecVpnIkeProfile"
+    }
+
+    ipsec_tun_json = {
+        "dh_groups": [
+            "GROUP14"
+        ],
+        "digest_algorithms": [],
+        "encryption_algorithms": [
+            "AES_GCM_128"
+        ],
+        "enable_perfect_forward_secrecy": True,
+        "display_name": "__l2vpn__internal__",
+        "id": "__l2vpn__internal__",
+        "resource_type": "IPSecVpnTunnelProfile"
+    }
+
+    dpd_json = {
+        "dpd_probe_interval": "60",
+        "dpd_probe_mode": "PERIODIC",
+        "display_name": "__l2vpn__internal__",
+        "id": "__l2vpn__internal__",
+        "resource_type": "IPSecVpnDpdProfile"
+    }
+
     #Create IPSec VPN tunnel
     ipsec_json = {
+        "resource_type": "RouteBasedIPSecVpnSession",
+        "id": "__l2vpn__internal__",
+        "display_name": "L2VPN",
         "tunnel_interfaces": [
             {
                 "ip_subnets": [
@@ -5263,42 +5310,48 @@ def new_sddc_l2vpn(**kwargs):
                 "display_name": "default-tunnel-interface"
             }
         ],
-        "resource_type": "RouteBasedIPsecVpnSession",
-        "id": "__l2vpn__internal__",
-        "display_name": "L2VPN",
         "local_endpoint_path": f"/infra/tier-0s/vmc/ipsec-vpn-services/default/local-endpoints/{endpoint}",
-        "authentication_mode": "PSK",
         "ike_profile_path": "/infra/ipsec-vpn-ike-profiles/__l2vpn__internal__",
         "tunnel_profile_path": "/infra/ipsec-vpn-tunnel-profiles/__l2vpn__internal__",
         "dpd_profile_path": "/infra/ipsec-vpn-dpd-profiles/__l2vpn__internal__",
         "tcp_mss_clamping": {
             "direction": "NONE"
         },
-        "peer_address": {remote_addr},
-        "peer_id": {remote_addr}
+        "authentication_mode": "PSK",
+        "psk": "None",
+        "peer_address": remote_addr,
+        "peer_id": remote_addr
     }
-    json_respon_status_code = new_sddc_ipsec_session_json(proxy, session_token, ipsec_json, "__l2vpn__internal__")
-    if json_respon_status_code == 200:
-        l2vpn_json = {
-            "transport_tunnels": [
-                "/infra/tier-0s/vmc/ipsec-vpn-services/default/sessions/__l2vpn__internal__"
-            ],
-            "tcp_mss_clamping": {
-                "direction": "BOTH"
-            },
-            "resource_type": "L2VPNSession",
-            "id": "__l2vpn__internal__",
-            "display_name": {display_name}
-        }
-        json_response_status_code = new_l2vpn_json(proxy, session_token, "__l2vpn__internal__", l2vpn_json)
-        if json_response_status_code == 200:
-            sys.exit(f"SDDC L2VPN {display_name} has been created successfully")
+    # print(json.dumps(ipsec_json, indent=2))
+    dpd_response_code = new_ipsec_vpn_dpd_profile_json(proxy, session_token, dpd_json, "__l2vpn__internal__")
+    ike_response_code = new_ipsec_vpn_ike_profile_json(proxy, session_token, "__l2vpn__internal__", ike_profile_json)
+    tun_response_code = new_ipsec_vpn_profile_json(proxy, session_token, "__l2vpn__internal__", ipsec_tun_json)
+    if dpd_response_code == 200 and ike_response_code == 200 and tun_response_code == 200:
+        json_respon_status_code = new_sddc_ipsec_session_json(proxy, session_token, ipsec_json, "__l2vpn__internal__")
+        if json_respon_status_code == 200:
+            l2vpn_json = {
+                "transport_tunnels": [
+                    "/infra/tier-0s/vmc/ipsec-vpn-services/default/sessions/__l2vpn__internal__"
+                ],
+                "tcp_mss_clamping": {
+                    "direction": "BOTH"
+                },
+                "resource_type": "L2VPNSession",
+                "id": "__l2vpn__internal__",
+                "display_name": display_name
+            }
+            json_response_status_code = new_l2vpn_json(proxy, session_token, "__l2vpn__internal__", l2vpn_json)
+            if json_response_status_code == 200:
+                sys.exit(f"SDDC L2VPN {display_name} has been created successfully")
+            else:
+                print(f"There was an error creating {display_name} L2VPN")
+                sys.exit(1)
         else:
-            print(f"There was an error creating {display_name} L2VPN")
+            print(f"There was an error creating the IPSec tunnel for {display_name} L2VPN")
             sys.exit(1)
     else:
-        print(f"There was an error creating the IPSec tunnel for {display_name} L2VPN")
-        sys.exit(1)
+        print("There was an error creating one of the tunnel encryption profiles")
+        sys,exit(1)
 
 
 def remove_sddc_ipsec_vpn(**kwargs):
@@ -5322,7 +5375,11 @@ def remove_sddc_l2vpn(**kwargs):
     display_name = kwargs['display_name']
 
     json_response_status_code = delete_l2vpn_json(proxy, session_token, "__l2vpn__internal__")
-    if json_response_status_code == 200:
+    vpn_response_status_code = delete_ipsec_vpn_json(proxy, session_token, "__l2vpn__internal__")
+    ike_response_status_code = delete_ipsec_vpn_ike_profile_json(proxy, session_token, "__l2vpn__internal__")
+    tun_response_status_code = delete_ipsec_vpn_profile_json(proxy, session_token, "__l2vpn__internal__")
+    dpd_response_status_code = delete_ipsec_vpn_dpd_profile_json(proxy, session_token, "__l2vpn__internal__")
+    if json_response_status_code == 200 and ike_response_status_code == 200 and tun_response_status_code == 200 and dpd_response_status_code == 200 and vpn_response_status_code == 200:
         sys.exit(f"L2VPN {display_name} has been deleted")
     else:
         print(f"There was an error deleting {display_name}")

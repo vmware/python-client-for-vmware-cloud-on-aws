@@ -58,6 +58,10 @@ def nsx_error_handling(fxn_response):
         json_response = fxn_response.json()
         if 'error_message' in json_response:
             print(json_response['error_message'])
+        if 'related_errors' in json_response:
+            print("Related Errors")
+            for r in json_response['related_errors']:
+                print(r['error_message'])
     except:
         print("No additional information in the error response.")
     return None
@@ -1876,16 +1880,14 @@ def new_l2vpn_json(proxy_url, session_token, display_name, json_data):
 
 
 def delete_ipsec_vpn_json(proxy_url, session_token, vpn_id):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.json()
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{vpn_id}'
+    response = requests.delete(my_url, headers=my_header)
     if response.status_code == 200:
-        return json_response
+        return response.status_code
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        nsx_error_handling(response)
+        return None
 
 
 def delete_l2vpn_json(proxy_url, session_token, vpn_id):
@@ -1903,21 +1905,30 @@ def delete_ipsec_vpn_profile_json(proxy_url, session_token, vpn_id):
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/{vpn_id}'
     response = requests.delete(myURL, headers=myHeader)
-    json_response = response.json()
     if response.status_code == 200:
-        return json_response
+        return response.status_code
     else:
         nsx_error_handling(response)
         return None
 
 
-def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, vpn_id):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{id}'
-    response = requests.delete(myURL, headers=myHeader)
-    json_response = response.json()
+def delete_ipsec_vpn_ike_profile_json(proxy_url, session_token, id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-ike-profiles/{id}'
+    response = requests.delete(my_url, headers=my_header)
     if response.status_code == 200:
-        return json_response
+        return response.status_code
+    else:
+        nsx_error_handling(response)
+        return None
+
+
+def delete_ipsec_vpn_dpd_profile_json(proxy_url, session_token, dpd_id):
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{proxy_url}/policy/api/v1/infra/ipsec-vpn-dpd-profiles/{dpd_id}'
+    response = requests.delete(my_url, headers=my_header)
+    if response.status_code == 200:
+        return response.status_code
     else:
         nsx_error_handling(response)
         return None
