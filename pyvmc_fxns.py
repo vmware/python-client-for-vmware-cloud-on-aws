@@ -143,7 +143,7 @@ def build_initial_config(**kwargs):
     print("Your config.ini has been populated with the default URLs necessary for basic functionality,")
     print(" as well as your Org and SDDC IDs, and your refresh token (if you chose to do so).")
     print()
-    print("Please confirm your config.ini file using 'show-config' or review your file manually, then try your command again.")
+    print("Please confirm your config.ini file using ./pyVMC.py config show or review your file manually, then try your command again.")
     return
 
 
@@ -2647,12 +2647,13 @@ def getSDDCBGPVPN(**kwargs):
     proxy = kwargs['proxy']
     sessiontoken = kwargs['sessiontoken']
     json_response = get_sddc_bgp_vpn_json(proxy, sessiontoken)
-    if json_response != False:
+
+    if json_response is not None:
         sddc_bgp_vpn = json_response['route_preference']
         if sddc_bgp_vpn == "VPN_PREFERRED_OVER_DIRECT_CONNECT":
-            return "The preferred path is over VPN, with Direct Connect as a back-up."
+            print("The preferred path is over VPN, with Direct Connect as a back-up.")
         else:
-            return "The preferred path is over Direct Connect, with VPN as a back-up."
+            print("The preferred path is over Direct Connect, with VPN as a back-up.")
     else:
         print("Something went wrong, please try again.")
         sys.exit(1)
@@ -2661,6 +2662,7 @@ def getSDDCEgressInterfaceCtrs(**kwargs):
     proxy = kwargs['proxy']
     sessiontoken = kwargs['sessiontoken']
     edge_cluster_id = getSDDCEdgeCluster(proxy, sessiontoken)
+
     if edge_cluster_id == False:
         print("Something went wrong, please try again.")
         sys.exit(1)
@@ -2679,13 +2681,14 @@ def getSDDCEgressInterfaceCtrs(**kwargs):
     else:
         pass
     stat_0 = getSDDCInternetStats(proxy,sessiontoken, edge_path_0)
-    if stat_0 == False:
+    if stat_0 is None:
         print("Something went wrong, please try again.")
         sys.exit(1)
     else:
         pass
+
     stat_1 = getSDDCInternetStats(proxy,sessiontoken, edge_path_1)
-    if stat_1 == False:
+    if stat_1 is None:
         print("Something went wrong, please try again.")
         sys.exit(1)
     else:
