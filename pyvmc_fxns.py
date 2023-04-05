@@ -277,7 +277,7 @@ def findCSPUserByServiceRole(**kwargs):
     ORG_ID = kwargs['ORG_ID']
     strCSPProdURL = kwargs['strCSPProdURL']
     if kwargs['service_role'] is None:
-        print("Please use -srole or --service_role to specify the role name to search by.  Use show-csp-service-roles to see entitled roles.")
+        print("Please use -r or --service_role to specify the role name to search by.  Use show-csp-service-roles to see entitled roles.")
         sys.exit(1)
     else:
         service_role = kwargs['service_role']
@@ -398,32 +398,39 @@ def getCSPGroups(**kwargs):
     """Get List of CSP groups from your Organization -- br"""
     sessiontoken = kwargs['sessiontoken']
     ORG_ID = kwargs['ORG_ID']
-    strCSPProdURL = kwargs['strCSPProdURL']  
-    try:
-        kwargs.get('search_term')
-        searchTerm = kwargs['search_term']
-        json_response = get_csp_groups_searchterm_json(strCSPProdURL, ORG_ID, sessiontoken,searchTerm)
-        if json_response == None:
-            print("API Error")
-            sys.exit(1)
+    strCSPProdURL = kwargs['strCSPProdURL']
 
-    except:
+    if kwargs['search_term'] is None:
         json_response = get_csp_groups_json(strCSPProdURL, ORG_ID, sessiontoken)
-        if json_response == None:
+        print("Got the groups")
+        if json_response is not None:
+            groups = json_response['results']
+            num_groups = len(groups)
+            if num_groups == 0:
+                print("No results returned.")
+            else:
+                print(str(num_groups) + " result" + ("s" if num_groups > 1 else "") + " returned:")
+                table = PrettyTable(['ID', 'Name', 'Group Type', 'User Count'])
+                for grp in groups:
+                    table.add_row([grp['id'], grp['displayName'], grp['groupType'], grp['usersCount']])
+                print(table)
+    else:
+        search_term = kwargs['search_term']
+        json_response = get_csp_groups_searchterm_json(strCSPProdURL, ORG_ID, sessiontoken, search_term)
+        if json_response is not None:
+            groups = json_response['results']
+            num_groups = len(groups)
+            if num_groups == 0:
+                print("No results returned.")
+            else:
+                print(str(num_groups) + " result" + ("s" if num_groups > 1 else "") + " returned:")
+                table = PrettyTable(['ID', 'Name', 'Group Type', 'User Count'])
+                for grp in groups:
+                    table.add_row([grp['id'], grp['displayName'], grp['groupType'], grp['usersCount']])
+                print(table)
+        else:
             print("API Error")
             sys.exit(1)
-
-    if json_response is not None:
-        groups = json_response['results']
-        numGroups = len(groups)
-        if(numGroups == 0):
-            print("No results returned.")
-        else:
-            print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
-            table = PrettyTable(['ID','Name', 'Group Type','User Count'])
-            for grp in groups:
-                table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-            print(table)
 
 
 def searchCSPOrgUsers(**kwargs):

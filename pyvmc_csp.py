@@ -7,6 +7,7 @@
 
 import json
 import requests
+import sys
 
 #In order to use the following function, all the functions in this file will have to be modified to use.  
 def csp_error_handling(fxn_response):
@@ -58,7 +59,11 @@ def get_csp_groups_json(strCSProdURL, ORG_ID, session_token):
     myURL = f'{strCSProdURL}/csp/gateway/am/api/orgs/{ORG_ID}/groups'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def get_services_json(strCSPProdURL, ORG_ID, session_token):
@@ -67,7 +72,11 @@ def get_services_json(strCSPProdURL, ORG_ID, session_token):
     myURL = f'{strCSPProdURL}/csp/gateway/slc/api/v2/ui/definitions/?orgId={ORG_ID}'
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    return json_response
+    if response.status_code == 200:
+        return json_response
+    else:
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 # ============================
@@ -84,12 +93,8 @@ def get_csp_users_json(strCSPProdURL, orgID, session_token):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        try:
-            print(json_response['error_message'])
-        except:
-            pass
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def get_csp_groups_searchterm_json(strCSProdURL, org_id, session_token,search_term):
@@ -104,17 +109,9 @@ def get_csp_groups_searchterm_json(strCSProdURL, org_id, session_token,search_te
     #
     if response.status_code == 200:
         return json_response
-    elif response.status_code in (400,401,403):
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        if "message" in json_response.keys():
-            print(f'Error Message: {json_response["message"]}')
-        return None
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        if "error_message" in json_response.keys():
-            print(json_response['error_message'])
-        return None
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def get_csp_group_info_json(strCSProdURL, org_id, session_token, group_id):
@@ -125,9 +122,8 @@ def get_csp_group_info_json(strCSProdURL, org_id, session_token, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def get_csp_users_group_json(strCSProdURL, org_id, session_token, group_id):
@@ -138,9 +134,8 @@ def get_csp_users_group_json(strCSProdURL, org_id, session_token, group_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def get_csp_service_roles_json(strCSProdURL, org_id, session_token):
@@ -151,9 +146,8 @@ def get_csp_service_roles_json(strCSProdURL, org_id, session_token):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def search_csp_users_json(strCSProdURL, session_token, json_data, org_id):
@@ -164,9 +158,8 @@ def search_csp_users_json(strCSProdURL, session_token, json_data, org_id):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {my_url}.')
-        print(json_response['error_message'])
+        csp_error_handling(response)
+        sys.exit(1)
 
 
 def add_users_csp_group_json(strCSProdURL, org_id, session_token, group_id, json_data):
@@ -177,6 +170,5 @@ def add_users_csp_group_json(strCSProdURL, org_id, session_token, group_id, json
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        csp_error_handling(response)
+        sys.exit(1)

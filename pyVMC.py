@@ -122,17 +122,6 @@ def main():
     config_show_parser = config_parser_subs.add_parser('show', help = "Show the current configuration of pyVMC.")
     config_show_parser.set_defaults(func = show_config)
 
-# ============================
-# CSP - Parent
-# ============================
-
-    # Create the parent parser for the CSP subcommands
-    parent_user_group_parser = argparse.ArgumentParser(add_help=False)
-    parent_user_group_parser.add_argument('-gid', '--group-id', help= "The ID of the group to search or modify.")
-    parent_user_group_parser.add_argument('--filter', choices=['showall', 'skipmembers','skipowners'], help = "Filter out specific members of the group.")
-    parent_user_group_parser.add_argument('-email', '--email', nargs = '+', help= "Use to specify an email to search by, or a list of space-separated emails to add to a group.")
-    parent_user_group_parser.add_argument('-srole', '--service-role', help= "The service role to search by.")
-    parent_user_group_parser.add_argument('--search-term', help = "Text string to filter search.")
 
 # ============================
 # CSP
@@ -156,22 +145,30 @@ def main():
 # ============================
 # CSP - User and Group Management
 # ============================
-    add_users_to_csp_group_parser=csp_parser_subs.add_parser('add-users-to-csp-group', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'CSP user to a group')
+    add_users_to_csp_group_parser=csp_parser_subs.add_parser('add-users-to-csp-group', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'CSP user to a group')
+    add_users_to_csp_group_parser.add_argument('-g', '--group-id', required=True, help= "The ID of the group to search or modify.")
+    add_users_to_csp_group_parser.add_argument('-e', '--email', nargs = '+',required=True, help= "Use to specify an email to search by, or a list of space-separated emails to add to a group.")
     add_users_to_csp_group_parser.set_defaults(func = addUsersToCSPGroup)
 
-    show_csp_group_diff_parser=csp_parser_subs.add_parser('show-csp-group-diff', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
+    show_csp_group_diff_parser=csp_parser_subs.add_parser('show-csp-group-diff', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'this compares the roles in the specified group with every user in the org and prints out a user-by-user diff')
+    show_csp_group_diff_parser.add_argument('-g', '--group-id', required=True, help= "The ID of the group to search or modify.")
+    show_csp_group_diff_parser.add_argument('-f', '--filter', choices=['showall', 'skipmembers','skipowners'], required=True, help = "Filter out specific members of the group.")
     show_csp_group_diff_parser.set_defaults(func = getCSPGroupDiff)
 
-    show_csp_group_members_parser=csp_parser_subs.add_parser('show-csp-group-members', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'show CSP group members')
+    show_csp_group_members_parser=csp_parser_subs.add_parser('show-csp-group-members', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'show CSP group members')
+    show_csp_group_members_parser.add_argument('-g', '--group-id', required=True, help= "The ID of the group to search or modify.")
     show_csp_group_members_parser.set_defaults(func = getCSPGroupMembers)
 
     show_csp_groups_parser=csp_parser_subs.add_parser('show-csp-groups', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'To show CSP groups which contain GROUP_SEARCH_TERM string')
+    show_csp_groups_parser.add_argument('-s', '--search-term', help = "Text string to filter search.")
     show_csp_groups_parser.set_defaults(func = getCSPGroups)
 
-    search_csp_org_users_parser=csp_parser_subs.add_parser('search-csp-org-users', parents=[auth_flag,csp_url_flag, org_id_flag,parent_user_group_parser], help = 'Search for users in the CSP or org.')
+    search_csp_org_users_parser=csp_parser_subs.add_parser('search-csp-org-users', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'Search for users in the CSP or org.')
+    search_csp_org_users_parser.add_argument('-s', '--search-term', required=True, help = "Text string to filter search.")
     search_csp_org_users_parser.set_defaults(func = searchCSPOrgUsers)
 
-    find_csp_user_by_service_role_parser=csp_parser_subs.add_parser('find-csp-user-by-service-role', parents=[auth_flag,csp_url_flag, org_id_flag, parent_user_group_parser], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
+    find_csp_user_by_service_role_parser=csp_parser_subs.add_parser('find-csp-user-by-service-role', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'Search for CSP users with a specific service role.  First use show-csp-service-roles to see entitled roles')
+    find_csp_user_by_service_role_parser.add_argument('-r', '--service-role', required=True, help= "The service role to search by.")
     find_csp_user_by_service_role_parser.set_defaults(func = findCSPUserByServiceRole)
 
     show_org_users_parser=csp_parser_subs.add_parser('show-org-users', parents=[auth_flag,csp_url_flag, org_id_flag], help = 'Show all organization users')
