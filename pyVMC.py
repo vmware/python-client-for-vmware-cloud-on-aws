@@ -482,7 +482,7 @@ def main():
     remove_sddc_ipsec_vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_sddc_ipsec_vpn_parser.set_defaults(func=remove_sddc_ipsec_vpn)
 
-    remove_sddc_l2vpn_parser = vpn_parser_subs.add_parser('remove-sddc-l2VPN', parents=[nsx_url_flag], help='remove a SDDC L2VPN')
+    remove_sddc_l2vpn_parser = vpn_parser_subs.add_parser('remove-sddc-l2vpn', parents=[nsx_url_flag], help='remove a SDDC L2VPN')
     remove_sddc_l2vpn_parser.add_argument('-n', '--display-name', required=True, help='The display name of the VPN object being configured')
     remove_sddc_l2vpn_parser.set_defaults(func=remove_sddc_l2vpn)
 
