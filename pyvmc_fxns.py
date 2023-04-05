@@ -432,22 +432,6 @@ def getCSPGroups(**kwargs):
             print("API Error")
             sys.exit(1)
 
-<<<<<<< Updated upstream
-=======
-    # print(json_response)
-    if json_response is not None:
-        groups = json_response['results']
-        numGroups = len(groups)
-        if(numGroups == 0):
-            print("No results returned.")
-        else:
-            print(str(numGroups) + " result" + ("s" if numGroups > 1 else "") + " returned:")
-            table = PrettyTable(['ID','Name', 'Group Type','User Count'])
-            for grp in groups:
-                table.add_row([grp['id'],grp['displayName'], grp['groupType'], grp['usersCount']])
-            print(table)
-
->>>>>>> Stashed changes
 
 def searchCSPOrgUsers(**kwargs):
     # for i, j in kwargs.items():
