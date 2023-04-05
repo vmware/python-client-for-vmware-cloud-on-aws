@@ -55,9 +55,9 @@ def main():
                                     epilog="Welcome to pyVMC!\n\n"
                                     "Examples:\n\n"
                                     "Show a list of network segments:\n"
-                                    "python pyVMC.py search-nsx Segment\n\n"
+                                    "./pyVMC.py search-nsx Segment\n\n"
                                     "Show the SDDC route table:\n"
-                                    "python pyMVC.py system show-routes t0 \n \u00A0 \n")
+                                    "./pyVMC.py system show-routes t0 \n \u00A0 \n")
 
     # create a subparser for the subsequent sections    
     subparsers = ap.add_subparsers(help='sub-command help')
