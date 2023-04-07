@@ -2574,7 +2574,8 @@ def setSDDCBGPAS(**kwargs):
     response = set_sddc_bgp_as_json(proxy,sessiontoken,json_data)
     if response!= False:
         print("The BGP AS has been updated:")
-        getSDDCBGPAS(proxy,sessiontoken)    
+        bgp_params = {"proxy":proxy,"sessiontoken":sessiontoken}
+        getSDDCBGPAS(**bgp_params)
     else:
         print("Something went wrong, please try again.")
         sys.exit(1)
