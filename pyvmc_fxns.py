@@ -1746,6 +1746,15 @@ def add_vpc_prefixes(**kwargs):
 
 
 # ============================
+# VTC - TGW Operations
+# ============================
+
+
+def attach_tgw(**kwargs):
+    """Function to attach a customer TGW to a vTGW"""
+
+
+# ============================
 # NSX-T - all
 # ============================
 
@@ -4178,17 +4187,17 @@ def getSDDCPublicIP(**kwargs):
 # ============================
 
 def t1_create(**kwargs):
-    """ Creates a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it does not exist already."""
+    """Creates a new Tier-1 gateway"""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    if kwargs['tier1-id'] is None or kwargs['t1type'] is None:
-        print("Please use -t1id (or --tier1-id) to specify the name of the T1 router to be configured, and -t1t or --t1type to specify the type (ROUTED/NATTED/ISOLATED).  Consult the help for additional options.")
-        sys.exit(1)
-    t1_id = kwargs["tier1-id"]
-    json_data = {"type": kwargs["t1type"]}
+    t1_id = kwargs["tier1_id"]
+    t1_type = kwargs['tier1_type']
+    json_data = {
+        "type": t1_type
+    }
     status = create_t1_json(proxy, sessiontoken, t1_id, json_data)
     if status == 200:
-        print(f'Tier1 gateway {t1_id} has been configured as {kwargs["t1type"]}')
+        print(f'Tier1 gateway {t1_id} has been configured as {t1_type}')
     else:
         print("T1 was not created.  Please check your syntax and try again.")
         sys.exit(1)
@@ -4197,10 +4206,7 @@ def t1_configure(**kwargs):
     """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it does not exist already."""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    if kwargs['tier1-id'] is None or kwargs['t1type'] is None:
-        print("Please use -t1id (or --tier1-id) to specify the name of the T1 router to be configured, and -t1t or --t1type to specify the type (ROUTED/NATTED/ISOLATED).  Consult the help for additional options.")
-        sys.exit(1)
-    t1_id = kwargs["tier1-id"]
+    t1_id = kwargs["tier1_id"]
     json_data = {"type": kwargs["t1type"]}
     status = configure_t1_json(proxy, sessiontoken, t1_id, json_data)
     if status == 200:
@@ -4213,7 +4219,7 @@ def t1_remove(**kwargs):
     """ Deletes a Tier1 router as"""
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
-    t1_id = kwargs["tier1-id"]
+    t1_id = kwargs["tier1_id"]
     if t1_id =="cgw" or t1_id =="mgw":
         print(" ")
         print("Seriously?")

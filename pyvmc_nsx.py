@@ -1364,35 +1364,37 @@ def get_vms_json(proxy_url, session_token):
 # ============================
 
 def create_t1_json(proxy_url, sessiontoken, t1_id, json_data):
-    """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it doesn't already exist."""
+    """Creates a new T1 Gateway and returns the HTTP status code"""
     myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{t1_id}'
     response = requests.put(myURL, headers=myHeader, json=json_data)
-    if response.status_code != 200:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        return False
-    return response.status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
 
 def configure_t1_json(proxy_url, sessiontoken, t1_id, json_data):
     """ Configures a Tier1 router as 'ROUTED', 'ISOLATED', or 'NATTED'... Creates a new T1 if it doesn't already exist."""
     myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{t1_id}'
     response = requests.patch(myURL, headers=myHeader, json=json_data)
-    if response.status_code != 200:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-    return response.status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
 
 def delete_t1_json(proxy_url, sessiontoken, t1_id):
     """ Deletes a Tier1 router."""
     myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
     myURL = f'{proxy_url}/policy/api/v1/infra/tier-1s/{t1_id}'
     response = requests.delete(myURL, headers=myHeader)
-    if response.status_code != 200:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-    return response.status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
 
 
 def get_t1_json(proxy, session_token):
