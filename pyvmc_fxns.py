@@ -2376,91 +2376,83 @@ def attachT0BGPprefixlist(**kwargs):
         sys.exit(1)
 
     # If "interactive" mode is FALSE, check that user has provided prefix list ID and route filter choice
-    if kwargs['interactive'] is False:
-        if kwargs['prefix_list_id'] is not None:
-            # Check to ensure prefix list of same ID does not already exist... if so, exit.
-            prefix_lists = get_sddc_t0_prefixlists_json(proxy, session_token)
-            prefix_results = prefix_lists['results']
-            for prefixlist in prefix_results:
-                if prefixlist['id'] == prefix_list_id:
-                    print("prefix list already exists - please specify a different name or ID.")
-                    sys.ext(1)
-                else:
-                    continue
-            prefix_list_id = kwargs['prefix_list_id']
-        else:
-            print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
-            sys.exit(1)
-        if kwargs['route_filter'] is not None:
-            route_filter = kwargs['route_filter']
-        else:
-            print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
-            sys.exit(1)
-        # proceed to attach prefix list
-        neighbor_json['route_filtering'][0][f'{route_filter}_route_filters'] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
-        status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
-        if status_code == 200:
-            print(f'Status {status_code}. Complete - route filter entry:')
-            print()
-            pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
-            print(pretty_json)
-            print()
-        else:
-            print(f'Status {status_code}. Prefix list was NOT attached.')
-            sys.exit(1)
-
-    # If Interactive is TRUE, then prompt the user for input on what to do next
-    else:
-        # while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
-        # begin input loop
-        test = ''
-        while test != "5":
-            print("\nPlease select an option:")
-            print("\t1- Review neighbor config ")
-            print("\t2- Add in_route_filter (only one allowed) ")
-            print("\t3- Add out_route_filter (only one allowed) ")
-            print("\t4- Clear all prefix lists")
-            print("\t5- Commit changes")
-            print("\t6- Abort")
-            print("\n")
-            test=input('What would you like to do? ')
-            if test == "1":
-                pretty_json = json.dumps(neighbor_json, indent=2)
+    match kwargs['interactive']:
+        case False:
+            if kwargs['prefix_list_id'] is not None:
+                prefix_list_id = kwargs['prefix_list_id']
+            else:
+                print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
+                sys.exit(1)
+            if kwargs['route_filter'] is not None:
+                route_filter = kwargs['route_filter']
+            else:
+                print("Please specify the prefix list ID to configure using --prefix-list-id.  Use 'pyVMC.py rbvpn-prefix-list show' for a list.")
+                sys.exit(1)
+            # proceed to attach prefix list
+            neighbor_json['route_filtering'][0][f'{route_filter}_route_filters'] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+            status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+            if status_code == 200:
+                print(f'Status {status_code}. Complete - route filter entry:')
+                print()
+                pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
                 print(pretty_json)
                 print()
-            elif test == "2":
-                prefix_list_id = input('Please enter the prefix list ID exactly ')
-                neighbor_json['route_filtering'][0]["in_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
-                print()
-                print(f'Prefix list {prefix_list_id} has been added to in_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
-                print()
-            elif test =="3":
-                prefix_list_id = input('Please enter the prefix list ID exactly ')
-                neighbor_json['route_filtering'][0]["out_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
-                print()
-                print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
-                print()
-            elif test =="4":
-                if neighbor_json.get("in_route_filters"):
-                    del neighbor_json["in_route_filters"]
-                if neighbor_json.get("out_route_filters"):
-                    del neighbor_json["out_route_filters"]
-                neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
-            elif test == "5":
-                status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
-                if status_code == 200:
-                    print(f'Status {status_code}. Complete - route filter entry:')
-                    print()
-                    pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
+            else:
+                print(f'Status {status_code}. Prefix list was NOT attached.')
+                sys.exit(1)
+
+        # If Interactive is TRUE, then prompt the user for input on what to do next
+        case False:
+            # while loop (as above in new prefix list function) - present user with choices - add prefix list, clear prefix lists, commit changes, abort.
+            # begin input loop
+            test = ''
+            while test != "5":
+                print("\nPlease select an option:")
+                print("\t1- Review neighbor config ")
+                print("\t2- Add in_route_filter (only one allowed) ")
+                print("\t3- Add out_route_filter (only one allowed) ")
+                print("\t4- Clear all prefix lists")
+                print("\t5- Commit changes")
+                print("\t6- Abort")
+                print("\n")
+                test=input('What would you like to do? ')
+                if test == "1":
+                    pretty_json = json.dumps(neighbor_json, indent=2)
                     print(pretty_json)
                     print()
+                elif test == "2":
+                    prefix_list_id = input('Please enter the prefix list ID exactly ')
+                    neighbor_json['route_filtering'][0]["in_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+                    print()
+                    print(f'Prefix list {prefix_list_id} has been added to in_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
+                    print()
+                elif test =="3":
+                    prefix_list_id = input('Please enter the prefix list ID exactly ')
+                    neighbor_json['route_filtering'][0]["out_route_filters"] = [f'/infra/tier-0s/vmc/prefix-lists/{prefix_list_id}']
+                    print()
+                    print(f'Prefix list {prefix_list_id} has been added to out_route_filters in JSON for neighbor id {neighbor_id}. Please review and commit.')
+                    print()
+                elif test =="4":
+                    if neighbor_json.get("in_route_filters"):
+                        del neighbor_json["in_route_filters"]
+                    if neighbor_json.get("out_route_filters"):
+                        del neighbor_json["out_route_filters"]
+                    neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+                elif test == "5":
+                    status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
+                    if status_code == 200:
+                        print(f'Status {status_code}. Complete - route filter entry:')
+                        print()
+                        pretty_json = json.dumps(neighbor_json["route_filtering"], indent=2)
+                        print(pretty_json)
+                        print()
+                    else:
+                        print(f'Status {status_code}. Prefix list was NOT attached.')
+                        sys.exit(1)
+                elif test == "6":
+                    break
                 else:
-                    print(f'Status {status_code}. Prefix list was NOT attached.')
-                    sys.exit(1)
-            elif test == "6":
-                break
-            else:
-                print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
+                    print("Please choose 1, 2, 3 or 4 - Try again or check the help.")
 
 
 def detachT0BGPprefixlists(**kwargs):
@@ -2472,12 +2464,17 @@ def detachT0BGPprefixlists(**kwargs):
     else:
         print("Please specify the BGP neighbor ID to configure using --neighbor-id.  Use 'pyVMC.py bgp show --neighbors for a list.'")
         sys.exit(1)
+
+    # get the neighbor configuration
     neighbor_json = get_sddc_t0_bgp_single_neighbor_json(proxy, session_token, neighbor_id)
-    print(json.dumps(neighbor_json, indent=2))
     for key in list(neighbor_json.keys()):
         if key.startswith('_'):
             del neighbor_json[key]
+
+    # clear the route filters from the neighbor route_filtering section
     neighbor_json['route_filtering'] = [{'enabled': True, 'address_family': 'IPV4'}]
+
+    # run the attach function with no route filters
     status_code = attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json)
     if status_code == 200:
         print(f'Status {status_code}. Prefix lists detached from {neighbor_id}')

@@ -447,7 +447,7 @@ def set_connected_vpc_services_json(proxy, session_token, vpc_id, json_data):
 
 
 def attach_bgp_prefix_list_json(proxy, session_token, neighbor_id, neighbor_json):
-    """Creates a new BGP prefix lists for T0 edge gateway - applicable for route based VPN"""
+    """Attaches a BGP prefix lists to T0 edge gateway - applicable for route based VPN"""
     myHeader = {'csp-auth-token': session_token}
     myURL = f'{proxy}/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/' + neighbor_id
     response = requests.patch(myURL, headers=myHeader, json = neighbor_json)

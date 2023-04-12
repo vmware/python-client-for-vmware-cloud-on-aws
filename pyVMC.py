@@ -575,7 +575,7 @@ def main():
     rbvpn_prefixlist_attach_parser.add_argument("-i", "--interactive", nargs = '?', default = False, const = True, help = "Used to specify interactive mode.  If not specified, pyVMC assumes scripted mode.")
     rbvpn_prefixlist_attach_parser.set_defaults(func = attachT0BGPprefixlist)
 
-    rbvpn_prefixlist_create_parser = rbvpn_prefixlist_parser_subs.add_parser('create', parents=[auth_flag,nsx_url_flag], help = "Create a new prefix list for a route-based VPN.")
+    rbvpn_prefixlist_create_parser = rbvpn_prefixlist_parser_subs.add_parser('create', parents=[auth_flag,nsx_url_flag], help = "Create a new prefix list for a route-based VPN.  NOTE: Interactive command - no arguments required.")
     rbvpn_prefixlist_create_parser.set_defaults(func = newBGPprefixlist)
 
     rbvpn_prefixlist_delete_parser = rbvpn_prefixlist_parser_subs.add_parser('delete', parents=[auth_flag,nsx_url_flag], help = "Delete a prefix list for a route-based VPN.")
@@ -583,6 +583,7 @@ def main():
     rbvpn_prefixlist_delete_parser.set_defaults(func = delRBVPNprefixlist)
 
     rbvpn_prefixlist_detach_parser = rbvpn_prefixlist_parser_subs.add_parser('detach', parents=[auth_flag,nsx_url_flag], help = "Detach all prefix lists from a BGP neighbor.")
+    rbvpn_prefixlist_detach_parser.add_argument("-nid", "--neighbor-id", required = True, help = "The ID of the neighbor from which to detach ALL prefix lists.  Use 'pyVMC.py rbvpn-neighbors show' for a list of BGP neighbors.")
     rbvpn_prefixlist_detach_parser.set_defaults(func = detachT0BGPprefixlists)
 
     rbvpn_prefixlist_export_parser = rbvpn_prefixlist_parser_subs.add_parser('export', parents=[auth_flag,nsx_url_flag], help = "Export an existing route-based VPN prefix list to a JSON file.")
