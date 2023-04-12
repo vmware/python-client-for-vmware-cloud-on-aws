@@ -659,7 +659,7 @@ def main():
     t1_create_parser.set_defaults(func = t1_create)
 
     t1_delete_parser = t1_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag], help = "Delete a secondary T1 gateway.")
-    t1_delete_parser.add_argument("-n","--tier1-id", required=False, help= "The name of the Tier1 gateway to remove.")
+    t1_delete_parser.add_argument("-n","--tier1-id", required=True, help= "The name of the Tier1 gateway to remove.")
     t1_delete_parser.set_defaults(func = t1_remove)
 
     t1_update_parser = t1_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration of a secondary T1 gateway.")
