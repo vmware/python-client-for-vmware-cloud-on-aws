@@ -47,6 +47,10 @@ def vmc_error_handling(fxn_response):
         json_response = fxn_response.json()
         if 'message' in json_response:
             print(json_response['message'])
+        if 'related_errors' in json_response:
+            print("Related Errors")
+            for r in json_response['related_errors']:
+                print(r['error_message'])
     except:
         print("No additional information in the error response.")
     return None
@@ -523,6 +527,21 @@ def detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token):
 # ============================
 # VTC - SDDC Operations
 # ============================
+
+
+def config_sddc_group_json(prod_url, session_token, org_id, json_body):
+    """Function to configure SDDC Group"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{prod_url}/api/network/{org_id}/aws/operations'
+    response = requests.post(my_url, headers=my_header, json=json_body)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
 def attach_sddc_json(strProdURL, deployment_id, resource_id, org_id, session_token):
     """Attach an SDDC to a vTGW"""
     myHeader = {'csp-auth-token': session_token}
@@ -628,10 +647,8 @@ def get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-        return None
+        vmc_error_handling(response)
+        sys.exit(1)
 
 def get_sddc_groups_json(strProdURL, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}

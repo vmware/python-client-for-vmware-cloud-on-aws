@@ -654,15 +654,17 @@ def main():
 
     # create individual parsers for each sub-command
     t1_create_parser = t1_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag], help = "Create a new, secondary T1 gateway.")
+    t1_create_parser.add_argument('-n', '--tier1-id', required=True, help='The name for the new Tier-1 gateway')
+    t1_create_parser.add_argument('-t', '--tier1-type', required=True, choices=['ROUTED', 'ISOLATED', 'NATTED'], type= str.upper, help='The type of Tier-1 Gateway to create.  Choices are routed, isolated or natted.')
     t1_create_parser.set_defaults(func = t1_create)
 
     t1_delete_parser = t1_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag], help = "Delete a secondary T1 gateway.")
-    t1_delete_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway to remove.")
+    t1_delete_parser.add_argument("-n","--tier1-id", required=False, help= "The name of the Tier1 gateway to remove.")
     t1_delete_parser.set_defaults(func = t1_remove)
 
     t1_update_parser = t1_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration of a secondary T1 gateway.")
-    t1_update_parser.add_argument("-t1id","--tier1-id", required=False, help= "The ID or name of the Tier1 gateway.")
-    t1_update_parser.add_argument("-t1t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], required=False, help= "Type of Tier1 router to create.")    
+    t1_update_parser.add_argument("-n","--tier1-id", required=True, help= "The ID or name of the Tier1 gateway.")
+    t1_update_parser.add_argument("-t", "--t1type", choices=["ROUTED", "ISOLATED", "NATTED"], type= str.upper, required=True, help= "Type of Tier1 router to create.")
     t1_update_parser.set_defaults(func = t1_configure)
 
 
@@ -774,6 +776,20 @@ def main():
     vpc_prefixes_parser.add_argument('-aid', '--aws_account_id', required=True, help = "The ID of the AWS Account that owns the resource (DXGE / VPC, etc) you wish to configure.")
     vpc_prefixes_parser.add_argument("-gid", "--sddc_group_id", required = True, help="ID for the SDDC group to add prefixes to. Use 'get-group-info' to view a list of SDDC groups and their IDs.")
     vpc_prefixes_parser.set_defaults(func = add_vpc_prefixes)
+
+
+# ============================
+# VTC - TGW Operations
+# ============================
+
+    # attach_tgw_parser=vtc_parser_subs.add_parser('attach-tgw', parents=[auth_flag, vmc_flag, org_id_flag], help='Attach external TGW to vTGW')
+    # attach_tgw_parser.add_argument('-t', '--tgw_id', required=True, help='The transit gateway ID the vTC will be peered with')
+    # attach_tgw_parser.add_argument('-a', '--aws_id', required=True, help='The AWS Account ID that owns the transit gateway')
+    # attach_tgw_parser.add_argument('-s', '--source_region', required=True, help='The AWS region the vTGW is located')
+    # attach_tgw_parser.add_argument('-d', '--dest_region', required=True, help='The AWS region where the customer TGW is located')
+    # attach_tgw_parser.add_argument('-c', '--cidr', required=True, nargs=+, help='CIDR ranges that are permitted to communicate over the attachment.  Enter one of more complete CIDR range')
+    # attach_tgw_parser.set_defaults(func=attach_tgw)
+
 
 # ============================
 # NSX-T - Firewall - Gateway
