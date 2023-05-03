@@ -4183,6 +4183,23 @@ def getSDDCPublicIP(**kwargs):
 # NSX-T - T1 Gateways
 # ============================
 
+def t1_show(**kwargs):
+    """Shows a list of T1 gateways"""
+    sessiontoken = kwargs['sessiontoken']
+    proxy = kwargs['proxy']
+    json_response = get_t1_json(proxy, sessiontoken)
+    if json_response != False:
+        t1_gateways = json_response['results']
+        table = PrettyTable(['Name', 'id', 'Type'])
+        for i in t1_gateways:
+            if 'type' not in i:
+                i['type'] = None
+            table.add_row([i["display_name"], i["id"], i["type"]])
+        print(table)
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
+
 def t1_create(**kwargs):
     """Creates a new Tier-1 gateway"""
     sessiontoken = kwargs['sessiontoken']
@@ -4246,7 +4263,7 @@ def new_segment(**kwargs):
     sessiontoken = kwargs['sessiontoken']
     proxy = kwargs['proxy']
     if kwargs['objectname'] is None or kwargs['gateway'] is None:
-        print("Please specify a name for the segment, and the gateway/networ`k.")
+        print("Please specify a name for the segment, and the gateway/network.")
         sys.exit(1)
     if kwargs['segment_type'] == "flexible" and kwargs['tier1_id'] is None:
         print("Please specify either the segment type as 'fixed' (-st fixed) OR segment type as 'flexible' as well as the ID of the Tier1 for connectivity (-t1id TIER1ID).  Use pyVMC -h for additional options.")

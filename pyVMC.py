@@ -654,6 +654,9 @@ def main():
     t1_parser_subs = t1_parser.add_subparsers(help='t1 sub-command help')
 
     # create individual parsers for each sub-command
+    t1_show_parser = t1_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show a list of current T1 Gateways.")
+    t1_show_parser.set_defaults(func = t1_show)
+
     t1_create_parser = t1_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag], help = "Create a new, secondary T1 gateway.")
     t1_create_parser.add_argument('-n', '--tier1-id', required=True, help='The name for the new Tier-1 gateway')
     t1_create_parser.add_argument('-t', '--tier1-type', required=True, choices=['ROUTED', 'ISOLATED', 'NATTED'], type= str.upper, help='The type of Tier-1 Gateway to create.  Choices are routed, isolated or natted.')
@@ -984,8 +987,9 @@ def main():
     disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Disable IDS on all clusters')
     disable_all_cluster_ids_parser.set_defaults(func = disableNsxIdsAll)
     
-    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS signature auto update')
-    enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
+    # command commented out pending resolution of possible bug
+    # enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS signature auto update')
+    # enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
     
     ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents=[auth_flag,nsx_url_flag], help = 'Force update of IDS signatures')
     ids_update_signatures_parser.set_defaults(func = NsxIdsUpdateSignatures)
@@ -1002,7 +1006,7 @@ def main():
     create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
     create_ids_profile_parser.add_argument("objectname", help = "The name of the profile to create.")
     create_ids_profile_parser.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
-    create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+    create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], type=str.upper, required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
     create_ids_profile_parser.set_defaults(func = create_ids_profile)
 
     delete_ids_profile_parser=nsxaf_parser_subs.add_parser('delete-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Delete the specified IDS profile.')
@@ -1096,7 +1100,7 @@ def main():
     new_service_parser.add_argument("-i", "--interactive", action='store_true', help = "Use to interactively define service entries and ports.  If not used, command expects additional arguments for service entries and ports.")
     new_service_parser.add_argument("-src", "--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
     new_service_parser.add_argument("-dest", "--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
-    new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
+    new_service_parser.add_argument("-l4p", "--l4_protocol", type=str.upper, help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
     new_service_parser.set_defaults(func = newSDDCService)
 
     import_service_parser=inventory_parser_subs.add_parser('import-service', parents = [auth_flag,nsx_url_flag], help = 'Common 3rd party services that can be added to or removed from the services list of your SDDC. Default is to add, optional flag to delete')
