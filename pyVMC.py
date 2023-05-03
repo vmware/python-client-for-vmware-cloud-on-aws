@@ -350,33 +350,35 @@ def main():
 # NSX-T - Segments
 # ============================
 
-    """ Parent Parser for NSX Segment functions """
-    parent_segment_parser = argparse.ArgumentParser(add_help=False)
-    parent_segment_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
-    parent_segment_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment.")
-    parent_segment_parser.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
-    parent_segment_parser.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
-    parent_segment_parser.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
-    parent_segment_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], type = str.upper, required=False, help= "Routing type - by default this is set to 'ROUTED'")
-    parent_segment_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
-    parent_segment_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
-
     # create the parser for the "segment" command
     segment_parser = subparsers.add_parser('segment', help='Create, delete, update, and show Virtual Machine network segments.')
     # create a subparser for segment sub-commands
     segment_parser_subs = segment_parser.add_subparsers(help='segment sub-command help')
 
     # create individual parsers for each sub-command
-    segment_create_parser = segment_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Create a new virtual machine network segment.")
+    segment_create_parser = segment_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag], help = "Create a new virtual machine network segment.")
+    segment_create_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
+    segment_create_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment.")
+    segment_create_parser.add_argument("-dhcpr","--dhcp-range", required=False, help= "If applicable, the DHCP range of IP addresses to be distributed.")
+    segment_create_parser.add_argument("-dn","--domain-name", required=False, help= "The domain name for the subnet - e.g. 'vmc.local'")
+    segment_create_parser.add_argument("-gw","--gateway", required=False, help= "The gateway and subnet of the network - e.g. '192.138.1.1/24'")
+    segment_create_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], type = str.upper, required=False, help= "Routing type - by default this is set to 'ROUTED'")
+    segment_create_parser.add_argument("-st","--segment-type", choices=["fixed","flexible"], default="flexible", required=False, help= "Determines if this this segment will be 'fixed' to the default CGW - by default this is 'flexible'")
+    segment_create_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
     segment_create_parser.set_defaults(func = new_segment)
 
-    segment_delete_parser = segment_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Delete a virtual machine network segment.")
+    segment_delete_parser = segment_parser_subs.add_parser("delete", parents=[auth_flag,nsx_url_flag], help = "Delete a virtual machine network segment.")
+    segment_delete_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
     segment_delete_parser.set_defaults(func = remove_segment)
 
-    segment_show_parser = segment_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Show the current virtual machine network segments.")
+    segment_show_parser = segment_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show the current virtual machine network segments.")
     segment_show_parser.set_defaults(func = getSDDCnetworks)
 
-    segment_update_parser = segment_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag, parent_segment_parser], help = "Update the configuration of a virtual machine network segment.")
+    segment_update_parser = segment_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration of a virtual machine network segment.")
+    segment_update_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
+    segment_update_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment.")
+    segment_update_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], type = str.upper, required=False, help= "Routing type - by default this is set to 'ROUTED'")
+    segment_update_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
     segment_update_parser.set_defaults(func = configure_segment)
 
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
@@ -654,6 +656,9 @@ def main():
     t1_parser_subs = t1_parser.add_subparsers(help='t1 sub-command help')
 
     # create individual parsers for each sub-command
+    t1_show_parser = t1_parser_subs.add_parser("show", parents=[auth_flag,nsx_url_flag], help = "Show a list of current T1 Gateways.")
+    t1_show_parser.set_defaults(func = t1_show)
+
     t1_create_parser = t1_parser_subs.add_parser("create", parents=[auth_flag,nsx_url_flag], help = "Create a new, secondary T1 gateway.")
     t1_create_parser.add_argument('-n', '--tier1-id', required=True, help='The name for the new Tier-1 gateway')
     t1_create_parser.add_argument('-t', '--tier1-type', required=True, choices=['ROUTED', 'ISOLATED', 'NATTED'], type= str.upper, help='The type of Tier-1 Gateway to create.  Choices are routed, isolated or natted.')
@@ -984,8 +989,9 @@ def main():
     disable_all_cluster_ids_parser=nsxaf_parser_subs.add_parser('disable-all-cluster-ids', parents=[auth_flag,nsx_url_flag], help = 'Disable IDS on all clusters')
     disable_all_cluster_ids_parser.set_defaults(func = disableNsxIdsAll)
     
-    enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS signature auto update')
-    enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
+    # command commented out pending resolution of possible bug
+    # enable_ids_auto_update_parser=nsxaf_parser_subs.add_parser('enable-ids-auto-update', parents=[auth_flag,nsx_url_flag], help = 'Enable IDS signature auto update')
+    # enable_ids_auto_update_parser.set_defaults(func = enableNsxIdsAutoUpdate)
     
     ids_update_signatures_parser=nsxaf_parser_subs.add_parser('ids-update-signatures', parents=[auth_flag,nsx_url_flag], help = 'Force update of IDS signatures')
     ids_update_signatures_parser.set_defaults(func = NsxIdsUpdateSignatures)
@@ -1002,7 +1008,7 @@ def main():
     create_ids_profile_parser=nsxaf_parser_subs.add_parser('create-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Create an IDS profile with either Product Affected, CVSS or both.')
     create_ids_profile_parser.add_argument("objectname", help = "The name of the profile to create.")
     create_ids_profile_parser.add_argument("-pa", "--product_affected", required=False, nargs='+', help="This is the product affected for the IDS Profile.  To determine the product affected syntax, use the 'search-product-affected' function.")
-    create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
+    create_ids_profile_parser.add_argument("--cvss", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"], type=str.upper, required=False, nargs='+', help="Choose a CVSS category to limit your IDS profile")
     create_ids_profile_parser.set_defaults(func = create_ids_profile)
 
     delete_ids_profile_parser=nsxaf_parser_subs.add_parser('delete-ids-profile', parents=[auth_flag,nsx_url_flag], help = 'Delete the specified IDS profile.')
@@ -1096,7 +1102,7 @@ def main():
     new_service_parser.add_argument("-i", "--interactive", action='store_true', help = "Use to interactively define service entries and ports.  If not used, command expects additional arguments for service entries and ports.")
     new_service_parser.add_argument("-src", "--source_ports", nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
     new_service_parser.add_argument("-dest", "--dest_ports",  nargs = '*', help = "Space separated list of source ports, or a range.. i.e. 22 25 26-27.")
-    new_service_parser.add_argument("-l4p", "--l4_protocol", help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
+    new_service_parser.add_argument("-l4p", "--l4_protocol", type=str.upper, help = "Expected protocol (i.e. 'TCP', 'UDP', etc.")
     new_service_parser.set_defaults(func = newSDDCService)
 
     import_service_parser=inventory_parser_subs.add_parser('import-service', parents = [auth_flag,nsx_url_flag], help = 'Common 3rd party services that can be added to or removed from the services list of your SDDC. Default is to add, optional flag to delete')
