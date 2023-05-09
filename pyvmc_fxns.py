@@ -1336,7 +1336,7 @@ def create_sddc_group(**kwargs):
 def delete_sddc_group(**kwargs):
     ''' delete an existing SDDC resource group'''
     strProdURL = kwargs["strProdURL"]
-    sddc_group_id = kwargs['group_id']  # the id of the group.
+    sddc_group_id = kwargs['sddc_group_id']  # the id of the group.
     org_id = kwargs["ORG_ID"]
     session_token = kwargs['sessiontoken']
 
@@ -1379,6 +1379,8 @@ def get_sddc_groups(**kwargs):
         group_table = PrettyTable(['id', 'Group Name', 'description', 'Deployment Type', 'State','Creator'])
         for i in range(json_response['total_elements']):
             row = json_response['content'][i]
+            if 'description' not in row:
+                row['description'] = "No description"
             group_table.add_row([row['id'],row['name'],row['description'],
                row['deployment_type']['deployment_type'] if ('deployment_type' in row) else 'NA' ,
                row['state']['display_name'],row['creator']['user_name']])
