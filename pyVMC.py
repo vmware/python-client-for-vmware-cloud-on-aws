@@ -376,9 +376,8 @@ def main():
 
     segment_update_parser = segment_parser_subs.add_parser("update", parents=[auth_flag,nsx_url_flag], help = "Update the configuration of a virtual machine network segment.")
     segment_update_parser.add_argument("-n","--objectname", required=False, help= "The name or ID of the segment or T1.  May not include spaces or hypens.")
-    segment_update_parser.add_argument("-conn","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment.")
-    segment_update_parser.add_argument("-rt","--routing-type", choices=["ROUTED", "EXTENDED", "ROUTED_AND_EXTENDED", "DISCONNECTED"], type = str.upper, required=False, help= "Routing type - by default this is set to 'ROUTED'")
-    segment_update_parser.add_argument("-t1id","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
+    segment_update_parser.add_argument("-c","--connectivity", choices=["ON", "OFF"], required=False, help= "Connectivity status for the segment. If a Fixed segment, no additional input required.  If a flexible segment, include the Tier1-ID by using the '-t' arugment")
+    segment_update_parser.add_argument("-t","--tier1-id", required=False, help= "If applicable, the ID of the Tier1 gateway the network should be connected to.")
     segment_update_parser.set_defaults(func = configure_segment)
 
     # vmnetgrp.add_argument("-xtid", "--ext-tunnel-id",required=False, help= "ID of the extended tunnel.")
