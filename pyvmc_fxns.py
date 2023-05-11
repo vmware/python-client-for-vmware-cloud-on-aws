@@ -4348,28 +4348,27 @@ def configure_segment(**kwargs):
         print("The segment does not exist.  Please create a segment using 'new-segment'.")
         sys.exit(1)
     # Establish a list of keys to keep - these represent the values we are willing/able to update.
-    keep_list = ['display_name', 'connectivity_path','advanced_config','type']
+    keep_list = ['display_name', 'connectivity_path', 'advanced_config', 'resource_type', 'subnets']
     # Construct a new JSON using just the keys we want to keep
     json_data = dict([(key, val) for key, val in 
            json_init.items() if key in keep_list])
     # Update the json_data with the configuration specified by the user.
     if kwargs['connectivity'] is not None:
         json_data["advanced_config"]["connectivity"] = f'{kwargs["connectivity"]}'
-    if kwargs['routing_type'] is not None:
-        json_data["type"] = str.upper(kwargs["routing_type"])
     if kwargs['tier1_id'] is not None:
         if segment_path == "/infra/tier-1s/cgw":
             print("This is a fixed segment - you may not alter the connectivity path.  Please create a 'flexible' segment.")
         else:
             json_data["connectivity_path"] = f'/infra/tier-1s/{kwargs["tier1_id"]}'
+#
     # make the call to the API
     status = configure_segment_json(proxy, sessiontoken, segment_path, json_data)
     # present results.
-    if status ==200:
+    if status == 200:
         print(f'The following network has been modified: {segment_name}')
         vars = {"proxy":proxy, "sessiontoken":sessiontoken, "object_type":"Segment", "object_id":segment_name}
         search_nsx(**vars)
-    else: 
+    else:
         print("The segment was not modified.  Please check your syntax and try again.")
         sys.exit(1)
 
@@ -5382,13 +5381,26 @@ def remove_sddc_ipsec_vpn(**kwargs):
     proxy = kwargs['proxy']
     session_token = kwargs['sessiontoken']
     display_name = kwargs['display_name']
-
-    json_response_status_code = delete_ipsec_vpn_json(proxy, session_token, display_name)
-    if json_response_status_code == 200:
-        sys.exit(f"IPSec VPN {display_name} has been deleted")
-    else:
-        print(f"There was an error deleting {display_name}")
-        sys.exit(1)
+    vpn_id = ""
+    vpn_json = get_sddc_vpn_info_json(proxy, session_token)
+    vpn_info = vpn_json['results']
+    for v in vpn_info:
+        # print(json.dumps(v, indent=2))
+        if v['display_name']== display_name:
+            vpn_id = v['id']
+            if v['resource_type'] == 'RouteBasedIPSecVpnSession':
+                print(f"{display_name} is a Route-based VPN. Route based VPN deletion is not currently supported by the API")
+                sys.exit(0)
+            elif v['resource_type'] == 'PolicyBasedIPSecVpnSession':
+                json_response_status_code = delete_ipsec_vpn_json(proxy, session_token, vpn_id)
+                if json_response_status_code == 200:
+                    sys.exit(f"IPSec VPN {display_name} has been deleted")
+                else:
+                    print(f"There was an error deleting {display_name}")
+                    sys.exit(1)
+        else:
+            print(f"The SDDC IPSec VPN {display_name} doesn exist")
+            sys.exit(0)
 
 
 def remove_sddc_l2vpn(**kwargs):

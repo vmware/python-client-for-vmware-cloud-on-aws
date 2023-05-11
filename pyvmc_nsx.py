@@ -390,10 +390,8 @@ def get_conencted_vpc_json(proxy, session_token):
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-        return None
+        nsx_error_handling(response)
+        sys.exit(1)
 
 
 def get_connected_vpc_services_json(proxy, session_token, vpc_id):
@@ -1435,10 +1433,11 @@ def configure_segment_json(proxy_url, sessiontoken, segment_path, json_data):
     my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': sessiontoken}
     myURL = f'{proxy_url}/policy/api/v1{segment_path}'
     response = requests.patch(myURL, headers=my_header, json=json_data)
-    if response.status_code != 200:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-    return response.status_code
+    if response.status_code == 200:
+        return response.status_code
+    else:
+        nsx_error_handling(response)
+        sys.exit(1)
 
 
 def remove_segment_json(proxy_url, sessiontoken, segment_path):
