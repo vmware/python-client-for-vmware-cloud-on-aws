@@ -1551,10 +1551,10 @@ def get_task_status(**kwargs):
                     match auth_flag:
                         case "oauth":
                             auth_params = {'auth_method':auth_flag, 'strCSPProdURL':config_params['strCSPProdURL'], 'oauth_clientSecret':config_params['clientSecret'], 'oauth_clientId':config_params['clientId']}
-                            sessiontoken = getAccessToken(**auth_params)
+                            new_session_token = getAccessToken(**auth_params)
                         case "refresh_token":
                             auth_params = {'auth_method':auth_flag, 'strCSPProdURL':config_params['strCSPProdURL'], 'myKey':config_params['Refresh_Token']}
-                            sessiontoken = getAccessToken(**auth_params)
+                            new_session_token = getAccessToken(**auth_params)
                 except:
                     auth_params = {'auth_method':"refresh_token", 'strCSPProdURL':config_params['strCSPProdURL'], 'myKey':config_params['Refresh_Token']}
                     new_session_token = getAccessToken(**auth_params)
@@ -1567,7 +1567,6 @@ def get_task_status(**kwargs):
             print("\nTask FAILED ")
             print("error message: " + json_response['state']['error_msg'])
             print("error code: " + json_response['state']['error_code'])
-            #print("Internal error message: " + json_response['state']['internal_error_msg'])
             sys.exit(1)
     elapse = time.time() - start
     minutes = elapse // 60
