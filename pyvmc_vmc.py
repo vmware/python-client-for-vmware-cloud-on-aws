@@ -25,8 +25,8 @@ def vmc_error_handling(fxn_response):
         print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
         print("It's likely your refresh token does not provide sufficient access.")
     elif code == 404:
-        print(f'Error {code}: "Organization with this identifier is not found."')
-        print("Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
+        print(f'Error {code}: "Not Found"')
+        print("It's possible this is a configuration error- Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
     elif code == 409:
         print(f'Error {code}: "The request could not be processed due to a conflict"')
         print("The request can not be performed because it conflicts with configuration on a different entity, or because another client modified the same entity.")
@@ -599,14 +599,11 @@ def get_task_status_json(strProdURL,task_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = f"{strProdURL}/api/operation/{org_id}/core/operations/{task_id}"
     response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
     if response.status_code == 200:
+        json_response = response.json()
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
+        vmc_error_handling(response)
         return None
 
 
