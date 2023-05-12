@@ -688,7 +688,7 @@ def main():
 
     get_task_status_parser = vtc_parser_subs.add_parser('get-task-status', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Get status of the current task.')
     get_task_status_parser.add_argument('-tid','--task_id', required=True, help="The ID of the task for which you would like the status.")
-    get_task_status_parser.add_argument('-v','--verbose', action='store_false', help="Additional information printed during task.")
+    get_task_status_parser.add_argument('-v','--verbose', action='store_true', help="Additional information printed during task.")
     get_task_status_parser.set_defaults(func = get_task_status)
 # ============================
 # VTC - AWS Operations
@@ -750,9 +750,7 @@ def main():
     create_sddc_group_parser=vtc_parser_subs.add_parser('create-sddc-group', parents = [auth_flag, vmc_url_flag,org_id_flag,sddc_id_parser_flag], help = 'Create an SDDC group')
     create_sddc_group_parser.add_argument("-n","--name", required=True, help= "The Name for the SDDC Group")
     create_sddc_group_parser.add_argument("-desc","--description", help= "The Description for the SDDC Group. please make sure to enclose this in quotes if your description has spaces in it")
-    create_sddc_group_parser.add_argument("-d","--deployment_groups", nargs='*', default=[], help="Pass in the deployment IDs to be added to the cluster. Use 0-n times.")
-    create_sddc_group_parser.add_argument("-nowait","--dont-wait", action='store_true',required=False, help= "Don't wait on the result. Show the task ID")
-    create_sddc_group_parser.add_argument("-v","--verbose", action='store_true', required=False, help= "Show verbose output")
+    create_sddc_group_parser.add_argument("-d","--deployment_groups", nargs='*', required = True, help="Space-separated list of deployment IDs to be added to the cluster; at least one is required. Use get-deployments for a list.")
     create_sddc_group_parser.set_defaults(func = create_sddc_group)
 
     delete_sddc_group_parser=vtc_parser_subs.add_parser('delete-sddc-group', parents = [auth_flag, vmc_url_flag,org_id_flag], help = 'Delete an SDDC group')

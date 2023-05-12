@@ -1316,19 +1316,21 @@ def get_resource_id(**kwargs):
 
 def create_sddc_group(**kwargs):
     strProdURL = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    session_token = kwargs['sessiontoken']
+
     name = kwargs['name']
-    if "deployment_groups" not in kwargs:
-        deployment_groups = None
+    description = kwargs['description']
+    members = []
+    if kwargs['deployment_groups'] is not None:
+        for i in kwargs['deployment_groups']:
+            d = {"id" : i}
+            members.append(d)
     else:
-        deployment_groups = kwargs['deployment_groups']
-    org_id = kwargs["ORG_ID"]
-    session_token = kwargs["sessiontoken"]
-    description = kwargs["description"]
- 
-    json_response = create_sddc_group_json(strProdURL, name, description, deployment_groups, org_id, session_token)
+        pass
+    json_response = create_sddc_group_json(strProdURL, name, description, members, org_id, session_token)
     if json_response == None:
         sys.exit(1)
-    
     task_id = json_response ['operation_id']
     print(f"The task id for the SSDC group {name} creation is: {task_id}. Use get-task-status for updates.")
 
