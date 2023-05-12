@@ -688,7 +688,7 @@ def main():
 
     get_task_status_parser = vtc_parser_subs.add_parser('get-task-status', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Get status of the current task.')
     get_task_status_parser.add_argument('-tid','--task_id', required=True, help="The ID of the task for which you would like the status.")
-    get_task_status_parser.add_argument('-v','--verbose', action='store_false', help="Additional information printed during task.")
+    get_task_status_parser.add_argument('-v','--verbose', action='store_true', help="Additional information printed during task.")
     get_task_status_parser.set_defaults(func = get_task_status)
 # ============================
 # VTC - AWS Operations
