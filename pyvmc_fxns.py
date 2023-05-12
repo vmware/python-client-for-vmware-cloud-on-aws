@@ -748,19 +748,39 @@ def printTask(event_name: str, task) -> None:
 def createSDDC(**kwargs) -> None:
     """Creates an SDDC based on the parameters. The caller should have permissions to do this."""
     strProdURL = kwargs['strProdURL']
-    orgID = kwargs['ORG_ID']
+    org_id = kwargs['ORG_ID']
     sessiontoken = kwargs['sessiontoken']
     name = kwargs['name']
-    linkedAccountId = kwargs['aws_account_guid']
+    linked_account_id = kwargs['aws_account_guid']
     region = kwargs['region']
     amount = kwargs['number']
-    hostType = kwargs['host_type']
+    host_type = kwargs['host_type']
     subnetId = kwargs['aws_subnet_id']
     mgt = kwargs['mgt_subnet']
     size = kwargs['sddc_size']
     validate_only = kwargs['validate_only']
 
-    json_response = create_sddc_json(strProdURL, sessiontoken,orgID,name,linkedAccountId,region,amount,hostType,subnetId,mgt,size,validate_only)    
+    json_data = {
+        'name': name,
+        'account_link_sddc_config': [
+            {
+                'connected_account_id': linked_account_id,
+                'customer_subnet_ids': [
+                    subnetId
+                ]
+            }
+        ],
+        'provider': 'AWS',
+        'num_hosts': amount,
+        'deployment_type': 'SingleAZ',
+        'host_instance_type': host_type,
+        'sddc_type': "",
+        'size': size,
+        'region': region,
+        'vpc_cidr': mgt
+    }
+
+    json_response = create_sddc_json(strProdURL, sessiontoken, org_id, validate_only, json_data)
     if json_response == None:
         sys.exit(1) # an error
 
