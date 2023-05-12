@@ -47,6 +47,8 @@ def vmc_error_handling(fxn_response):
         json_response = fxn_response.json()
         if 'message' in json_response:
             print(json_response['message'])
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
         if 'related_errors' in json_response:
             print("Related Errors")
             for r in json_response['related_errors']:
@@ -99,82 +101,33 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
 # SDDC
 # ============================
 
-def create_sddc_json(strProdURL, sessiontoken,orgID,name,connectedAccount,region,amount,hostType,subnetId,mgt,size,validate_only):    
-    myHeader = {'csp-auth-token': sessiontoken}
-    #
-    # docs on data structure
-    # https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
-    #
-    call_data = {
-        'name': name,
-        'account_link_sddc_config': [
-            {
-                'customer_subnet_ids': [
-                    subnetId
-                ],
-                'connected_account_id': connectedAccount
-            }
-        ],
-        'provider': 'AWS',   # make sure provider is in upper case
-        'num_hosts': amount,           # 1 host in this case
-        'deployment_type' : 'SingleAZ',  # Multi-AZ for future work
-        'host_instance_type' : hostType, #host type from Enumerated options.
-        'sddc_type': '1NODE' if amount == 1 else "",  
-        'size' : size,
-        'region': region,                # region where we have permissions to deploy.
-        'vpc_cidr': mgt
-    }
-    #
-    # API Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/post/
-    #
-    my_url = f'{strProdURL}/vmc/api/orgs/{orgID}/sddcs'
+def create_sddc_json(strProdURL, sessiontoken, org_id, validate_only, json_data):
+    my_header = {'csp-auth-token': sessiontoken}
+    my_url = f'{strProdURL}/vmc/api/orgs/{org_id}/sddcs'
     if validate_only:
         my_url = my_url + "?validateOnly=true"
-
-    resp = requests.post(my_url, json=call_data, headers=myHeader)
-    
-    if resp.status_code != 200:
-        json_response = resp.json()
-
-    if resp.status_code == 202:
-        print(f"Create SDDC Started. Creation Task is: ")    # pull the task and print it.
-        newTask = json_response['id']
-        print(f'{newTask}')
+    response = requests.post(my_url, json=json_data, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 202:
+        print(f"Create SDDC Started. Creation Task is: ")
+        new_task = json_response['id']
+        print(f'{new_task}')
         return json_response
-    elif resp.status_code == 200:
+    elif response.status_code == 200:
         print("Create Task Complete: Input Validated")
         validated = "{'input_validated' : True}"
         return eval(validated)
-    elif resp.status_code == 400:
-        print(f"Error Code {resp.status_code}: Bad Request, Bad URL or Quota Violation")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'][0])
-        return None
-    elif resp.status_code == 401:
-        print(f"Error Code {resp.status_code}: You are unauthorized for this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
-        return None
-    elif resp.status_code == 403:
-        print(f"Error Code {resp.status_code}: You are forbidden to use this operation. See your administrator")
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
-        return None
     else:
-        print(f'Status code: {resp.status_code}: Unknown error')
-        if 'error_messages' in json_response:
-            print(json_response['error_messages'])
-        return None
-#
-# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/delete/
-#
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
 def delete_sddc_json(strProdURL, sessiontoken, orgID, sddcID,force):
     """Returns task for the delete process, or None if error"""
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}/"
     if force:
         myURL = myURL + "?force=true"
-
     response = requests.delete(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 202:
@@ -182,32 +135,11 @@ def delete_sddc_json(strProdURL, sessiontoken, orgID, sddcID,force):
         newTask = json_response["id"]
         print(f'{newTask}')
         return json_response
-    elif response.status_code == 400:
-        if 'error_messages' in json_response: 
-            print(json_response["error_messages"][0])
-        else:
-            print('The SDDC is not in a state that is valid for deletion')
-        return None
-    elif response.status_code == 401:
-        if 'error_messages' in json_response: 
-            print(json_response["error_messages"][0])
-        else:
-            print('Current user is unauthorized for this operation.')
-        return None
-    elif response.status_code == 403:
-        if 'error_messages' in json_response: 
-            print(json_response["error_messages"][0])
-            print('Access not allowed to the operation for the current user')
-        return None    
-    elif response.status_code == 404:
-        print("Cannot find the SDDC with given identifier")
-        return None
-    else:   
-        print(f'Unexpected response: {response.status_code}')
-        return None
-#
-# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/tasks/task/get/
-#
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
 def watch_sddc_task_json(strProdURL, sessiontoken, orgID, taskid):
     myHeader = {'csp-auth-token': sessiontoken}
     myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/tasks/{taskid}"
@@ -588,7 +520,7 @@ def remove_sddc_json(strProdURL, deployment_id, resource_id, org_id, session_tok
 def get_nsx_info_json( strProdURL, org_id, deployment_id, session_token):
     """Display NSX credentials and URLs"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/deployments/{}/nsx".format(strProdURL, org_id, deployment_id)
+    myURL = f"{strProdURL}/api/network/{org_id}/core/deployments/{deployment_id}/nsx"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
@@ -726,10 +658,9 @@ def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
 def get_group_info_json(strProdURL, org_id, group_id, session_token):
     """Display details for an SDDC group"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/inventory/{}/core/deployment-groups/{}".format(strProdURL, org_id, group_id)
+    myURL = f"{strProdURL}/api/inventory/{org_id}/core/deployment-groups/{group_id}"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    # print(json.dumps(json_response, indent = 2))
     if response.status_code == 200:
         return json_response
     else:
