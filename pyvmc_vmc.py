@@ -682,18 +682,10 @@ def get_task_status_json(strProdURL,task_id, org_id, session_token):
 # VTC - SDDC Group Operations
 # ============================
 
-def buildDeploymentIdList(deploymentList: list) -> list:
-    '''Quick function to build up list'''
-    retlist = []
-    for i in deploymentList:
-        d = {"id" : i}
-        retlist.append(d)
-    return retlist
-
 #
 #  No documentation. Use the API explorer.
 #
-def create_sddc_group_json(strProdURL, name, description, deployment_groups, org_id, session_token):
+def create_sddc_group_json(strProdURL, name, description, members, org_id, session_token):
     """Create an SDDC group"""
     myHeader = {'csp-auth-token': session_token}
  
@@ -701,22 +693,14 @@ def create_sddc_group_json(strProdURL, name, description, deployment_groups, org
     body = {
         "name": name,
         "description": description,
-        "members": buildDeploymentIdList(deployment_groups)
+        "members": members
     }
-    # 
     response = requests.post(myURL, json=body, headers=myHeader)
-    if response.status_code == 504:
-        print("API returned with 504 error code. Check your permissions and network routes")
-        return None
-
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        if 'error_message' in json_response:
-            print(json_response['error_message'])
+        vmc_error_handling(response)
         return None
 
 def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
