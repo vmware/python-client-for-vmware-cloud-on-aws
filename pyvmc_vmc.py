@@ -6,8 +6,56 @@
 ################################################################################
 
 import json
+import sys
 import requests
 
+#In order to use the following function, all the functions in this file will have to be modified to use.  
+def vmc_error_handling(fxn_response):
+    code = fxn_response.status_code
+    print (f'API call failed with status code {code}.')
+    if code == 400:
+        print(f'Error {code}: "Bad Request"')
+        print("Request was improperly formatted or contained an invalid parameter.")
+    elif code == 401:
+        print(f'Error {code}: "The user is not authorized to use the API"')
+        print("It's likely your refresh token is out of date or otherwise incorrect.")
+    elif code == 403:
+        print(f'Error {code}: "The user is forbidden to use the API"')
+        print("The client does not have sufficient privileges to execute the request.")
+        print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
+        print("It's likely your refresh token does not provide sufficient access.")
+    elif code == 404:
+        print(f'Error {code}: "Not Found"')
+        print("It's possible this is a configuration error- Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
+    elif code == 409:
+        print(f'Error {code}: "The request could not be processed due to a conflict"')
+        print("The request can not be performed because it conflicts with configuration on a different entity, or because another client modified the same entity.")
+        print("If the conflict arose because of a conflict with a different entity, modify the conflicting configuration. If the problem is due to a concurrent update, re-fetch the resource, apply the desired update, and reissue the request.")
+    elif code == 429:
+        print(f'Error {code}: "The user has sent too many requests"')
+    elif code == 500:
+        print(f'Error {code}: "An unexpected error has occurred while processing the request"')
+    elif code == 503:
+        print(f'Error {code}: "Service Unavailable"')
+        print("The request can not be performed because the associated resource could not be reached or is temporarily busy. Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
+    elif code == 504:
+        print(f'Error {code}: "Gateway Error"')
+        print("The request can not be performed because there is a problem with the network path. Check your VPN, etc.")
+    else:
+        print(f'Error: {code}: Unknown error')
+    try:
+        json_response = fxn_response.json()
+        if 'message' in json_response:
+            print(json_response['message'])
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'][0])
+        if 'related_errors' in json_response:
+            print("Related Errors")
+            for r in json_response['related_errors']:
+                print(r['error_message'])
+    except:
+        print("No additional information in the error response.")
+    return None
 
 # ============================
 # AWS Account and VPC
@@ -17,16 +65,21 @@ import requests
 def get_compatible_subnets_json(strProdURL, orgID, sessiontoken, linkedAWSID, region):
     """Returns all compatible subnets for linking in selected AWS Account and AWS Region"""
     myHeader = {'csp-auth-token': sessiontoken}
-    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/compatible-subnets"
-    params = {'org': orgID, 'linkedAccountId': linkedAWSID,'region': region}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/account-link/compatible-subnets" 
+    params = {'linkedAccountId': linkedAWSID,'region': region}
     response = requests.get(myURL, headers=myHeader, params=params)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
         print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        print(f'API call failed with status code {response.status_code} : {response.reason} URL: {myURL}.')
+        if 'error_message' in json_response.keys():
+           print(json_response['error_message'])
+        if 'error_messages' in json_response.keys():
+            if len(json_response['error_messages']) > 0:
+                print(f"Error Message: {json_response['error_messages'][0]}")
+        return None
 
 
 def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
@@ -40,13 +93,116 @@ def get_connected_accounts_json(strProdURL, orgID, sessiontoken):
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
-
+        if "error_message" in json_response.keys():
+            print(json_response['error_message'])
+        return None
 
 # ============================
 # SDDC
 # ============================
 
+def create_sddc_json(strProdURL, sessiontoken, org_id, validate_only, json_data):
+    my_header = {'csp-auth-token': sessiontoken}
+    my_url = f'{strProdURL}/vmc/api/orgs/{org_id}/sddcs'
+    if validate_only:
+        my_url = my_url + "?validateOnly=true"
+    response = requests.post(my_url, json=json_data, headers=my_header)
+    if response.status_code == 202:
+        print(f"Create SDDC Started. Creation Task is: ")
+        json_response = response.json()
+        new_task = json_response['id']
+        print(f'{new_task}')
+        return json_response
+    elif response.status_code == 200:
+        print("Create Task Complete: Input Validated")
+        validated = "{'input_validated' : True}"
+        return eval(validated)
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def delete_sddc_json(strProdURL, sessiontoken, orgID, sddcID,force):
+    """Returns task for the delete process, or None if error"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}/"
+    if force:
+        myURL = myURL + "?force=true"
+    response = requests.delete(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 202:
+        print('Delete task created. Task ID:')
+        newTask = json_response["id"]
+        print(f'{newTask}')
+        return json_response
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def watch_sddc_task_json(strProdURL, sessiontoken, orgID, taskid):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/tasks/{taskid}"
+    response = requests.get(myURL, headers=myHeader) 
+    json_response = response.json()
+    if response.status_code == 200:
+        # do the right thing
+        return json_response
+    elif response.status_code == 401:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print("User is unauthorized for current operation")
+        return None
+    elif response.status_code == 403:
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        else:
+            print("User is forbidden from current action")
+        return None
+    elif response.status_code == 404:
+        print("Cannot find the task with given identifier")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    else:
+        print('Unexpected error')
+        return None
+    return None
+#
+# https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/tasks/task/post/
+#
+def cancel_sddc_task_json(strProdURL, sessiontoken, orgID, taskid):
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/tasks/{taskid}?action=cancel"
+    response = requests.post(myURL, headers=myHeader) 
+    json_response = response.json()
+    if response.status_code == 200:
+        print(f'Task {taskid} has been successfully cancelled.')
+        return json_response
+    elif response.status_code == 400:
+        print("Invalid Action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 401:
+        print("Unauthorized for current action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 403:
+        print("Forbidden Action")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    elif response.status_code == 404:
+        print("Cannot find the task with given identifier")
+        if 'error_messages' in json_response: 
+            print(json_response["error_messages"][0])
+        return None
+    else:
+        print(f'unexpected response {response.status_code}')
+        return None
 
 def get_sddcs_json(strProdURL, orgID, sessiontoken):
     """Returns list of all SDDCs in an Org via json"""
@@ -60,6 +216,7 @@ def get_sddcs_json(strProdURL, orgID, sessiontoken):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 
 def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
@@ -74,11 +231,125 @@ def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
+
+
+
+def get_sddcs_json(strProdURL, orgID, sessiontoken):
+    """Returns list of all SDDCs in an Org via json"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        vmc_error_handling(response)
+
+# Docs: https://developer.vmware.com/apis/vmc/latest/vmc/api/orgs/org/sddcs/sddc/get/
+def get_sddc_info_json (strProdURL, orgID, sessiontoken, sddcID):
+    """Returns SDDC info in JSON format. Returns None if error"""
+    myHeader = {'csp-auth-token': sessiontoken}
+    myURL = f"{strProdURL}/vmc/api/orgs/{orgID}/sddcs/{sddcID}"
+    response = requests.get(myURL, headers=myHeader)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        print("There was an error. Check the syntax.")
+        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+        if 'error_messages' in json_response:
+            print(json_response['error_messages'])
+        return None
+
+
+def get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id):
+    """Returns cluster ID for given SDDC"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/vmc/api/orgs/{org_id}/sddcs/{sddc_id}'
+    response = requests.get(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code ==  200:
+        cluster_id = json_response['resource_config']['clusters'][0]['cluster_id']
+        return cluster_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
 
 
 # ============================
 # TKG
 # ============================
+
+
+def tkg_validate_cluster_json(vmc_url, org_id, sddc_id, cluster_id, session_token):
+    """Validates whether supplied cluster in provided SDDC can support a TKG deployment. Returns task-id"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/validate-cluster'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def get_tkg_supported_clusters_json(vmc_url, session_token, org_id, sddc_id):
+    """Gets all clusters in the SDDC with valid support for TKG.  Returns Task-ID"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/operations/compute-supported-clusters'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def tkg_validate_network_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body):
+    """Validates provided network CIDRs are eligible for TKG deployment in provided cluster"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/validate-network'
+    response = requests.post(my_url, json=json_body, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def enable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id, json_body):
+    """Enables TKG on selected cluster. Returns Task-ID"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/enable-wcp'
+    response = requests.post(my_url, json=json_body, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
+def disable_tkg_json(vmc_url, session_token, org_id, sddc_id, cluster_id):
+    """Disables TKG on selected cluster and returns task-id"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{vmc_url}/api/wcp/v1/orgs/{org_id}/deployments/{sddc_id}/clusters/{cluster_id}/operations/disable-wcp'
+    response = requests.post(my_url, headers=my_header)
+    json_response = response.json()
+    if response.status_code == 200:
+        task_id = json_response ['id']
+        return task_id
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
 
 
 # ============================
@@ -158,6 +429,7 @@ def attach_dxgw_json(strProdURL, routes, resource_id, org_id, dxgw_owner, dxgw_i
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token):
     """Detach a Direct Connect Gateway from a vTGW"""
@@ -182,10 +454,26 @@ def detach_dxgw_json(strProdURL, resource_id, org_id, dxgw_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(response)
+        return None
 
 # ============================
 # VTC - SDDC Operations
 # ============================
+
+
+def config_sddc_group_json(prod_url, session_token, org_id, json_body):
+    """Function to configure SDDC Group"""
+    my_header = {'csp-auth-token': session_token}
+    my_url = f'{prod_url}/api/network/{org_id}/aws/operations'
+    response = requests.post(my_url, headers=my_header, json=json_body)
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        vmc_error_handling(response)
+        sys.exit(1)
+
+
 def attach_sddc_json(strProdURL, deployment_id, resource_id, org_id, session_token):
     """Attach an SDDC to a vTGW"""
     myHeader = {'csp-auth-token': session_token}
@@ -232,7 +520,7 @@ def remove_sddc_json(strProdURL, deployment_id, resource_id, org_id, session_tok
 def get_nsx_info_json( strProdURL, org_id, deployment_id, session_token):
     """Display NSX credentials and URLs"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/deployments/{}/nsx".format(strProdURL, org_id, deployment_id)
+    myURL = f"{strProdURL}/api/network/{org_id}/core/deployments/{deployment_id}/nsx"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
@@ -241,18 +529,20 @@ def get_nsx_info_json( strProdURL, org_id, deployment_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
-def get_deployment_id_json(strProdURL, org_id, session_token):
-    myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/inventory/{}/core/deployments".format(strProdURL, org_id)
-    response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
-    if response.status_code == 200:
-        return json_response
-    else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+
+# def get_deployment_id_json(strProdURL, org_id, session_token):
+#     myHeader = {'csp-auth-token': session_token}
+#     myURL = "{}/api/inventory/{}/core/deployments".format(strProdURL, org_id)
+#     response = requests.get(myURL, headers=myHeader)
+#     json_response = response.json()
+#     if response.status_code == 200:
+#         return json_response
+#     else:
+#         print("There was an error. Check the syntax.")
+#         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
+#         print(json_response['error_message'])
 
 def get_deployments_json(strProdURL,org_id, session_token):
     """Display a list of all SDDCs"""
@@ -266,6 +556,7 @@ def get_deployments_json(strProdURL,org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def get_group_id_json(strProdURL, group, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -278,18 +569,18 @@ def get_group_id_json(strProdURL, group, org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
-def get_resource_id_json(strProdURL, org_id, group_id, session_token):
+def get_resource_id_json(strProdURL, org_id, sddc_group_id, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/network-connectivity-configs/?group_id={}".format(strProdURL, org_id, group_id)
+    myURL = "{}/api/network/{}/core/network-connectivity-configs/?group_id={}".format(strProdURL, org_id, sddc_group_id)
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        vmc_error_handling(response)
+        sys.exit(1)
 
 def get_sddc_groups_json(strProdURL, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
@@ -302,47 +593,49 @@ def get_sddc_groups_json(strProdURL, org_id, session_token):
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
         print(json_response['error_message'])
+        return None
 
 def get_task_status_json(strProdURL,task_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/operation/{}/core/operations/{}".format(strProdURL, org_id, task_id)
+    myURL = f"{strProdURL}/api/operation/{org_id}/core/operations/{task_id}"
     response = requests.get(myURL, headers=myHeader)
-    json_response = response.json()
     if response.status_code == 200:
+        json_response = response.json()
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        vmc_error_handling(response)
+        return None
+
 
 # ============================
 # VTC - SDDC Group Operations
 # ============================
-def create_sddc_group_json(strProdURL, name, deployment_id, org_id, session_token):
+
+#
+#  No documentation. Use the API explorer.
+#
+def create_sddc_group_json(strProdURL, name, description, members, org_id, session_token):
     """Create an SDDC group"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/core/network-connectivity-configs/create-group-network-connectivity".format(strProdURL, org_id)
+ 
+    myURL = f"{strProdURL}/api/network/{org_id}/core/network-connectivity-configs/create-group-network-connectivity"
     body = {
         "name": name,
-        "description": name,
-        "members": [
-            {
-                "id": deployment_id
-            }
-        ]
+        "description": description,
+        "members": members
     }
     response = requests.post(myURL, json=body, headers=myHeader)
     json_response = response.json()
     if response.status_code == 200:
         return json_response
     else:
-        print("There was an error. Check the syntax.")
-        print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
-        print(json_response['error_message'])
+        vmc_error_handling(response)
+        return None
 
 def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/network/{}/aws/operations".format(strProdURL, org_id)
+                
+    myURL = f'{strProdURL}/api/network/{org_id}/aws/operations' 
     body = {
         "type": "DELETE_DEPLOYMENT_GROUP",
         "resource_id": resource_id,
@@ -352,22 +645,26 @@ def delete_sddc_group_json(strProdURL, resource_id, org_id, session_token):
         }
     }
     response = requests.post(myURL, json=body, headers=myHeader)
-    return response
+    if response.status_code not in (200,201,202):
+        print(f"Error on delete call for resource_id: {resource_id}. Code: {response.status_code}, Message: {response.reason}")
+        return None
+    else:
+        json_response = response.json()
+        return json_response
 
 def get_group_info_json(strProdURL, org_id, group_id, session_token):
     """Display details for an SDDC group"""
     myHeader = {'csp-auth-token': session_token}
-    myURL = "{}/api/inventory/{}/core/deployment-groups/{}".format(strProdURL, org_id, group_id)
+    myURL = f"{strProdURL}/api/inventory/{org_id}/core/deployment-groups/{group_id}"
     response = requests.get(myURL, headers=myHeader)
     json_response = response.json()
-    # print(json.dumps(json_response, indent = 2))
     if response.status_code == 200:
         return json_response
     else:
         print("There was an error. Check the syntax.")
         print(f'API call failed with status code {response.status_code}. URL: {myURL}.')
 
-def ext_get_group_info_json(strProdURL, org_id, resource_id):
+def ext_get_group_info_json(strProdURL, org_id, resource_id, session_token):
     myHeader = {'csp-auth-token': session_token}
     myURL = "{}/api/network/{}/core/network-connectivity-configs/{}/?trait=AwsVpcAttachmentsTrait,AwsRealizedSddcConnectivityTrait,AwsDirectConnectGatewayAssociationsTrait,AwsNetworkConnectivityTrait".format(strProdURL, org_id, resource_id)
     response = requests.get(myURL, headers=myHeader)
@@ -419,10 +716,9 @@ def attach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     """Detach a VPC from a vTGW"""
@@ -432,10 +728,9 @@ def detach_vpc_json(strProdURL, session_token, json_body, org_id):
     json_response = response.json()
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response
 
 def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     """Add or remove vTGW static routes"""
@@ -447,7 +742,6 @@ def add_vpc_prefixes_json(strProdURL, session_token, json_body, org_id):
     # print(pretty_data)
     if not response.ok :
         print ("    Error: " + json_response['message'])
-        task_id = 0
+        sys.exit(1)
     else:
-        task_id = json_response ['id']
-    return task_id
+        return json_response

@@ -1,0 +1,19 @@
+{
+    "prefixes": [
+        {
+            "network": "10.0.0.0/8",
+            "action": "PERMIT"
+        },
+        {
+            "network": "172.16.0.0/12",
+            "action": "PERMIT"
+        },
+        {
+            "network": "192.168.0.0/16",
+            "action": "PERMIT"
+        }
+    ],
+    "resource_type": "PrefixList",
+    "id": "sample-prefix-list",
+    "display_name": "sample-prefix-list"
+}

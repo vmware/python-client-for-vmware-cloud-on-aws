@@ -1,0 +1,14 @@
+usage:  vcdr [-h] {scfs,pg,snaps,rsddc,psite,vms} ...
+
+positional arguments:
+  {scfs,pg,snaps,rsddc,psite,vms}
+                        vcdr sub-command help
+    scfs                VCDR cloud file system - use '-h' for help.
+    pg                  VCDR Protection Groups - use '-h' for help.
+    snaps               VCDR Snapshots - use '-h' for help.
+    rsddc               VCDR Recovery SDDC - use '-h' for help.
+    psite               VCDR Protected Site - use '-h' for help.
+    vms                 VCDR cloud file system - use '-h' for help.
+
+optional arguments:
+  -h, --help            show this help message and exit

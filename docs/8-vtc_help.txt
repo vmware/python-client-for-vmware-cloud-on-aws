@@ -1,0 +1,26 @@
+usage:  vtc [-h]
+            {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
+            ...
+
+positional arguments:
+  {connect-aws,disconnect-aws,attach-dxgw,detach-dxgw,get-sddc-info,get-nsx-info,attach-sddc,detach-sddc,create-sddc-group,delete-sddc-group,get-group-info,attach-vpc,detach-vpc,vpc-prefixes}
+                                        vtc sub-command help
+    connect-aws                         Connect an vTGW to an AWS account
+    disconnect-aws                      Disconnect a vTGW from an AWS account
+    attach-dxgw                         Attach a Direct Connect Gateway to a
+                                        vTGW
+    detach-dxgw                         Detach a Direct Connect Gateway from a
+                                        vTGW
+    get-sddc-info                       Display a list of all SDDCs
+    get-nsx-info                        Display NSX credentials and URLs
+    attach-sddc                         Attach an SDDC to a vTGW
+    detach-sddc                         Detach an SDDC from a vTGW
+    create-sddc-group                   Create an SDDC group
+    delete-sddc-group                   Delete an SDDC group
+    get-group-info                      Display details for an SDDC group
+    attach-vpc                          Attach a VPC to a vTGW
+    detach-vpc                          Detach VPC from a vTGW
+    vpc-prefixes                        Add or remove vTGW static routes
+
+optional arguments:
+  -h, --help                            show this help message and exit

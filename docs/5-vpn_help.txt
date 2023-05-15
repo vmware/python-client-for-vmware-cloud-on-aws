@@ -1,0 +1,53 @@
+usage:  vpn [-h]
+            {new-ike-profile,new-ipsec-profile,new-dpd-profile,new-t1-vpn-service,new-local-endpoint,new-t1-ipsec-session,new-t1-l2vpn-session,new-sddc-ipsec-vpn,new-sddc-l2vpn,remove-sddc-ipsec-vpn,remove-sddc-l2VPN,remove-tier1-ipsec-vpn,remove-tier1-l2vpn,remove-t1-vpn-local-endpoint,remove-t1-vpn-service,remove-vpn-profile,show-sddc-vpn,show-vpn-endpoints,show-sddc-l2vpn,show-vpn-ike-profiles,show-vpn-ipsec-profiles,show-vpn-dpd-profiles,show-tier1-vpn-services,show-tier1-vpn-local-endpoints,show-tier1-vpn,show-tier1-vpn-details,show-tier1-l2vpn,show-tier1-l2vpn-details,rbvpn-prefix-list,rbvpn-neighbors}
+            ...
+
+positional arguments:
+  {new-ike-profile,new-ipsec-profile,new-dpd-profile,new-t1-vpn-service,new-local-endpoint,new-t1-ipsec-session,new-t1-l2vpn-session,new-sddc-ipsec-vpn,new-sddc-l2vpn,remove-sddc-ipsec-vpn,remove-sddc-l2VPN,remove-tier1-ipsec-vpn,remove-tier1-l2vpn,remove-t1-vpn-local-endpoint,remove-t1-vpn-service,remove-vpn-profile,show-sddc-vpn,show-vpn-endpoints,show-sddc-l2vpn,show-vpn-ike-profiles,show-vpn-ipsec-profiles,show-vpn-dpd-profiles,show-tier1-vpn-services,show-tier1-vpn-local-endpoints,show-tier1-vpn,show-tier1-vpn-details,show-tier1-l2vpn,show-tier1-l2vpn-details,rbvpn-prefix-list,rbvpn-neighbors}
+                        vpn sub-command help
+    new-ike-profile     Create a new VPN IKE Profile
+    new-ipsec-profile   Create a new VPN IPSEC Tunnel Profile
+    new-dpd-profile     Create a new IPSEC DPD profile
+    new-t1-vpn-service  Create a new Tier-1 gateway VPN service
+    new-local-endpoint  Create a new Tier-1 VPN local endpoint
+    new-t1-ipsec-session
+                        Create a new Tier-1 gateway VPN session
+    new-t1-l2vpn-session
+                        Create a new Tier-1 gateay L2VPN session
+    new-sddc-ipsec-vpn  Create a new IPSEC VPN tunnel for the SDDC
+    new-sddc-l2vpn      create a new L2VPN for the SDDC
+    remove-sddc-ipsec-vpn
+                        remove a SDDC IPSec VPN
+    remove-sddc-l2VPN   remove a SDDC L2VPN
+    remove-tier1-ipsec-vpn
+                        remove a Tier-1 IPSec VPN
+    remove-tier1-l2vpn  remove a Tier-1 L2VPN
+    remove-t1-vpn-local-endpoint
+                        remove a Tier-1 Local Endpoint
+    remove-t1-vpn-service
+                        Remove a Tier-1 VPN Service
+    remove-vpn-profile  remove a VPN IKE profile
+    show-sddc-vpn       show the SDDC VPNs
+    show-vpn-endpoints  Show the SDDC VPN endpoints
+    show-sddc-l2vpn     show the SDDC L2VPN
+    show-vpn-ike-profiles
+                        show the VPN IKE profiles
+    show-vpn-ipsec-profiles
+                        Show the VPN IPSec Tunnel Profiles
+    show-vpn-dpd-profiles
+                        Show the VPN DPD Profiles
+    show-tier1-vpn-services
+                        Show Tier-1 VPN Services
+    show-tier1-vpn-local-endpoints
+                        Show Tier-1 Local Endpoints
+    show-tier1-vpn      Show Tier-1 IPSec VPN sessions
+    show-tier1-vpn-details
+                        Show IPSec VPN details for a provided Tier1 VPN name
+    show-tier1-l2vpn    Show Tier-1 L2VPN sessions
+    show-tier1-l2vpn-details
+                        Show Tier-1 L2VPN Session Details
+    rbvpn-prefix-list   Create and configure route-based VPN prefix lists.
+    rbvpn-neighbors     Show and configure BGP Neighbors for route-based VPN.
+
+options:
+  -h, --help            show this help message and exit

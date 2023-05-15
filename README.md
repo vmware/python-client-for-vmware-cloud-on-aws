@@ -1,224 +1,204 @@
-# python-client-for-vmware-cloud-on-aws
+# Python Client For VMware Cloud on AWS
+## Table of Contents
+<!-- TOC -->
+
+  - [1. Whats is pyVMC](#what-is-pyvmc)
+  - [2. Overview](#overview)
+  - [3. Getting Started](#getting-started)
+    - [3.1 Install Python](#install-python)
+    - [3.2 Download code](#download-code)
+    - [3.3 Install Python modules and packages](#install-python-modules-and-packages)
+    - [3.4 Update config.ini](#update-configini)
+  - [4. Running the Script](#running-the-script)
+  - [5. Authentication](#authentication)
+  - [6. Support](#support)
+  - [7. Documentation](#documentation)
+  - [8. Release Notes](#release-notes)
+  - [9. Known Issues](#known-issues)
+  - [10. Contributing](#contributing)
+  - [11. License](#license)
+
+## What is pyVMC?
+Welcome to the Python Client for VMware Cloud on AWS!  PyVMC is a Python tool developed for assisting system administrators with the deployment, configuration, and management of the VMware Cloud on AWS service. 
 
 ## Overview
 
-# pyVMC
-Welcome to the Python Client for VMware Cloud on AWS !
+pyVMC was created by Nicolas Vibert and Matt Dreyer.  While it started as a series of a few commands used for creating some network and firewall rules, it has grown to become a fairly comprehensive CLI that can be used for anything from adding users to your VMware Cloud organization, viewing and manipulating the route tables associated with your SDDC, configuring and updating IDS rules, or even enabling and monitoring services like Tanzu Kubernetes Service or VMware Cloud DR.
 
-## What is the Python Client for VMware Cloud on AWS ? 
-It is a Python tool developed for VMware Cloud on AWS. PyVMC was created by Nicolas Vibert and Matt Dreyer.
+Over time, pyVMC has grown it its capabilities, in the number of commands it supports and ultimately in its complexity.  Functionality has been separated amongst several files to make navigating and updating the code easier - however this may make understanding how the project is put together a bit more challenging to understand.
 
-## What are the pre-requisites for PyVMC ?
-- Python3 installed on your machine
-- a VMware Cloud on AWS account
+As mentioned above, the functionality of the project is split up into multiple files....
 
-## How do I use PyVMC ?
-- clone repo
-- install dependencies
-```
-$ pip install -r requirements.txt
-```
-- copy config.ini.example to config.ini and add your own token
-- Edit the config.ini with your own SDDC ID,  Organization (Org) ID and your access token.
+![pyvmc structure](docs/images/pyvmc_refactor.png)
 
-## Do I need to know Python?
+Everything begins with...
+
+**pyVMC.py** is the file where _main_ is defined, where the commands and arguments are defined for controlling user input, and where the 'business logic'/ functions are housed for handling user input and ultimately returning a result back to the screen.
+
+A great deal of work has gone into incorporating python argparse into the project for defining and handling commands and arguments in the CLI - so the first thing you should do before adding / updating a command or function for the project is think through how the user your new functionality:
+- Are you simply adding new functionality to a command that already exists?  
+- Are you instead adding a new command for an existing feature? 
+- Are you adding new commands for an entirely new API?
+
+The answers to the questions above will ultimately help determine if you are adding a new category of commands ("super-command"), a new sub-command under a super-command that already exists, or just a new option for an existing subcommand.
+
+See the image below for a graphical representation of how argparse is being used to structure commands in a hierarchical fashion.
+
+![argparse structure](docs/images/argparse_structure.png)
+
+## Getting Started
+
+### Install Python
+This tool is dependent on Python3, you can find installation instructions for your operating system in the Python documentation (https://wiki.python.org/moin/BeginnersGuide/Download).
+
+### Download code
+Download the [pyVMC.zip](https://flings.vmware.com/python-client-for-vmc-on-aws) from the Flings site
+
+If you know git, clone the repo with
+
+```git clone https://github.com/vmware/python-client-for-vmware-cloud-on-aws.git ```
+
+### Install Python modules and packages
+When you navigate to the python-client-for-vmware-cloud-on-aws folder, you will find a requirements.txt file that lists all your Python packages. They can all be installed by running the following command on Linux/Mac:
+
+```pip3 install -r requirements.txt```
+
+On Windows, use
+
+```python -m pip install -r requirements.txt```
+
+### Update config.ini
+Obtain a refresh token from the VMware Cloud Service Portal, as well as the ORG ID and SDDC  ID of the environment you wish to interact with .  Copy config.ini.example to config.ini and edit the config.ini with your own SDDC ID, Organization (Org) ID and your access token.
+
+> Note: The token must be scoped as either `Org Member` or `Org Owner`. It must be given the VMware Cloud on AWS roles of `NSX Cloud Admin` and `Administrator`.  API calls with a role of `Administrator (Delete Restricted)` do not work. If you are using the VCDR components of PyVMC, the token must also have a role with full administrative rights to VCDR.
+
+### Do I need to know Python?
 No! You can simply use it to consume and manage your VMware Cloud on AWS SDDC (Software-Defined Data Center). 
 
-## Is it officially supported by VMware?
+## Running the Script
+This is super easy...
+- run ./pyVMC.py to see the current list of supported commands.
+- use '-h' with any super-command or with any subcommand to see the supported arguments / parameters.
+
+
+For example, to see the supported sub-commands for the 'system' super-command:
+```./pyVMC.py system -h ```
+
+To see the arguments for the show-routes command:
+``` ./pyVMC.py system show-routes -h ```
+
+Try to view the route table for your SDDC:
+``` ./pyVMC.py system show-routes -rt t0 ```
+
+## Authentication
+pyVMC supports both **refresh_token** and **OAuth AppId/Secret** way to authenticate.
+Values for it needs to be specified in config.ini file. Default auth method is to use **refresh_token**.
+
+If one wants to use OAuth, then **--oauth** switch needs to be provided when running the command.
+
+Examples:
+
+Using default 'refresh_token'
+```shell
+./pyVMC.py sddc show-sddcs
+```
+
+Using OAuth
+```shell
+./pyVMC.py sddc show-sddcs --oauth
+```
+
+## Support 
+
+### Is it officially supported by VMware?
 Sorry but no, this is a community-based effort. Use it at your own risk. It has extensively been tested though and we'll endeavour to fix any bugs.
 
-## Which version of VMware Cloud on AWS has it been tested against?
-Versions 1.9, 1.10, 1.11, 1.12, 1.14, and 1.15. We don't guarantee support with previous versions. 
-I will, however, endeavour to verify compatibility as we release new versions.
+### Which version of VMware Cloud on AWS has it been tested against?
+Versions 1.9, 1.10, 1.11, 1.12, 1.14... all the way up through 1.20. We don't guarantee support with previous versions. 
+We will, however, endeavour to verify compatibility as we release new versions.
 
-## What if I find a bug or need a new feature?
+### What if I find a bug or need a new feature?
 Please raise it on GitHub and we will look into it.
 
-## Where can I find documentation about VMware Cloud on AWS:
+## Documentation
+
+### Where can I find documentation about VMware Cloud on AWS:
 Please check the online documentation:
 https://docs.vmware.com/en/VMware-Cloud-on-AWS/index.html
 
-## Where can I find documentation about each pyVMC commands?
+### Where can I find documentation about each pyVMC commands?
 
-Initial Release:
-https://nicovibert.com/2020/02/25/pyvmc-python-vmware-cloud-aws/
+#### Current Supported Commands
+Here are the currently supported 'super' commands:
+```shell
+    csp                                 Commands related to the Cloud Service Portal itself.
+    sddc                                Commands related to the Software Defined Datacenter (SDDC) itself.
+    tkg                                 Commands related to the Tanzu Kubernetes Service (TKG).
+    segment                             Create, delete, update, and show Virtual Machine network segments.
+    vpn                                 Create, delete, update, and show virtual private network (VPN) settings.
+    nat                                 Show and update Network Address Translation (NAT) rules.
+    t1                                  Create, delete, update, and show secondary T1 gateways.
+    vtc                                 Commands related to VMware Transit Connect (VTC).
+    gwfw                                Show and update policies and rules associated with NSX Gateway Firewall (mgw, cgw, etc.).
+    dfw                                 Show and update policies and rules associated with NSX Distributed Firewall.
+    nsxaf                               Commands related to the NSX Advanced Firewall - e.g. IDS.
+    inventory                           Show and update objects in the NSX Inventory (groups, services, etc).
+    system                              Show and update configuration data associated with the NSX-T System (DNS, public IP, etc).
+    search-nsx                          Search the NSX Manager inventory.
+    vcdr                                Create, delete, update, and show information about VMware Cloud Disaster Recovery.
+    flexcomp                            Commands related to the Cloud Flex Compute itself.
+```
 
-First main update:
-https://nicovibert.com/2020/06/01/fling-update-pyvmc-1-1-release-and-a-walkthrough-through-some-python-code/
+#### Getting Help
 
-Additional Blog Posts:
-http://www.patrickkremer.com/pyvmc/
+To see the supported commands for any given category / super-command, simply use '-h'... for example:
 
-## Release Notes
+```shell
+./pyVMC.py vcdr -h
+usage:  vcdr [-h] {scfs,pg,snaps,rsddc,psite,vms} ...
 
-This tool enables users to:
+positional arguments:
+  {scfs,pg,snaps,rsddc,psite,vms}
+                        vcdr sub-command help
+    scfs                VCDR cloud file system - use '-h' for help.
+    pg                  VCDR Protection Groups - use '-h' for help.
+    snaps               VCDR Snapshots - use '-h' for help.
+    rsddc               VCDR Recovery SDDC - use '-h' for help.
+    psite               VCDR Protected Site - use '-h' for help.
+    vms                 VCDR cloud file system - use '-h' for help.
 
-Here are the currently supported commands:
+optional arguments:
+  -h, --help            show this help message and exit
+```
 
-- AWS Account and VPC
-    - set-sddc-connected-services: change whether to use S3 over the Internet or via the ENI
-    - show-compatible-subnets [LINKEDACCOUNTID] [REGION]: show compatible native AWS subnets connected to the SDDC
-    - show-connected-accounts: show native AWS accounts connected to the SDDC
-    - show-sddc-connected-vpc: show the VPC connected to the SDDC
-    - show-shadow-account: show the Shadow AWS Account VMC is deployed in
+Similarly, to see the options for any given command, run the individual command with the -h option:
 
-- BGP and Networking
-    - attach-t0-prefix-list [BGP NEIGHBOR ID]: attach a BGP Prefix List to a T0 BGP neighbor
-    - detach-t0-prefix-lists [BGP NEIGHBOR ID]: detach all prefix lists from specified neighbor
-    - new-t0-prefix-list: create a new T0 BGP Prefix List
-    - remove-t0-prefix-list [PREFIX LIST ID]: you can see current prefix list with 'show-t0-prefix-lists': remove a T0 BGP Prefix List
-    - set-bgp-as [ASN]: update the BGP AS number
-    - set-mtu: set the MTU configured over the Direct Connect
-    - show-mtu: show the MTU configured over the Direct Connect
-    - show-egress-interface-counters: show current Internet interface egress counters
-    - show-sddc-bgp-as: show the BGP AS number
-    - show-sddc-bgp-vpn: show whether DX is preferred over VPN
-    - show-t0-bgp-neighbors: show T0 BGP neighbors
-    - show-t0-prefix-lists: show T0 prefix lists
-    - show-t0-routes: show routes at the T0 router
-    - show-t0-bgp-routes: show learned and advertised routes via BGP
+```shell
+./pyVMC.py vcdr scfs -h               
+usage: vcdr scfs [-h] {show} ...
 
-- DNS
-    - show-dns-services: show DNS services
-    - show-dns-zones: show DNS zones
+positional arguments:
+  {show}      vcdr scfs sub-command help
+    show      Show information about the VCDR Scale-out file System(s).
 
-- Inventory Groups
-    - new-group [CGW/MGW] [Group_ID]: create a new group
-        - new-group [MGW] [Group_ID]: Create a new IP-based MGW group, the script prompts for a list of IPs
-        - new-group [MGW] [Group_ID] [IPs]: Create a new IP-based MGW group using a list of comma-separated IP addresses
-        - new-group [CGW] [Group_ID] [ip-based]: Create a new IP-based CGW group, the script prompts for a list of IPs
-        - new-group [CGW] [Group_ID] [ip-based] [IPs]: Create a new IP-based MGW group using a list of comma-separated IP addresses
-        - new-group [CGW] [Group_ID] [criteria-based]: Create a new criteria-based virtual machine CGW group, the script prompts for the following:
-            - Key [Name, Tag, OSName, ComputerName]
-            - Operator [EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH]
-            - Value
-        - new-group [CGW] [Group_ID] [criteria-based] [Name, Tag, OSName,ComputerName] [EQUALS, NOTEQUALS, CONTAINS, STARTSWITH, ENDSWITH] [value]: Create a new criteria-based virtual machine CGW group
-        - new-group [CGW] [Group_ID] [member-based]: Create a new member-based virtual machine CGW group, the script prompts for a list of VM names
-        - new-group [CGW] [Group_ID] [member-based] [vms]: Create a new member-based virtual machine CGW group, using a comma-separated list of VM names
-        - new-group [CGW] [Group_ID] [group-based] [existing-group-name]: Create a new group-based CGW group, passing an existing group name to include as group member
-    - remove-group [CGW/MGW][Group_ID]: remove a group
-    - show-group [CGW/MGW] [Group_ID]: show existing groups
-    - show-group-association [CGW/MGW] [Group_ID]: show security rules used by a groups
+optional arguments:
+  --oauth [OAUTH]       Used to specify use of OAuth app ID and secret in config.ini instead of 'refresh_token' (default)
+  -h, --help  show this help message and exit
+```
 
-- Firewall - Distributed
-    - new-dfw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SECTION] [SEQUENCE-NUMBER]: create a new DFW security rule
-    - new-dfw-section [NAME][CATEGORY]: create a new DFW section
-    - remove-dfw-rule [SECTION_ID][RULE_ID]: delete a DFW rule
-    - remove-dfw-section [RULE_ID]: delete a DFW section
-    - show-dfw-section: show the DFW sections
-    - show-dfw-section-rules [SECTION]: show the DFW security rules within a section
+Check comprehensive listing of [all currently supported commands](/docs/all-supported-commands.md).
 
-- Firewall - T0
-    - new-cgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SCOPE] [SEQUENCE-NUMBER]: create a new CGW security rule
-    - new-mgw-rule [NAME] [SOURCE-GROUPS] [DESTINATION-GROUPS] [SERVICE] [ACTION] [SEQUENCE-NUMBER]: create a new MGW security rule
-    - remove-cgw-rule [RULE_ID]: delete a CGW security rule
-    - remove-mgw-rule [RULE_ID]: delete a MGW security rule
-    - show-cgw-rule: show the CGW security rules
-    - show-mgw-rule: show the MGW security rules
+## Release Notes:
 
-- Firewall Services
-    - new-service: create a new service
-    - remove-service [SERVICE-ID]: remove a service
-    - show-services [SERVICE-ID]: show a specific service
-    - show-services: show services
-
-- NAT
-    - new-nat-rule: To create a new NAT rule
-    - remove-nat-rule: remove a NAT rule
-    - show-nat: show the configured NAT rules
-    - show-nat [NAT-RULE-ID] for statistics of a rule: show the statistics for a specific NAT rule
-
-- Public IP addressing
-    - new-sddc-public-ip: request a new public IP
-    - remove-sddc-public-ip: remove an existing public IP
-    - set-sddc-public-ip: update the description of an existing public IP
-    - show-sddc-public-ip: show the public IPs
-
-- SDDC
-    - get-access-token: show your access token
-    - show-sddc-state: get a view of your selected SDDC
-    - show-sddcs: display a lit of your SDDCs
-    - show-vms: get a list of your VMs
-- TKG
-    - enable-tkg: Enable Tanzu Kubernetes Grid on an SDDC
-    - disable-tkg: Disable Tanzu Kubernetes Grid on an SDDC
-
-- Cloud Service Portal - Cloud Services
-	- show-csp-services: Show entitled services
-	- show-vcdr-url:  Display the production URL for VCDR service.
-
-- Cloud Service Portal - User and Group management
-    - add-users-to-csp-group [GROUP_ID] [EMAILS]: CSP user to a group
-    - show-csp-group-diff [GROUP_ID] [showall|skipmembers|skipowners]: this compares the roles in the specified group with every user in the org and prints ou
-    - show-csp-service-roles: show CSP service roles for the currently logged in user
-    - find-csp-user-by-service-role [service role name]: search for CSP users with a specific service role
-    - show-org-users: show the list of organization users
-
-- Virtual Machine Networking
-    - show-network: show your current networks
-    - new-network [NAME] DISCONNECTED [GATEWAY_ADDRESS]  for a disconnected network
-    - new-network [NAME] EXTENDED [GATEWAY_ADDRESS] [TUNNEL_ID] for an extended network
-    - new-network [NAME] ROUTED [GATEWAY_ADDRESS] [DHCP_RANGE] [DOMAIN_NAME] for a DHCP network
-    - new-network [NAME] ROUTED [GATEWAY_ADDRESS] for a static network
-    - remove-network: remove a network
-
-- VPN
-    - new-l2vpn [NAME] [LOCAL_ENDPOINT] [REMOTE_PEER]: create a new L2VPN
-    - remove-l2VPN [ID]: remove a L2VPN
-    - remove-vpn [VPN-ID]: remove a VPN
-    - remove-vpn-ike-profile [ID]: remove a VPN IKE profile
-    - remove-vpn-ipsec-tunnel-profile [ID]: To remove a VPN IPSec Tunnel profile
-    - show-l2vpn: show l2 vpn
-    - show-l2vpn-services: show l2 vpn services
-    - show-vpn: show the configured VPN
-    - show-vpn [VPN_ID]: show the VPN statistics
-    - show-vpn-ike-profile: show the VPN IKE profiles
-    - show-vpn-internet-ip: show the public IP used for VPN services
-    - show-vpn-ipsec-tunnel-profile: show the VPN tunnel profile
-    - show-vpn-ipsec-endpoints: show the VPN IPSec endpoints
-
-- VTC (VMware Transit Connect)
-    - SDDC Group Operations
-        - create-sddc-group [name]: Create an SDDC group
-        - delete-sddc-group: Delete an SDDC group
-        - get-group-info: Display details for an SDDC group
-    - SDDC Operations
-        - get-sddc-info: Display a list of all SDDCs
-        - get-nsx-info: Display NSX credentials and URLs
-        - attach-sddc: Attach an SDDC to a vTGW
-        - detach-sddc: Detach an SDDC from a vTGW
-    - AWS Operations
-        - connect-aws: Connect an vTGW to an AWS account
-        - disconnect-aws: Disconnect a vTGW from an AWS account
-    - VPC Operations
-        - attach-vpc: Attach a VPC to a vTGW
-        - detach-vpc Detach VPC from a vTGW
-        - vpc-prefixes: Add or remove vTGW static routes
-    - DXGW Operations
-        - attach-dxgw: Attach a Direct Connect Gateway to a vTGW
-        - detach-dxgw: Detach a Direct Connect Gateway from a vTGW
-    - TGW Operations
-        - show-tgw-routes: Show the vTGW route table
-            - show-tgw-routes [group name]: Show the vTGW route table for the specified group
-
-- VMware Cloud Disaster Recovery
-    - show-vcdr-fs: show VCDR Cloud File Systems
-    - show-vcdr-fs-details [CLOUD_FS_ID]: Get details for an individual cloud file system.
-    - show-vcdr-sites [CLOUD_FS_ID]: Get a list of all protected sites associated with an individual cloud file system.
-    - show-vcdr-site-details [CLOUD_FS_ID] [PROTECTED_SITE_ID]: Get details about an individual protected site.
-    - show-vcdr-vm [CLOUD_FS_ID]: Get a list of all protected VMs currently being replicated to the specified cloud file system.
-    - show-vcdr-pgs [CLOUD_FS_ID]: Get a list of all protection groups associated with an individual cloud file system.
-    - show-vcdr-pg-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get details for the requested protection group.
-    - show-vcdr-pg-snaps [CLOUD_FS_ID] [PROTECTION_GROUP_ID]: Get a list of all snapshots in a specific protection group.
-    - show-vcdr-pg-snap-details [CLOUD_FS_ID] [PROTECTION_GROUP_ID] [PG_SNAPSHOT_ID]: Get detailed information for a protection group snapshot.
-    - show-vcdr-sddcs: List VMware Cloud (VMC) Recovery Software-Defined Datacenters (SDDCs).
-    - show-vcdr-sddc-details [RECOVEY_SDDC_ID]: Get Recovery SDDC Details - Get details of a specific Recovery SDDC. 
+[Please see the release notes found here.](docs/release-notes.md)
 
 ## Known Issues:
 
-VMware Cloud Disaster Recovery - The Fling will automatically discover the Orchestrator URL for customers with only one region / orchestrator under management. If you are entitled to VCDR in multiple regions, you must manually set the path of the VCDR Orchestrator in the config.ini file.
+[Please see the release notes found here.](docs/release-notes.md)
 
 ## Contributing
+
+For a quick overview of how the project is structured as well as how the files relate to each other, how the argparse module is being used, etc, [please refer to the pyvmc-structure.md](docs/pyvmc-structure.md).
 
 The python-client-for-vmware-cloud-on-aws project team welcomes contributions from the community. Before you start working with python-client-for-vmware-cloud-on-aws, please
 read our [Developer Certificate of Origin](https://cla.vmware.com/dco). All contributions to this repository must be

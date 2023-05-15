@@ -1,0 +1,13 @@
+usage:  search-nsx [-h] [--nsxm [NSXM]]
+                   [-ot {BgpNeighborConfig,BgpRoutingConfig,Group,IdsSignature,PrefixList,RouteBasedIPSecVPNSession,Segment,Service,StaticRoute,Tier0,Tier1,VirtualMachine,VirtualNetworkInterface}]
+                   [-oid OBJECT_ID]
+
+optional arguments:
+  -h, --help                            show this help message and exit
+  --nsxm [NSXM]                         Used to specify NSX Manager instead of
+                                        NSX proxy (Default).
+  -ot {BgpNeighborConfig,BgpRoutingConfig,Group,IdsSignature,PrefixList,RouteBasedIPSecVPNSession,Segment,Service,StaticRoute,Tier0,Tier1,VirtualMachine,VirtualNetworkInterface}, --object_type {BgpNeighborConfig,BgpRoutingConfig,Group,IdsSignature,PrefixList,RouteBasedIPSecVPNSession,Segment,Service,StaticRoute,Tier0,Tier1,VirtualMachine,VirtualNetworkInterface}
+                                        The type of object to search for.
+  -oid OBJECT_ID, --object_id OBJECT_ID
+                                        The name of the object you are
+                                        searching for.
