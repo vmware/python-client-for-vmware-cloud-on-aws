@@ -4266,6 +4266,15 @@ def t1_remove(**kwargs):
         print("Do not try to delete the default CGW of MGW.")
         print(" ")
         sys.exit(1)
+    json_response = get_t1_json(proxy, sessiontoken)
+    if json_response != False:
+        t1_gateways = json_response['results']
+        if t1_id not in [i["display_name"] for i in t1_gateways]:
+            print(f'Tier1 gateway {t1_id} does not exist. Check the name and try again.')
+            sys.exit(1)
+    else:
+        print("Something went wrong, please try again.")
+        sys.exit(1)
     status = delete_t1_json(proxy, sessiontoken, t1_id)
     if status ==200:
         print(f'Tier1 gateway {t1_id} has been deleted.')
