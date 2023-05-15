@@ -107,9 +107,9 @@ def create_sddc_json(strProdURL, sessiontoken, org_id, validate_only, json_data)
     if validate_only:
         my_url = my_url + "?validateOnly=true"
     response = requests.post(my_url, json=json_data, headers=my_header)
-    json_response = response.json()
     if response.status_code == 202:
         print(f"Create SDDC Started. Creation Task is: ")
+        json_response = response.json()
         new_task = json_response['id']
         print(f'{new_task}')
         return json_response
