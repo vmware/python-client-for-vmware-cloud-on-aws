@@ -752,6 +752,7 @@ def createSDDC(**kwargs) -> None:
     sessiontoken = kwargs['sessiontoken']
     name = kwargs['name']
     linked_account_id = kwargs['aws_account_guid']
+    linked_account_num = kwargs['aws_account_num']
     region = kwargs['region']
     amount = kwargs['number']
     host_type = kwargs['host_type']
@@ -759,6 +760,16 @@ def createSDDC(**kwargs) -> None:
     mgt = kwargs['mgt_subnet']
     size = kwargs['sddc_size']
     validate_only = kwargs['validate_only']
+
+    if linked_account_id is None and linked_account_num is None:
+        print("You must supply either the GUID for the linked AWS account or the AWS account number. Please try again.")
+        sys.exit(1)
+    elif linked_account_id is None:
+        accounts = get_connected_accounts_json(strProdURL, org_id, sessiontoken)
+        for i in accounts:
+            if i['account_number'] == linked_account_num:
+                linked_account_id = i['id']
+                break
 
     json_data = {
         'name': name,

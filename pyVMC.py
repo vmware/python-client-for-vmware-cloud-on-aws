@@ -299,7 +299,8 @@ def main():
   # Create-sddc
     create_sddc_parser=sddc_parser_subs.add_parser('create', parents=[auth_flag,vmc_url_flag,org_id_flag], help = 'Create an SDDC')
     create_sddc_parser.add_argument('-n','--name', required = True, help= 'name for newly created SDDC')
-    create_sddc_parser.add_argument('-aws','--aws_account_guid', required = True, help='GUID for linked/connected AWS account')
+    create_sddc_parser.add_argument('-aws','--aws_account_guid', required = False, help='GUID for linked/connected AWS account')
+    create_sddc_parser.add_argument('-acc','--aws_account_num', required = False, help='Account number for linked/connected AWS account')
     create_sddc_parser.add_argument('-r','--region',required = True,  help='string literal for AWS region; see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions')
     create_sddc_parser.add_argument('-num','--number',type=int,required = True,  help="number of hosts in new region")
     # where to get the canonical list https://developer.vmware.com/apis/vmc/v1.1/data-structures/SddcConfig/
@@ -1404,3 +1405,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
