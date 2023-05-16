@@ -785,7 +785,7 @@ def createSDDC(**kwargs) -> None:
         'num_hosts': amount,
         'deployment_type': 'SingleAZ',
         'host_instance_type': host_type,
-        'sddc_type': "",
+        'sddc_type': "DEFAULT",
         'size': size,
         'region': region,
         'vpc_cidr': mgt
