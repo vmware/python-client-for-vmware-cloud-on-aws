@@ -771,6 +771,13 @@ def createSDDC(**kwargs) -> None:
                 linked_account_id = i['id']
                 break
 
+    if amount > 1:
+        sddc_type = "DEFAULT"
+    elif amount == 1:
+        sddc_type = "1NODE"
+    else:
+        print("Invalid number of hosts entered. Please try again.")
+
     json_data = {
         'name': name,
         'account_link_sddc_config': [
@@ -785,7 +792,7 @@ def createSDDC(**kwargs) -> None:
         'num_hosts': amount,
         'deployment_type': 'SingleAZ',
         'host_instance_type': host_type,
-        'sddc_type': "DEFAULT",
+        'sddc_type': sddc_type,
         'size': size,
         'region': region,
         'vpc_cidr': mgt
