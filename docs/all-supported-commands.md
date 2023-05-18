@@ -446,6 +446,7 @@ optional arguments:
 ```
 
 ## 7. Flex Compute commands
+[VMware Cloud Flex Compute](https://blogs.vmware.com/cloud/2022/08/30/announcing-vmware-cloud-flex-compute/) is currently in technical preview and any related functionality is subject to change until Cloud Flex Compute is made generally available in the future.
 ```shell
 usage:  flexcomp [-h]
         {activity-status,show-all-namespaces,validate-network,create-flexcompute,delete-flexcomp,show-flex-comp-regions,show-flex-comp-templates,show-all-vms,show-all-images,create-vm,power-operation,delete-vm}
