@@ -277,6 +277,17 @@ def get_sddc_cluster1_id(vmc_url, session_token, org_id, sddc_id):
         sys.exit(1)
 
 
+def post_cluster_rename_json(vmc_url, session_token, org_id, cluster_id, json_data):
+    """Renames selected cluster"""
+    header = {'csp-auth-token': session_token}
+    url = f'{vmc_url}/api/inventory/{org_id}/vmc-aws/clusters/{cluster_id}:rename-cluster'
+    response = requests.post(url, headers=header, json=json_data)
+    if response.status_code != 202:
+        vmc_error_handling(response)
+        sys.exit(1)
+    else:
+        return response.status_code
+
 # ============================
 # TKG
 # ============================
