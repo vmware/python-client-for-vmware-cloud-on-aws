@@ -1067,6 +1067,41 @@ def getSDDChosts(**kwargs):
     print(table)
 
 
+def renameCluster(**kwargs):
+    """Renames selected cluster.  Only available on SDDCs version 1.22 or later"""
+    vmc_url = kwargs['strProdURL']
+    org_id = kwargs['ORG_ID']
+    sddc_id = kwargs['SDDC_ID']
+    session_token = kwargs['sessiontoken']
+    old_cluster_name = kwargs['cluster_name']
+    new_cluster_name = kwargs['new_name']
+
+    sddc_json = get_sddc_info_json(vmc_url, org_id, session_token, sddc_id)
+    cluster_json = sddc_json['resource_config']['clusters']
+    sddc_name = sddc_json['name']
+
+    old_cluster_names = []
+    for n in cluster_json:
+        old_cluster_names.append(n['cluster_name'])
+    
+    if old_cluster_name in old_cluster_names:
+        for c in cluster_json:
+            if old_cluster_name == c['cluster_name']:
+                cid = c['cluster_id']
+                json_data = {
+                    'cluster_name': new_cluster_name
+                }
+                response = post_cluster_rename_json(vmc_url, session_token, org_id, cid, json_data)
+                if response == 202:
+                    print(f'Cluster {old_cluster_name} has been renamed to {new_cluster_name}')
+                else:
+                    print(f'There was a problem with the cluster rename operation')
+            else:
+                pass
+    else:
+        sys.exit(f'{old_cluster_name} does not exist in {sddc_name}')
+
+
 # ============================
 # SDDC - TKG
 # ============================
