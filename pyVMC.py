@@ -178,80 +178,80 @@ def main():
 # Cloud Flex Compute
 # ============================
 
-    # create the parser for the "flex-compute" command
-    flexcomp_parser = subparsers.add_parser('flexcomp', formatter_class=MyFormatter, help='Commands related to the Cloud Flex Compute itself.')
-    # create subparser for flexcomp sub-commands
-    flexcomp_parser_sub = flexcomp_parser.add_subparsers(help='flexcomp sub-command help')
+    # # create the parser for the "flex-compute" command
+    # flexcomp_parser = subparsers.add_parser('flexcomp', formatter_class=MyFormatter, help='Commands related to the Cloud Flex Compute itself.')
+    # # create subparser for flexcomp sub-commands
+    # flexcomp_parser_sub = flexcomp_parser.add_subparsers(help='flexcomp sub-command help')
 
-    flexcomp_activityStatus = flexcomp_parser_sub.add_parser('activity-status', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Get activity status of long running tasks')
-    flexcomp_activityStatus.add_argument('activityId', help='Activity ID of the task.')
-    flexcomp_activityStatus.set_defaults(func=showFlexcompActivityStatus)
+    # flexcomp_activityStatus = flexcomp_parser_sub.add_parser('activity-status', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Get activity status of long running tasks')
+    # flexcomp_activityStatus.add_argument('activityId', help='Activity ID of the task.')
+    # flexcomp_activityStatus.set_defaults(func=showFlexcompActivityStatus)
 
 # =================================
 # Cloud Flex Compute - Compute
 # =================================
-    show_all_namespaces = flexcomp_parser_sub.add_parser('show-all-namespaces', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all present Cloud Flex Compute Name Spaces')
-    show_all_namespaces.set_defaults(func=showFlexcompNamespaces)
+    # show_all_namespaces = flexcomp_parser_sub.add_parser('show-all-namespaces', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all present Cloud Flex Compute Name Spaces')
+    # show_all_namespaces.set_defaults(func=showFlexcompNamespaces)
 
-    validate_network = flexcomp_parser_sub.add_parser('validate-network', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Validate network CIDR before creating Cloud Flex Compute Name Space')
-    validate_network.add_argument('flexCompCIDR', help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
-    validate_network.add_argument('segName', help='Workload Segment name')
-    validate_network.add_argument('segCIDR', help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
-    validate_network.set_defaults(func=validateNetworkFlexComp)
+    # validate_network = flexcomp_parser_sub.add_parser('validate-network', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Validate network CIDR before creating Cloud Flex Compute Name Space')
+    # validate_network.add_argument('flexCompCIDR', help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
+    # validate_network.add_argument('segName', help='Workload Segment name')
+    # validate_network.add_argument('segCIDR', help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
+    # validate_network.set_defaults(func=validateNetworkFlexComp)
 
-    create_flexcomp_namespace = flexcomp_parser_sub.add_parser('create-flexcompute',parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create new Cloud Flex Compute')
-    create_flexcomp_namespace.add_argument('nsName', help='Name of Cloud Flex Compute')
-    create_flexcomp_namespace.add_argument('nsDesc', help='Description for Cloud Flex Compute')
-    create_flexcomp_namespace.add_argument('templateId', help='Resource size template id. Available values can be seen using `show-flex-comp-templates` option')
-    create_flexcomp_namespace.add_argument('region', help='Cloud Flex Compute region name. Available regions can be seen using `show-flex-comp-regions` option')
-    create_flexcomp_namespace.add_argument('flexCompCIDR',
-                              help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
-    create_flexcomp_namespace.add_argument('segName', help='Workload Segment name')
-    create_flexcomp_namespace.add_argument('segCIDR',
-                              help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
-    create_flexcomp_namespace.set_defaults(func=createFlexcompNamespace)
+    # create_flexcomp_namespace = flexcomp_parser_sub.add_parser('create-flexcompute',parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create new Cloud Flex Compute')
+    # create_flexcomp_namespace.add_argument('nsName', help='Name of Cloud Flex Compute')
+    # create_flexcomp_namespace.add_argument('nsDesc', help='Description for Cloud Flex Compute')
+    # create_flexcomp_namespace.add_argument('templateId', help='Resource size template id. Available values can be seen using `show-flex-comp-templates` option')
+    # create_flexcomp_namespace.add_argument('region', help='Cloud Flex Compute region name. Available regions can be seen using `show-flex-comp-regions` option')
+    # create_flexcomp_namespace.add_argument('flexCompCIDR',
+    #                           help='Specify the IP address range for your VMware Cloud Flex Compute. Example: 10.2.0.0/16')
+    # create_flexcomp_namespace.add_argument('segName', help='Workload Segment name')
+    # create_flexcomp_namespace.add_argument('segCIDR',
+    #                           help='Specify the IP address range for your Workload Segment. Example: 10.2.x.0/24')
+    # create_flexcomp_namespace.set_defaults(func=createFlexcompNamespace)
 
-    delete_flexcomp_namespace = flexcomp_parser_sub.add_parser('delete-flexcomp', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Delete existing Cloud Flex Compute')
-    delete_flexcomp_namespace.add_argument('nsId', help='Cloud Flex Compute ID. Available Cloud Flex Compute IDs can be seen using `show-all-namespaces` option')
-    delete_flexcomp_namespace.set_defaults(func=deleteFlexcompNamespace)
+    # delete_flexcomp_namespace = flexcomp_parser_sub.add_parser('delete-flexcomp', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Delete existing Cloud Flex Compute')
+    # delete_flexcomp_namespace.add_argument('nsId', help='Cloud Flex Compute ID. Available Cloud Flex Compute IDs can be seen using `show-all-namespaces` option')
+    # delete_flexcomp_namespace.set_defaults(func=deleteFlexcompNamespace)
 
 # =================================
 # Cloud Flex Compute - Profiles
 # =================================
-    show_flexcomp_region = flexcomp_parser_sub.add_parser('show-flex-comp-regions', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute regions')
-    show_flexcomp_region.set_defaults(func=showFlexcompRegions)
-    show_flexcomp_templates = flexcomp_parser_sub.add_parser('show-flex-comp-templates', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute resource templates to create Name Space')
-    show_flexcomp_templates.set_defaults(func=showFlexcompTemplates)
+#     show_flexcomp_region = flexcomp_parser_sub.add_parser('show-flex-comp-regions', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute regions')
+#     show_flexcomp_region.set_defaults(func=showFlexcompRegions)
+#     show_flexcomp_templates = flexcomp_parser_sub.add_parser('show-flex-comp-templates', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show available Cloud Flex Compute resource templates to create Name Space')
+#     show_flexcomp_templates.set_defaults(func=showFlexcompTemplates)
 
-# =================================
-# Cloud Flex Compute - VMs
-# =================================
-    show_flexcomp_vms = flexcomp_parser_sub.add_parser('show-all-vms', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all VMs in Cloud Flex Compute instance')
-    show_flexcomp_vms.set_defaults(func=showAllVMsFlexcomp)
+# # =================================
+# # Cloud Flex Compute - VMs
+# # =================================
+#     show_flexcomp_vms = flexcomp_parser_sub.add_parser('show-all-vms', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all VMs in Cloud Flex Compute instance')
+#     show_flexcomp_vms.set_defaults(func=showAllVMsFlexcomp)
 
-    show_flexcomp_images = flexcomp_parser_sub.add_parser('show-all-images', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all images available to create VMs from')
-    show_flexcomp_images.set_defaults(func=showAllImagesFlexcomp)
+#     show_flexcomp_images = flexcomp_parser_sub.add_parser('show-all-images', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Show all images available to create VMs from')
+#     show_flexcomp_images.set_defaults(func=showAllImagesFlexcomp)
 
-    flexcomp_createVm = flexcomp_parser_sub.add_parser('create-vm', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create VM')
-    flexcomp_createVm.add_argument('vmName', help='Virtual Machine Name')
-    flexcomp_createVm.add_argument('vmNamespaceId', help='Namespace ID on which to create VM')
-    flexcomp_createVm.add_argument('vmCPU', help='Number of CPUs for the VM. Min 1 CPU, Max 36 CPU. Make sure CPU number is less or equal to CPUs for Namespace')
-    flexcomp_createVm.add_argument('vmMem', help='Memory in GB for the VM. Min 1 GB, Max 1 TiB. Make sure memory size is less or equal to memory for Namespace')
-    flexcomp_createVm.add_argument('vmStorage', help='Storage for the VM. Min 1 MB, Max 61 TiB. Make sure storage size is less or equal to storage for Namespace')
-    flexcomp_createVm.add_argument('networkSegName', help='Network Seg Name')
-    # flexcomp_createVm.add_argument('networkSegCIDR', help='Network Seg CIDR')
-    flexcomp_createVm.add_argument('guestOS', help='Current support for Linux Guest OS : UBUNTU_64, RHEL_6_64, RHEL_7_64, CENTOS_7_64')
-    flexcomp_createVm.add_argument('imageId', help='ISO Image name from which VM will be created.')
-    flexcomp_createVm.set_defaults(func=createVMFlexcomp)
+#     flexcomp_createVm = flexcomp_parser_sub.add_parser('create-vm', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Create VM')
+#     flexcomp_createVm.add_argument('vmName', help='Virtual Machine Name')
+#     flexcomp_createVm.add_argument('vmNamespaceId', help='Namespace ID on which to create VM')
+#     flexcomp_createVm.add_argument('vmCPU', help='Number of CPUs for the VM. Min 1 CPU, Max 36 CPU. Make sure CPU number is less or equal to CPUs for Namespace')
+#     flexcomp_createVm.add_argument('vmMem', help='Memory in GB for the VM. Min 1 GB, Max 1 TiB. Make sure memory size is less or equal to memory for Namespace')
+#     flexcomp_createVm.add_argument('vmStorage', help='Storage for the VM. Min 1 MB, Max 61 TiB. Make sure storage size is less or equal to storage for Namespace')
+#     flexcomp_createVm.add_argument('networkSegName', help='Network Seg Name')
+#     # flexcomp_createVm.add_argument('networkSegCIDR', help='Network Seg CIDR')
+#     flexcomp_createVm.add_argument('guestOS', help='Current support for Linux Guest OS : UBUNTU_64, RHEL_6_64, RHEL_7_64, CENTOS_7_64')
+#     flexcomp_createVm.add_argument('imageId', help='ISO Image name from which VM will be created.')
+#     flexcomp_createVm.set_defaults(func=createVMFlexcomp)
 
-    flexcomp_vmPowerOps = flexcomp_parser_sub.add_parser('power-operation', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Perform Power Operations on VM')
-    flexcomp_vmPowerOps.add_argument('vmId', help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
-    flexcomp_vmPowerOps.add_argument('powerOperation', help='Available operations are: power_off, power_on, suspend, hard_stop, reset, guest_os_shutdown, guest_os_restart')
-    flexcomp_vmPowerOps.set_defaults(func=vmPowerOperationsFlexcomp)
+#     flexcomp_vmPowerOps = flexcomp_parser_sub.add_parser('power-operation', parents=[auth_flag,vmc_url_flag,org_id_flag], help='Perform Power Operations on VM')
+#     flexcomp_vmPowerOps.add_argument('vmId', help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
+#     flexcomp_vmPowerOps.add_argument('powerOperation', help='Available operations are: power_off, power_on, suspend, hard_stop, reset, guest_os_shutdown, guest_os_restart')
+#     flexcomp_vmPowerOps.set_defaults(func=vmPowerOperationsFlexcomp)
 
-    flexcomp_vmDelete = flexcomp_parser_sub.add_parser('delete-vm', parents=[auth_flag,vmc_url_flag, org_id_flag], help='Delete VM. Make sure VM is in powerd OFF state.')
-    flexcomp_vmDelete.add_argument('vmId',help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
-    flexcomp_vmDelete.set_defaults(func=vmDeleteFlexcomp)
+#     flexcomp_vmDelete = flexcomp_parser_sub.add_parser('delete-vm', parents=[auth_flag,vmc_url_flag, org_id_flag], help='Delete VM. Make sure VM is in powerd OFF state.')
+#     flexcomp_vmDelete.add_argument('vmId',help='VM ID for the VM on which power operation needs to be performed. Available VMs can be seen using `show-all-vms` option')
+#     flexcomp_vmDelete.set_defaults(func=vmDeleteFlexcomp)
 
 # ============================
 # SDDC - AWS Account and VPC
@@ -315,6 +315,11 @@ def main():
     delete_sddc_parser.add_argument("SDDCtoDelete", help = "The object id of the sddc to delete")
     delete_sddc_parser.add_argument("--force",action='store_true', help="(optional) Force the deletion of an SDDC")
     delete_sddc_parser.set_defaults(func = deleteSDDC)
+
+    cluster_rename_parser=sddc_parser_subs.add_parser('rename-cluster', parents=[auth_flag, vmc_url_flag, org_id_flag, sddc_id_parser_flag], help='Rename a cluster in the SDDC')
+    cluster_rename_parser.add_argument('-n', '--new_name', required=True, help='The desired new name of the selected cluster')
+    cluster_rename_parser.add_argument('-c', '--cluster_name', required=True, help='The name of the cluster you wish to change.  Syntax must match exactly.')
+    cluster_rename_parser.set_defaults(func = renameCluster)
 
 # ============================
 # SDDC - SDDC Tasks
